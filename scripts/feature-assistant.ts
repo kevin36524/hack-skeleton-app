@@ -3,6 +3,16 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from "dotenv";
+
+dotenv.config({ path: path.join(__dirname, "../.env") });
+
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error("ERROR: ANTHROPIC_API_KEY must be set");
+  process.exit(1);
+} else {
+  console.log("ANTHROPIC_API_KEY is set");
+}
 
 interface FeatureRequest {
   description: string;
