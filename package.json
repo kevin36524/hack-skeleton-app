@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "mastraDev": "mastra dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -12,8 +13,11 @@
     "feature:advanced": "tsx scripts/feature-assistant.ts --model claude-opus-4-1"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.44",
     "@anthropic-ai/claude-agent-sdk": "^0.1.55",
     "@mastra/core": "^0.24.6",
+    "@mastra/evals": "^0.14.4",
+    "@mastra/loggers": "^0.10.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
@@ -24,6 +28,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^2.0.53",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -40,6 +40,8 @@ async function readProjectStructure(): Promise<string> {
     "lib/",
     "scripts/",
     "components/",
+    ".claude/",
+    "src/",
     "package.json",
     "tsconfig.json",
   ];
@@ -69,7 +71,6 @@ Your role is to help the user implement new features by:
 2. Analyzing the existing codebase structure
 3. Providing implementation guidance and code
 4. Using tools to read/write/edit files as needed
-5. Running tests and builds to validate changes
 
 Current Project Info:
 ${projectStructure}
@@ -80,8 +81,13 @@ Guidelines:
 - Maintain type safety throughout
 - Implement one feature at a time
 - Ask for clarification if requirements are unclear
-- Test changes when possible
-- Provide clear explanations of what you're doing`;
+- Provide clear explanations of what you're doing
+- You have access to custom skills and agents defined in the .claude folder - use them when appropriate
+
+Also don't attempt to launch the application. 
+Application is already running in dev mode and will be restarted when the changes are made.
+
+`;
 
   const prompt = `I need help implementing the following feature:
 
@@ -113,6 +119,8 @@ Please analyze the current codebase, understand what needs to be implemented, an
       systemPrompt,
       abortController,
       options: {
+        cwd: process.cwd(),
+        settingSources: ['project', 'local'],
         maxTurns: config.maxIterations,
         allowedTools: [
           'Read',
@@ -120,29 +128,75 @@ Please analyze the current codebase, understand what needs to be implemented, an
           'Edit',
           'MultiEdit',
           'Bash',
-          'LS',
           'Glob',
-          'Grep'
+          'Grep',
+          'NotebookEdit',
+          'Skill',
+          'SlashCommand',
+          'Task'
         ]
       }
     })) {
       messages.push(message);
+      messages.push(message);
 
-      // Log progress
-      if (message.type === 'text') {
-        console.log('[Claude]:', (message.text || '').substring(0, 80) + '...');
-      } else if (message.type === 'tool_use') {
-        console.log('[Tool]:', message.name, message.input?.file_path || '');
-      } else if (message.type === 'result') {
-        console.log('__TOOL_RESULT__', JSON.stringify({ 
-          type: 'tool_result', 
-          result: message.result 
-        }));
-      } else if (message.content && message.content[0] && message.content[0].type === 'text') {
-        console.log('[Text]:', message.content[0].text);
-      } 
-      else {
-        console.log('[Unknown]:', message.type);
+      // Handle different message types
+      switch (message.type) {
+        case 'user':
+          // User messages have a 'message' property with content array
+          console.log('[User Message]:');
+          message.message.content.forEach(block => {
+            if (block.type === 'text') {
+              console.log('  Text:', block.text);
+            } else if (block.type === 'image') {
+              console.log('  Image:', block.source.type);
+            } else if (block.type === 'document') {
+              console.log('  Document:', block.source.media_type);
+            }
+          });
+          break;
+    
+        case 'assistant':
+          // Assistant messages have a 'message' property with content array
+          console.log('[Claude]:');
+          message.message.content.forEach(block => {
+            if (block.type === 'text') {
+              console.log('  ', block.text);
+            } else if (block.type === 'tool_use') {
+              console.log(`  [Tool Use]: ${block.name}`);
+              console.log('  [Input]:', JSON.stringify(block.input, null, 2));
+            }
+          });
+          break;
+    
+        case 'result':
+          // Result messages contain tool outputs
+          console.log('[Tool Result]:', message.tool_use_id);
+          if (message.content) {
+            const preview = Array.isArray(message.content) 
+              ? message.content.map(c => c.type).join(', ')
+              : typeof message.content === 'string' 
+                ? message.content.substring(0, 100) 
+                : JSON.stringify(message.content).substring(0, 100);
+            console.log('  Output preview:', preview);
+          }
+          break;
+    
+        case 'system':
+          if (message.subtype === 'init') {
+            console.log('[System]: Session started:', message.session_id);
+          } else if (message.subtype === 'compact_boundary') {
+            console.log('[System]: Conversation compacted');
+          }
+          break;
+    
+        case 'partial_assistant':
+          // Only available when includePartialMessages is true
+          console.log('[Streaming...]');
+          break;
+    
+        default:
+          console.log('[Unknown Message Type]:', message.type);
       }
     }
 
