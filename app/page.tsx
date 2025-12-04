@@ -86,7 +86,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            🎭 Joke Generator
+            🎭 Joke Creator
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             AI-powered humor at your fingertips. Get ready to laugh!
