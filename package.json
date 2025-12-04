@@ -7,10 +7,7 @@
     "mastraDev": "mastra dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "feature": "tsx scripts/feature-assistant.ts",
-    "feature:quick": "tsx scripts/feature-assistant.ts --model claude-haiku-4-5-20251001",
-    "feature:advanced": "tsx scripts/feature-assistant.ts --model claude-opus-4-1"
+    "lint": "eslint"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.44",
