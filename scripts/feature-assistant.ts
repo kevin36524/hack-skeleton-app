@@ -33,93 +33,29 @@ const DEFAULT_CONFIG: AgentConfig = {
   timeout: 300000, // 5 minutes
 };
 
-async function readProjectStructure(): Promise<string> {
-  const projectRoot = process.cwd();
-  const structure = [
-    "app/",
-    "lib/",
-    "scripts/",
-    "components/",
-    ".claude/",
-    "src/",
-    "package.json",
-    "tsconfig.json",
-  ];
-
-  let output = "Project Structure:\n";
-  for (const item of structure) {
-    const fullPath = path.join(projectRoot, item);
-    if (fs.existsSync(fullPath)) {
-      const stat = fs.statSync(fullPath);
-      output += `- ${item}${stat.isDirectory() ? "/" : ""}\n`;
-    }
-  }
-
-  return output;
-}
 
 async function createFeatureImplementationAgent(
   request: FeatureRequest,
   config: AgentConfig
 ): Promise<void> {
-  const projectStructure = await readProjectStructure();
 
-  const systemPrompt = `You are a helpful AI assistant for implementing features in a Next.js TypeScript application.
-
-Your role is to help the user implement new features by:
-1. Understanding the feature requirements
-2. Analyzing the existing codebase structure
-3. Providing implementation guidance and code
-4. Using tools to read/write/edit files as needed
-
-Current Project Info:
-${projectStructure}
-
-Guidelines:
-- Always read files before making changes
-- Use TypeScript and follow the existing code style
-- Maintain type safety throughout
-- Implement one feature at a time
-- Ask for clarification if requirements are unclear
-- Provide clear explanations of what you're doing
-- You have access to custom skills and agents defined in the .claude folder - use them when appropriate
-
-Also don't attempt to launch the application. 
-Application is already running in dev mode and will be restarted when the changes are made.
-
-`;
-
-  const prompt = `I need help implementing the following feature:
-
-**Feature Description:** ${request.description}
-
-${request.context ? `**Additional Context:** ${request.context}` : ""}
-
-${request.scope ? `**Scope:** ${request.scope}` : ""}
-
-${request.targetFiles ? `**Target Files/Areas:** ${request.targetFiles.join(", ")}` : ""}
-
-Please analyze the current codebase, understand what needs to be implemented, and help me build this feature step by step. Use your available tools to read files, make changes, and verify the implementation works correctly.`;
-
-  console.log("🚀 Starting Feature Implementation Assistant...\n");
-  console.log(`📋 Feature: ${request.description}\n`);
-  console.log("🤖 Agent Configuration:");
-  console.log(`   Model: ${config.model}`);
-  console.log(`   Max Iterations: ${config.maxIterations}`);
-  console.log(`   Timeout: ${config.timeout}ms\n`);
+  const prompt = `${request.description}. 
+  
+  Please note that the application is already running in dev mode and will be restarted when the changes are made.
+  Please don't attempt to launch the application.
+  Also use the skills whenever possible.
+  `;
 
   try {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), config.timeout);
 
-    const messages: Record<string, unknown>[] = [];
 
     for await (const message of query({
       prompt,
-      systemPrompt,
-      abortController,
       options: {
         cwd: process.cwd(),
+        abortController,
         settingSources: ['project', 'local'],
         maxTurns: config.maxIterations,
         allowedTools: [
@@ -137,9 +73,6 @@ Please analyze the current codebase, understand what needs to be implemented, an
         ]
       }
     })) {
-      messages.push(message);
-      messages.push(message);
-
       // Handle different message types
       switch (message.type) {
         case 'user':
@@ -171,15 +104,10 @@ Please analyze the current codebase, understand what needs to be implemented, an
     
         case 'result':
           // Result messages contain tool outputs
-          console.log('[Tool Result]:', message.tool_use_id);
-          if (message.content) {
-            const preview = Array.isArray(message.content) 
-              ? message.content.map(c => c.type).join(', ')
-              : typeof message.content === 'string' 
-                ? message.content.substring(0, 100) 
-                : JSON.stringify(message.content).substring(0, 100);
-            console.log('  Output preview:', preview);
-          }
+          console.log('__TOOL_RESULT__', JSON.stringify({ 
+            type: 'tool_result', 
+            result: message.result 
+          }));
           break;
     
         case 'system':
