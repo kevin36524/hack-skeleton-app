@@ -19,6 +19,7 @@ interface FeatureRequest {
   context?: string;
   scope?: "small" | "medium" | "large";
   targetFiles?: string[];
+  sessionId?: string;
 }
 
 interface AgentConfig {
@@ -39,8 +40,10 @@ async function createFeatureImplementationAgent(
   config: AgentConfig
 ): Promise<void> {
 
-  const prompt = `${request.description}. 
-  
+  const prompt = request.sessionId
+    ? request.description
+    : `${request.description}.
+
   Please note that the application is already running in dev mode and will be restarted when the changes are made.
   Please don't attempt to launch the application.
   Also use the skills whenever possible.
@@ -50,28 +53,33 @@ async function createFeatureImplementationAgent(
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), config.timeout);
 
+    const queryOptions: any = {
+      cwd: process.cwd(),
+      abortController,
+      settingSources: ['project', 'local'],
+      maxTurns: config.maxIterations,
+      allowedTools: [
+        'Read',
+        'Write',
+        'Edit',
+        'MultiEdit',
+        'Bash',
+        'Glob',
+        'Grep',
+        'NotebookEdit',
+        'Skill',
+        'SlashCommand',
+        'Task'
+      ]
+    };
+
+    if (request.sessionId) {
+      queryOptions.sessionId = request.sessionId;
+    }
 
     for await (const message of query({
       prompt,
-      options: {
-        cwd: process.cwd(),
-        abortController,
-        settingSources: ['project', 'local'],
-        maxTurns: config.maxIterations,
-        allowedTools: [
-          'Read',
-          'Write',
-          'Edit',
-          'MultiEdit',
-          'Bash',
-          'Glob',
-          'Grep',
-          'NotebookEdit',
-          'Skill',
-          'SlashCommand',
-          'Task'
-        ]
-      }
+      options: queryOptions
     })) {
       // Handle different message types
       switch (message.type) {
@@ -157,6 +165,7 @@ function parseCliArguments(): FeatureRequest & { config?: Partial<AgentConfig> }
   const targetFiles: string[] = [];
   let scope: "small" | "medium" | "large" = "medium";
   let context = "";
+  let sessionId: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -183,6 +192,8 @@ function parseCliArguments(): FeatureRequest & { config?: Partial<AgentConfig> }
       targetFiles.push(...args[++i].split(",").map((f) => f.trim()));
     } else if (arg === "--max-iterations" && args[i + 1]) {
       config.maxIterations = parseInt(args[++i], 10);
+    } else if (arg === "--session-id" && args[i + 1]) {
+      sessionId = args[++i];
     } else if (!arg.startsWith("--") && !description) {
       description = arg;
     }
@@ -199,6 +210,7 @@ function parseCliArguments(): FeatureRequest & { config?: Partial<AgentConfig> }
     context,
     scope,
     targetFiles: targetFiles.length > 0 ? targetFiles : undefined,
+    sessionId,
     config,
   };
 }
@@ -237,6 +249,7 @@ OPTIONS:
   --model <model>           AI model to use (default: claude-sonnet-4-20250514)
                             Options: claude-haiku-4-5-20251001, claude-sonnet-4-20250514, claude-opus-4-1
   --max-iterations <num>    Maximum iterations for the agent (default: 10)
+  --session-id <id>         Resume a previous session with the given session ID
   --help, -h                Show this help message
 
 ENVIRONMENT VARIABLES:
@@ -256,13 +269,16 @@ EXAMPLES:
   # Use faster model for simple tasks
   npm run feature -- "Fix typo in navigation" --model claude-haiku-4-5-20251001
 
+  # Resume a previous session with a new prompt
+  npm run feature -- "Now add unit tests for the chat feature" --session-id <session-id-from-previous-run>
+
 For more information, visit: https://github.com/anthropics/claude-code
 `);
 }
 
 // Main execution
 async function main(): Promise<void> {
-  const { description, context, scope, targetFiles, config: userConfig } = parseCliArguments();
+  const { description, context, scope, targetFiles, sessionId, config: userConfig } = parseCliArguments();
 
   const finalConfig: AgentConfig = {
     ...DEFAULT_CONFIG,
@@ -274,6 +290,7 @@ async function main(): Promise<void> {
     context,
     scope,
     targetFiles,
+    sessionId,
   };
 
   await createFeatureImplementationAgent(featureRequest, finalConfig);
