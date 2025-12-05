@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, Calendar, Loader2, X, Copy, Check } from "lucide-react";
+import { Upload, Calendar, Loader2, X, Copy, Check, Camera } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with camera
+const CameraCapture = dynamic(() => import("./camera-capture"), {
+  ssr: false,
+});
 
 interface CalendarEvent {
   title: string;
@@ -27,6 +33,7 @@ export default function CalendarEventExtractor() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,26 +129,46 @@ export default function CalendarEventExtractor() {
     }
   };
 
+  const handleCameraCapture = (imageData: string, fileName: string) => {
+    setImage(imageData);
+    setFileName(fileName);
+    setResult(null);
+    setError(null);
+    setShowCamera(false);
+  };
+
+  const openCamera = () => {
+    setShowCamera(true);
+  };
+
   const formatTime = (time?: string) => {
     if (!time) return "";
     return time;
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2">
-          <Calendar className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-            Calendar Event Extractor
-          </h1>
+    <>
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
+
+      <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <Calendar className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+              Calendar Event Extractor
+            </h1>
+          </div>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            Upload, paste, or capture an image containing calendar events, and AI
+            will extract them for you
+          </p>
         </div>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Upload or paste an image containing calendar events, and AI will
-          extract them for you
-        </p>
-      </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -175,6 +202,23 @@ export default function CalendarEventExtractor() {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
+
+                {/* Camera Button */}
+                <div className="relative">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700"></div>
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">or</span>
+                    <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700"></div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={openCamera}
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-50 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-5 h-5" />
+                  Open Camera
+                </button>
               </>
             ) : (
               <div className="space-y-4">
@@ -344,5 +388,6 @@ export default function CalendarEventExtractor() {
         </div>
       </div>
     </div>
+    </>
   );
 }
