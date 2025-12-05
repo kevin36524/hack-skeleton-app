@@ -1,19 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, Calendar, Loader2 } from 'lucide-react';
+import { Upload, Calendar, Loader2, ListTodo } from 'lucide-react';
 import Image from 'next/image';
 
-interface ExtractedEvent {
-  title: string;
-  date: string;
-  time?: string;
-  location?: string;
-  description?: string;
-  attendees?: string[];
-}
+type ExtractionMode = 'calendar' | 'todos';
 
 export default function Home() {
+  const [mode, setMode] = useState<ExtractionMode>('calendar');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
@@ -33,7 +27,7 @@ export default function Home() {
     }
   };
 
-  const handleExtractEvents = async () => {
+  const handleExtract = async () => {
     if (!selectedFile) {
       setError('Please select an image first');
       return;
@@ -46,7 +40,8 @@ export default function Home() {
       const formData = new FormData();
       formData.append('image', selectedFile);
 
-      const response = await fetch('/api/extract-events', {
+      const endpoint = mode === 'calendar' ? '/api/extract-events' : '/api/extract-todos';
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
@@ -54,10 +49,10 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to extract events');
+        throw new Error(data.error || `Failed to extract ${mode}`);
       }
 
-      setExtractedText(data.events);
+      setExtractedText(mode === 'calendar' ? data.events : data.todos);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -75,20 +70,58 @@ export default function Home() {
     }
   };
 
+  const handleModeChange = (newMode: ExtractionMode) => {
+    setMode(newMode);
+    setExtractedText('');
+    setError(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Calendar className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+            {mode === 'calendar' ? (
+              <Calendar className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+            ) : (
+              <ListTodo className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+            )}
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-              Calendar Event Extractor
+              AI Image Extractor
             </h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Upload an image of a calendar, schedule, or event and extract the details using AI
+            Upload an image and extract calendar events or todo items using AI
           </p>
+        </div>
+
+        {/* Mode Tabs */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex rounded-lg bg-white dark:bg-gray-800 shadow-lg p-1">
+            <button
+              onClick={() => handleModeChange('calendar')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+                mode === 'calendar'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Calendar className="w-5 h-5" />
+              Calendar Events
+            </button>
+            <button
+              onClick={() => handleModeChange('todos')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+                mode === 'todos'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <ListTodo className="w-5 h-5" />
+              Todo Items
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -138,7 +171,7 @@ export default function Home() {
             {/* Action Buttons */}
             <div className="flex gap-3">
               <button
-                onClick={handleExtractEvents}
+                onClick={handleExtract}
                 disabled={!selectedFile || loading}
                 className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
@@ -149,8 +182,12 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <Calendar className="w-5 h-5" />
-                    Extract Events
+                    {mode === 'calendar' ? (
+                      <Calendar className="w-5 h-5" />
+                    ) : (
+                      <ListTodo className="w-5 h-5" />
+                    )}
+                    Extract {mode === 'calendar' ? 'Events' : 'Todos'}
                   </>
                 )}
               </button>
@@ -177,7 +214,7 @@ export default function Home() {
           {/* Results Section */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
             <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">
-              Extracted Events
+              {mode === 'calendar' ? 'Extracted Events' : 'Extracted Todos'}
             </h2>
 
             <div className="h-[400px] overflow-y-auto">
@@ -186,7 +223,7 @@ export default function Home() {
                   <div className="text-center">
                     <Loader2 className="w-12 h-12 animate-spin text-indigo-600 dark:text-indigo-400 mx-auto mb-4" />
                     <p className="text-gray-600 dark:text-gray-400">
-                      Analyzing image and extracting events...
+                      Analyzing image and extracting {mode === 'calendar' ? 'events' : 'todos'}...
                     </p>
                   </div>
                 </div>
@@ -199,9 +236,13 @@ export default function Home() {
               ) : (
                 <div className="flex items-center justify-center h-full text-center">
                   <div>
-                    <Calendar className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    {mode === 'calendar' ? (
+                      <Calendar className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    ) : (
+                      <ListTodo className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    )}
                     <p className="text-gray-500 dark:text-gray-400">
-                      Upload an image and click "Extract Events" to see the results here
+                      Upload an image and click "Extract {mode === 'calendar' ? 'Events' : 'Todos'}" to see the results here
                     </p>
                   </div>
                 </div>
@@ -215,12 +256,21 @@ export default function Home() {
           <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">
             💡 Tips for best results:
           </h3>
-          <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-400">
-            <li>Use clear, high-resolution images of calendars or schedules</li>
-            <li>Ensure text is readable and not blurry</li>
-            <li>Works with screenshots, photos of physical calendars, or event posters</li>
-            <li>The AI will extract dates, times, locations, and event descriptions</li>
-          </ul>
+          {mode === 'calendar' ? (
+            <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-400">
+              <li>Use clear, high-resolution images of calendars or schedules</li>
+              <li>Ensure text is readable and not blurry</li>
+              <li>Works with screenshots, photos of physical calendars, or event posters</li>
+              <li>The AI will extract dates, times, locations, and event descriptions</li>
+            </ul>
+          ) : (
+            <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-400">
+              <li>Upload images of todo lists, task lists, or checklists</li>
+              <li>Works with handwritten notes, digital todos, or whiteboard photos</li>
+              <li>The AI will identify completed vs pending tasks</li>
+              <li>Extracts priorities, deadlines, and task descriptions</li>
+            </ul>
+          )}
         </div>
       </div>
     </div>

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Calendar Event Extractor - AI-Powered",
-  description: "Extract calendar events from images using AI - Upload a photo of a calendar, schedule, or event and get structured event details",
+  title: "AI Image Extractor - Calendar Events & Todos",
+  description: "Extract calendar events and todo items from images using AI - Upload photos of calendars, schedules, todo lists, or task lists and get structured data",
 };
 
 export default function RootLayout({
