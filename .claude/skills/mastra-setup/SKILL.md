@@ -97,6 +97,8 @@ After initialization, your `src/mastra/index.ts` should look similar to:
 
 ```typescript
 import { Mastra } from "@mastra/core";
+import { InMemoryStore } from "@mastra/core/storage";
+import { PinoLogger } from "@mastra/loggers";
 
 // Import agents and tools here as you create them
 // import { weatherAgent } from "./agents/weather-agent";
@@ -107,7 +109,17 @@ export const mastra = new Mastra({
     // Register agents here
     // weatherAgent,
   },
-  // Optional: Add storage, memory, logger configuration
+  // Storage is essential for memory and observability
+  storage: new InMemoryStore(),
+  // Optional: Add logger for debugging
+  logger: new PinoLogger({
+    name: 'Mastra',
+    level: 'info',
+  }),
+  // Optional: Enable observability
+  observability: {
+    default: { enabled: true }
+  },
 });
 ```
 
@@ -201,15 +213,90 @@ npx tsc --noEmit
 **Issue: Module not found "@mastra/core"**
 - Solution: Install dependencies: `npm install @mastra/core@beta zod@^4`
 
+## Memory and Storage Configuration
+
+Memory in Mastra requires storage to be configured. The storage layer:
+- **Persists conversation threads and messages** for observability
+- **Enables working memory** for agents to maintain context
+- **Supports AI tracing** for debugging and monitoring
+- **Records workflow runs** and execution history
+
+### Storage Options
+
+**InMemoryStore (Development)**
+Best for development and testing. Data is lost on restart.
+
+```typescript
+import { InMemoryStore } from "@mastra/core/storage";
+
+export const mastra = new Mastra({
+  storage: new InMemoryStore(),
+  // ... other config
+});
+```
+
+**LibSQLStore (Production)**
+For SQLite/Turso databases with persistent storage.
+
+```typescript
+import { LibSQLStore } from "@mastra/libsql";
+
+export const mastra = new Mastra({
+  storage: new LibSQLStore({
+    url: "file:./mastra-memory.db"
+  }),
+  // ... other config
+});
+```
+
+**PgStore (Production)**
+For PostgreSQL databases with advanced features.
+
+```typescript
+import { PgStore } from "@mastra/pg";
+
+export const mastra = new Mastra({
+  storage: new PgStore({
+    connectionString: process.env.DATABASE_URL
+  }),
+  // ... other config
+});
+```
+
+### Agent-Level Memory
+
+While storage is configured on the Mastra instance, memory is configured per agent:
+
+```typescript
+import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/core/memory";
+
+const myAgent = new Agent({
+  name: 'assistant',
+  memory: new Memory({
+    storage: mastra.getStorage(), // Use Mastra's storage
+    options: {
+      lastMessages: 10,  // Include last 10 messages
+      semanticRecall: false,  // Disable vector search
+      workingMemory: {
+        enabled: true,  // Enable persistent context
+        scope: 'resource'  // Per-user memory
+      }
+    }
+  }),
+  // ... other agent config
+});
+```
+
 ## Next Steps
 
 After successful setup:
 
 1. **Create a Tool** - Use the `mastra-create-tool` skill to build reusable functions
 2. **Create an Agent** - Use the `mastra-create-agent` skill to create AI agents
-3. **Access Studio** - Use the `mastra-admin-ui` skill to open the interactive testing UI
-4. **Build API Routes** - Create Next.js API routes that call your agents
-5. **Add Memory** - Configure conversation memory for stateful interactions (optional)
+3. **Configure Memory** - Add storage and memory configuration (see above)
+4. **Access Studio** - Use the `mastra-admin-ui` skill to open the interactive testing UI
+5. **Build API Routes** - Create Next.js API routes that call your agents
 
 ## Important Notes
 

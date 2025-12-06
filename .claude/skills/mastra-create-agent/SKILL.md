@@ -162,6 +162,32 @@ Always ask what type of content is needed.`,
 });
 ```
 
+### Template 5: Agent with Memory and Tools
+
+```typescript
+import { Agent } from "@mastra/core/agent";
+import { Memory } from "@mastra/core/memory";
+import { LibSQLStore } from "@mastra/libsql";
+import { openai } from "@mastra/core/model";
+import { getTransactionsTool } from "../tools/get-transactions-tool";
+
+export const financialAgent = new Agent({
+  name: "Financial Assistant Agent",
+  instructions: `You are a financial assistant that analyzes transaction data.
+- Identify spending patterns and answer questions about transactions
+- Keep responses concise and format currency appropriately
+- Do not provide investment advice or make assumptions beyond the data
+- Use the getTransactions tool to fetch transaction data`,
+  model: openai("gpt-4o-mini"),
+  tools: { getTransactionsTool },
+  memory: new Memory({
+    storage: new LibSQLStore({
+      url: "file:../../memory.db", // Relative to .mastra/output directory
+    }),
+  }),
+});
+```
+
 ## Common Patterns
 
 ### Pattern 1: Minimal Configuration
@@ -212,6 +238,103 @@ export const multiToolAgent = new Agent({
     tool2,
     tool3,
   },
+});
+```
+
+### Pattern 4: Agent with Simple Memory
+
+```typescript
+import { Memory } from "@mastra/core/memory";
+import { mastra } from "../index";
+
+export const memoryAgent = new Agent({
+  id: "memory-agent",
+  name: "Memory Agent",
+  instructions: "You remember past conversations. Reference them naturally.",
+  model: "google/gemini-2.5-flash-lite",
+  memory: new Memory({
+    storage: mastra.getStorage(),
+    options: {
+      lastMessages: 10,
+      workingMemory: { enabled: true, scope: 'resource' }
+    }
+  }),
+});
+```
+
+## Memory Configuration
+
+Memory allows agents to maintain context across conversations. **Storage must be configured on the Mastra instance first** (see `mastra-setup` skill).
+
+### Basic Memory Setup
+
+```typescript
+import { Memory } from "@mastra/core/memory";
+import { mastra } from "../index";
+
+memory: new Memory({
+  storage: mastra.getStorage(),  // Use Mastra's storage
+  options: {
+    lastMessages: 10,  // Include last 10 messages
+    workingMemory: {
+      enabled: true,
+      scope: 'resource'  // Per-user memory
+    }
+  }
+})
+```
+
+### Memory Options
+
+**Conversation History (`lastMessages`)**
+- Number of recent messages included in each call
+- Default: 10 | Set to `false` to disable
+- Higher values = more context but more tokens
+
+**Working Memory (Persistent Data)**
+- Structured user data that persists across conversations
+- `scope: 'resource'` = per-user | `scope: 'thread'` = per-conversation
+
+**Semantic Recall (Vector Search)**
+- Requires vector database (PgVector)
+- Retrieves relevant past messages using similarity search
+- Not available with InMemoryStore
+
+```typescript
+semanticRecall: {
+  topK: 5,  // Retrieve 5 similar messages
+  messageRange: 2,  // Context around matches
+  scope: 'resource'
+}
+```
+
+### Storage Options for Memory
+
+**Using Mastra's Storage (Recommended)**
+```typescript
+memory: new Memory({
+  storage: mastra.getStorage()
+})
+```
+
+**Dedicated Database**
+```typescript
+import { LibSQLStore } from "@mastra/libsql";
+
+memory: new Memory({
+  storage: new LibSQLStore({
+    url: "file:./agent-memory.db"
+  })
+})
+```
+
+### Important: Resource ID for Memory
+
+For memory to work, pass consistent `resourceId` (e.g., user ID) when calling the agent:
+
+```typescript
+const response = await agent.generate("Hello", {
+  resourceId: "user-123"  // Same ID for same user
 });
 ```
 
@@ -272,22 +395,41 @@ console.log(agent.name); // Should print agent name
 **Issue: Tool parameters don't match what agent sends**
 - Solution: Verify tool input schema matches what agent receives. Use detailed Zod validation error messages.
 
+**Issue: Memory not working or agent doesn't remember context**
+- Solution: Ensure storage is configured on Mastra instance. Pass consistent `resourceId` in agent calls. Check memory is configured on agent.
+
+**Issue: "Cannot find module '@mastra/core/memory'"**
+- Solution: Memory is part of @mastra/core. Import: `import { Memory } from "@mastra/core/memory"`
+
+**Issue: Working memory not persisting between conversations**
+- Solution: Verify `resourceId` is same across calls. Check storage is properly configured. Working memory requires manual updates via Memory API.
+
+**Issue: Semantic recall not finding relevant messages**
+- Solution: Semantic recall requires PgVector database. Not available with InMemoryStore. Install `@mastra/pg` and configure PgStore.
+
+**Issue: "Cannot find module '@mastra/libsql'"**
+- Solution: Install LibSQL storage: `npm install @mastra/libsql`
+
 ## Next Steps
 
 After creating an agent:
 
-1. **Test in Studio** - Use the `mastra-admin-ui` skill to test agent interactively
-2. **Create API Route** - Build Next.js route calling: `await agent.generate(message)`
-3. **Add Tools** - Use `mastra-create-tool` skill to enhance agent capabilities
-4. **Monitor Responses** - Check response quality and adjust instructions if needed
-5. **Add Memory** - Configure conversation memory for multi-turn interactions (optional)
+1. **Configure Memory** - Add memory for stateful conversations (see Memory Configuration above)
+2. **Test in Studio** - Use the `mastra-admin-ui` skill to test agent interactively
+3. **Create API Route** - Build Next.js route: `await agent.generate(message, { resourceId: "user-id" })`
+4. **Add Tools** - Use `mastra-create-tool` skill to enhance agent capabilities
+5. **Monitor Responses** - Check response quality and adjust instructions if needed
 
 ## Important Notes
 
-- **Instructions Matter**: Clear, specific instructions lead to better agent behavior
+- **Instructions Matter**: Clear, specific instructions lead to better agent behavior. Keep them concise to save tokens.
 - **Default Model**: Gemini Flash Lite is lightweight and cost-effective (recommended)
 - **Tool Documentation**: Help agents by providing detailed tool descriptions
 - **Unique IDs**: Each agent needs a unique ID within your Mastra instance
 - **Export Naming**: Use camelCase for exported constants (e.g., `export const myAgent`)
 - **API Keys**: Agent respects API key permissions and rate limits of the model provider
 - **Testing**: Always test agent behavior in Mastra Studio before deploying to production
+- **Memory Requires Storage**: Configure storage on Mastra instance before adding memory to agents
+- **Resource ID Critical**: Pass consistent `resourceId` when calling agents with memory (e.g., user ID)
+- **Memory Token Costs**: More messages and semantic recall = higher token usage per request
+- **Vector Search Limitation**: Semantic recall requires PgVector, not available with InMemoryStore
