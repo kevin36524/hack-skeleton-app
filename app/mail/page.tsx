@@ -104,7 +104,7 @@ function MailPageContent() {
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-4">
                 <Mail className="h-8 w-8 text-purple-600" />
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Yahoo Mail</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">X Mail</h1>
                 <MailboxSelector onMailboxSelected={handleMailboxSelected} />
               </div>
 
