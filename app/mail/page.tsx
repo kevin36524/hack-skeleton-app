@@ -232,6 +232,7 @@ function MailPageContent() {
                 <div className="flex-1 overflow-hidden">
                   <MessageDetail
                     message={selectedMessage}
+                    mailboxId={mailboxId}
                     onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
                     onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
                     onToggleStar={(messageId) => console.log('Toggle star:', messageId)}

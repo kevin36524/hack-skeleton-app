@@ -12,7 +12,8 @@ import {
   TriageRequest,
   TriageResponse,
   MoveMessagesRequest,
-  MoveMessagesResponse
+  MoveMessagesResponse,
+  FullMessageBodyResponse
 } from '@/lib/types/api';
 import { apiClient } from './api-client';
 
@@ -345,6 +346,21 @@ class MessageService {
       return { status: 204 };
     } catch (error) {
       console.error('Failed to delete message:', error);
+      throw error;
+    }
+  }
+
+  async getFullMessageBody(
+    mailboxId: string,
+    messageId: string
+  ): Promise<FullMessageBodyResponse> {
+    try {
+      const response = await apiClient.get<ApiResponse<FullMessageBodyResponse>>(
+        `/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}/content/simplebody/full`
+      );
+      return response.result;
+    } catch (error) {
+      console.error('Failed to fetch full message body:', error);
       throw error;
     }
   }
