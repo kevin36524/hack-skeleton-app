@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Message, Attachment } from '@/lib/types/api';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -9,15 +9,16 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { 
-  Star, 
-  Reply, 
-  Forward, 
+import {
+  Star,
+  Reply,
+  Forward,
   MoreVertical,
   Paperclip,
   Download,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,9 +27,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { messageService } from '@/lib/services/message-service';
 
 interface MessageDetailProps {
   message: Message | null;
+  mailboxId?: string;
   onMarkAsRead?: (messageId: string) => void;
   onMarkAsUnread?: (messageId: string) => void;
   onToggleStar?: (messageId: string) => void;
@@ -40,6 +43,7 @@ interface MessageDetailProps {
 
 export function MessageDetail({
   message,
+  mailboxId,
   onMarkAsRead,
   onMarkAsUnread,
   onToggleStar,
@@ -49,6 +53,35 @@ export function MessageDetail({
   onArchive
 }: MessageDetailProps) {
   const [showHeaders, setShowHeaders] = useState(false);
+  const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
+  const [loadingBody, setLoadingBody] = useState(false);
+  const [bodyError, setBodyError] = useState<string | null>(null);
+
+  // Fetch full message body when message changes
+  useEffect(() => {
+    if (message && mailboxId) {
+      const fetchFullBody = async () => {
+        setLoadingBody(true);
+        setBodyError(null);
+        setFullBody(null);
+
+        try {
+          const response = await messageService.getFullMessageBody(mailboxId, message.id);
+          setFullBody(response.simpleBody);
+        } catch (error) {
+          console.error('Failed to fetch full message body:', error);
+          setBodyError('Failed to load message content');
+        } finally {
+          setLoadingBody(false);
+        }
+      };
+
+      fetchFullBody();
+    } else {
+      setFullBody(null);
+      setBodyError(null);
+    }
+  }, [message?.id, mailboxId]);
 
   if (!message) {
     return (
@@ -193,7 +226,26 @@ export function MessageDetail({
 
           {/* Message Body */}
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <div className="whitespace-pre-wrap">{message.snippet}</div>
+            {loadingBody ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                <span className="ml-2 text-gray-500">Loading message content...</span>
+              </div>
+            ) : bodyError ? (
+              <div className="text-red-500 py-4">
+                {bodyError}
+                <div className="mt-2 text-sm text-gray-600">
+                  Showing snippet instead:
+                </div>
+                <div className="whitespace-pre-wrap mt-2 text-gray-700">{message.snippet}</div>
+              </div>
+            ) : fullBody?.html ? (
+              <div dangerouslySetInnerHTML={{ __html: fullBody.html }} />
+            ) : fullBody?.text ? (
+              <div className="whitespace-pre-wrap">{fullBody.text}</div>
+            ) : (
+              <div className="whitespace-pre-wrap">{message.snippet}</div>
+            )}
           </div>
 
           {/* Attachments */}

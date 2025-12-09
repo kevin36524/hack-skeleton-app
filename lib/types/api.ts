@@ -362,6 +362,14 @@ export interface MoveMessagesResponse {
   }>;
 }
 
+// Full Message Body Types
+export interface FullMessageBodyResponse {
+  simpleBody: {
+    text: string;
+    html?: string;
+  };
+}
+
 // API Error Types
 export interface ApiError {
   status: number;
