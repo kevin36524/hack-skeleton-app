@@ -18,7 +18,8 @@ import {
   Download,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,6 +29,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { messageService } from '@/lib/services/message-service';
+import { useAuth } from '@/lib/auth-context';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface MessageDetailProps {
   message: Message | null;
@@ -52,10 +55,14 @@ export function MessageDetail({
   onDelete,
   onArchive
 }: MessageDetailProps) {
+  const { token } = useAuth();
   const [showHeaders, setShowHeaders] = useState(false);
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Fetch full message body when message changes
   useEffect(() => {
@@ -77,11 +84,54 @@ export function MessageDetail({
       };
 
       fetchFullBody();
+      // Reset summary when message changes
+      setSummary(null);
+      setSummaryError(null);
     } else {
       setFullBody(null);
       setBodyError(null);
+      setSummary(null);
+      setSummaryError(null);
     }
   }, [message?.id, mailboxId]);
+
+  const handleSummarize = async () => {
+    if (!message || !mailboxId || !token) {
+      setSummaryError('Missing required information to summarize');
+      return;
+    }
+
+    setLoadingSummary(true);
+    setSummaryError(null);
+    setSummary(null);
+
+    try {
+      const response = await fetch('/api/workflows/summarize-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mailboxId,
+          messageId: message.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to generate summary');
+      }
+
+      setSummary(result.data.summary);
+    } catch (error) {
+      console.error('Failed to generate summary:', error);
+      setSummaryError(error instanceof Error ? error.message : 'Failed to generate summary');
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
 
   if (!message) {
     return (
@@ -224,6 +274,29 @@ export function MessageDetail({
 
           <Separator />
 
+          {/* AI Summary Section */}
+          {summary && (
+            <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+              <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="mt-2">
+                <p className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">
+                  AI Summary
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  {summary}
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {summaryError && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {summaryError}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Message Body */}
           <div className="prose prose-sm dark:prose-invert max-w-none">
             {loadingBody ? (
@@ -316,6 +389,26 @@ export function MessageDetail({
           <Button variant="outline" size="sm" onClick={() => onForward?.(message)}>
             <Forward className="h-4 w-4 mr-2" />
             Forward
+          </Button>
+          <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSummarize}
+            disabled={loadingSummary || !token}
+            className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-blue-200 dark:border-blue-800 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900 dark:hover:to-purple-900"
+          >
+            {loadingSummary ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Summarizing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Summarize with AI
+              </>
+            )}
           </Button>
         </div>
       </div>

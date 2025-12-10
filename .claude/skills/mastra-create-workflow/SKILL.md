@@ -34,38 +34,47 @@ Use this skill when:
 ### Step 1: Define Workflow Steps
 
 Each step is a unit of work that:
-- Has a unique ID
-- Executes a function with access to runtime context
-- Can access trigger data and previous step results
-- Returns data for subsequent steps
+- Has a unique ID and description
+- Defines input and output schemas using Zod
+- Executes a function that receives input data from the previous step
+- Returns data that automatically flows to the next step
 
 ### Step 2: Create Workflow File
 
 Create `src/mastra/workflows/{workflow-name}.ts`:
 
 ```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { z } from 'zod';
 
-const step1 = new Step({
+const step1 = createStep({
   id: 'step-1',
-  execute: async ({ context }) => {
-    // Access trigger data
-    const input = context.triggerData;
+  description: 'First step that processes input',
+  inputSchema: z.object({
+    input: z.string(),
+  }),
+  outputSchema: z.object({
+    result: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    // inputData is the workflow input or previous step's output
+    const { input } = inputData;
     // Process and return data
-    return { result: 'data' };
+    return { result: `processed: ${input}` };
   },
 });
 
-export const myWorkflow = new Workflow({
-  name: 'my-workflow',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      // Define input schema
-    },
-  },
+export const myWorkflow = createWorkflow({
+  id: 'my-workflow',
+  description: 'Description of what this workflow does',
+  inputSchema: z.object({
+    input: z.string(),
+  }),
+  outputSchema: z.object({
+    result: z.string(),
+  }),
 })
-  .step(step1)
+  .then(step1)
   .commit();
 ```
 
@@ -91,102 +100,79 @@ Run TypeScript check:
 npx tsc --noEmit
 ```
 
-## Runtime Context API
+## Data Flow & Context API
 
-The runtime context is the core feature that allows data flow between workflow steps.
+Mastra workflows use **automatic data flow** between steps. Each step's output becomes the next step's input.
 
-### Context Properties
-
-**`context.triggerData`** - Initial workflow input data
-```typescript
-const step = new Step({
-  id: 'my-step',
-  execute: async ({ context }) => {
-    const input = context.triggerData;
-    // Use initial workflow input
-  },
-});
-```
-
-**`context.stepResults`** - Results from previous steps
-```typescript
-const step = new Step({
-  id: 'my-step',
-  execute: async ({ context }) => {
-    // Access specific step result
-    const previousData = context.stepResults['previous-step-id'];
-
-    // Use data from previous step
-    const value = previousData?.someField;
-  },
-});
-```
-
-**`context.runId`** - Unique identifier for this workflow execution
-```typescript
-const step = new Step({
-  id: 'my-step',
-  execute: async ({ context }) => {
-    console.log(`Execution ID: ${context.runId}`);
-  },
-});
-```
-
-**`context.workflowId`** - Identifier for the workflow definition
-```typescript
-const step = new Step({
-  id: 'my-step',
-  execute: async ({ context }) => {
-    console.log(`Workflow: ${context.workflowId}`);
-  },
-});
-```
-
-**`context.mastra`** - Access to Mastra instance
-```typescript
-const step = new Step({
-  id: 'my-step',
-  execute: async ({ context, mastra }) => {
-    // Both are available
-    const agent = mastra.getAgent('my-agent');
-  },
-});
-```
-
-### Data Flow Pattern
+### Automatic Data Flow
 
 ```typescript
-// Step 1: Fetch data
-const fetchStep = new Step({
+// Step 1: Returns data
+const step1 = createStep({
   id: 'fetch',
-  execute: async ({ context }) => {
-    const { userId } = context.triggerData;
+  inputSchema: z.object({ userId: z.string() }),
+  outputSchema: z.object({ userData: z.object({}) }),
+  execute: async ({ inputData }) => {
+    const { userId } = inputData;
     const data = await fetchUserData(userId);
-    return { userData: data }; // Available to next steps
+    return { userData: data }; // Automatically flows to next step
   },
 });
 
-// Step 2: Process data
-const processStep = new Step({
+// Step 2: Receives step1's output as inputData
+const step2 = createStep({
   id: 'process',
-  execute: async ({ context }) => {
-    // Access data from previous step
-    const { userData } = context.stepResults['fetch'];
+  inputSchema: z.object({ userData: z.object({}) }),
+  outputSchema: z.object({ processedData: z.object({}) }),
+  execute: async ({ inputData }) => {
+    const { userData } = inputData; // This is step1's output
     const processed = processData(userData);
     return { processedData: processed };
   },
 });
+```
 
-// Step 3: Save results
-const saveStep = new Step({
-  id: 'save',
-  execute: async ({ context }) => {
-    // Access data from any previous step
-    const { processedData } = context.stepResults['process'];
-    const { userData } = context.stepResults['fetch'];
+### Runtime Context for External Data
 
-    await saveData(processedData);
-    return { saved: true };
+Runtime context is separate from the data flow and used for passing external values (like OAuth tokens):
+
+```typescript
+const step = createStep({
+  id: 'api-call',
+  inputSchema: z.object({ messageId: z.string() }),
+  outputSchema: z.object({ data: z.object({}) }),
+  execute: async ({ inputData, runtimeContext }) => {
+    const { messageId } = inputData;
+
+    // Get external data from runtime context
+    const token = runtimeContext.get('oauthToken');
+
+    const response = await fetch(`/api/messages/${messageId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    return { data: await response.json() };
+  },
+});
+```
+
+### Accessing Mastra Instance
+
+Use the `mastra` parameter to access agents, tools, and storage:
+
+```typescript
+const step = createStep({
+  id: 'use-agent',
+  inputSchema: z.object({ text: z.string() }),
+  outputSchema: z.object({ summary: z.string() }),
+  execute: async ({ inputData, mastra }) => {
+    const { text } = inputData;
+
+    // Get an agent
+    const agent = mastra.getAgent('summarizer');
+    const result = await agent.generate(`Summarize: ${text}`);
+
+    return { summary: result.text };
   },
 });
 ```
@@ -196,59 +182,75 @@ const saveStep = new Step({
 ### Template 1: Basic Linear Workflow
 
 ```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { z } from 'zod';
 
-const step1 = new Step({
+const step1 = createStep({
   id: 'step-1',
   description: 'First step',
-  execute: async ({ context }) => {
-    const input = context.triggerData;
-    console.log('Step 1 executing with:', input);
+  inputSchema: z.object({
+    input: z.string(),
+  }),
+  outputSchema: z.object({
+    step1Result: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    console.log('Step 1 executing with:', inputData);
     return { step1Result: 'data from step 1' };
   },
 });
 
-const step2 = new Step({
+const step2 = createStep({
   id: 'step-2',
   description: 'Second step',
-  execute: async ({ context }) => {
-    const step1Data = context.stepResults['step-1'];
-    console.log('Step 2 using:', step1Data);
+  inputSchema: z.object({
+    step1Result: z.string(),
+  }),
+  outputSchema: z.object({
+    step2Result: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    console.log('Step 2 using:', inputData.step1Result);
     return { step2Result: 'data from step 2' };
   },
 });
 
-export const basicWorkflow = new Workflow({
-  name: 'basic-workflow',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      input: { type: 'string' },
-    },
-    required: ['input'],
-  },
+export const basicWorkflow = createWorkflow({
+  id: 'basic-workflow',
+  description: 'A basic linear workflow',
+  inputSchema: z.object({
+    input: z.string(),
+  }),
+  outputSchema: z.object({
+    step2Result: z.string(),
+  }),
 })
-  .step(step1)
-  .step(step2)
+  .then(step1)
+  .then(step2)
   .commit();
 ```
 
-### Template 2: Data Processing Pipeline
+### Template 2: Data Processing Pipeline (ETL)
 
 ```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
-
-interface PipelineInput {
-  dataSource: string;
-  filters?: Record<string, any>;
-}
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { z } from 'zod';
 
 // Step 1: Extract data
-const extractStep = new Step({
+const extractStep = createStep({
   id: 'extract',
   description: 'Extract data from source',
-  execute: async ({ context }) => {
-    const { dataSource, filters } = context.triggerData as PipelineInput;
+  inputSchema: z.object({
+    dataSource: z.string(),
+    filters: z.record(z.any()).optional(),
+  }),
+  outputSchema: z.object({
+    rawData: z.array(z.any()),
+    extractedAt: z.string(),
+    recordCount: z.number(),
+  }),
+  execute: async ({ inputData }) => {
+    const { dataSource, filters } = inputData;
 
     console.log(`Extracting from ${dataSource}`);
     const rawData = await fetchData(dataSource, filters);
@@ -262,12 +264,20 @@ const extractStep = new Step({
 });
 
 // Step 2: Transform data
-const transformStep = new Step({
+const transformStep = createStep({
   id: 'transform',
   description: 'Transform and clean data',
-  execute: async ({ context }) => {
-    const extractResult = context.stepResults['extract'];
-    const { rawData } = extractResult;
+  inputSchema: z.object({
+    rawData: z.array(z.any()),
+    extractedAt: z.string(),
+    recordCount: z.number(),
+  }),
+  outputSchema: z.object({
+    transformedData: z.array(z.any()),
+    transformedCount: z.number(),
+  }),
+  execute: async ({ inputData }) => {
+    const { rawData } = inputData;
 
     console.log(`Transforming ${rawData.length} records`);
     const transformedData = rawData.map(record => ({
@@ -284,12 +294,20 @@ const transformStep = new Step({
 });
 
 // Step 3: Load data
-const loadStep = new Step({
+const loadStep = createStep({
   id: 'load',
   description: 'Load data to destination',
-  execute: async ({ context }) => {
-    const transformResult = context.stepResults['transform'];
-    const { transformedData } = transformResult;
+  inputSchema: z.object({
+    transformedData: z.array(z.any()),
+    transformedCount: z.number(),
+  }),
+  outputSchema: z.object({
+    loaded: z.boolean(),
+    loadedAt: z.string(),
+    recordsLoaded: z.number(),
+  }),
+  execute: async ({ inputData }) => {
+    const { transformedData } = inputData;
 
     console.log(`Loading ${transformedData.length} records`);
     await saveToDestination(transformedData);
@@ -302,255 +320,202 @@ const loadStep = new Step({
   },
 });
 
-export const dataPipeline = new Workflow({
-  name: 'data-pipeline',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      dataSource: { type: 'string' },
-      filters: { type: 'object' },
-    },
-    required: ['dataSource'],
-  },
+export const dataPipeline = createWorkflow({
+  id: 'data-pipeline',
+  description: 'ETL pipeline for data processing',
+  inputSchema: z.object({
+    dataSource: z.string(),
+    filters: z.record(z.any()).optional(),
+  }),
+  outputSchema: z.object({
+    loaded: z.boolean(),
+    loadedAt: z.string(),
+    recordsLoaded: z.number(),
+  }),
 })
-  .step(extractStep)
-  .step(transformStep)
-  .step(loadStep)
+  .then(extractStep)
+  .then(transformStep)
+  .then(loadStep)
   .commit();
 ```
 
-### Template 3: Email Processing Workflow
+### Template 3: Email Summarization Workflow (Real-World Example)
+
+This is a real working example from a production mail application that fetches, processes, and summarizes emails using AI:
 
 ```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { z } from 'zod';
 
-interface EmailInput {
-  emailId: string;
-  userId: string;
-  priority?: 'low' | 'medium' | 'high';
-}
+// Step 1: Fetch full message body from Yahoo Mail API
+const fetchMessageStep = createStep({
+  id: 'fetch-message',
+  description: 'Fetch full message body from Yahoo Mail API',
+  inputSchema: z.object({
+    mailboxId: z.string(),
+    messageId: z.string(),
+  }),
+  outputSchema: z.object({
+    messageBody: z.object({
+      text: z.string().optional(),
+      html: z.string().optional(),
+    }),
+    fetchedAt: z.string(),
+  }),
+  execute: async ({ runtimeContext, inputData }) => {
+    const { mailboxId, messageId } = inputData;
 
-// Step 1: Fetch email
-const fetchEmailStep = new Step({
-  id: 'fetch-email',
-  description: 'Fetch email details',
-  execute: async ({ context }) => {
-    const { emailId, userId } = context.triggerData as EmailInput;
+    // Get OAuth token from runtime context
+    const token = runtimeContext.get('oauthToken');
+    if (!token) {
+      throw new Error('OAuth token not found in runtime context');
+    }
 
-    const email = await fetchEmail(emailId);
+    // Fetch the message
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}/content/simplebody/full`;
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch message: ${response.status}`);
+    }
+
+    const data = await response.json();
     return {
-      email,
+      messageBody: data.result.simpleBody,
       fetchedAt: new Date().toISOString(),
     };
   },
 });
 
-// Step 2: Analyze with AI
-const analyzeStep = new Step({
-  id: 'analyze',
-  description: 'Analyze email content',
-  execute: async ({ context, mastra }) => {
-    const { email } = context.stepResults['fetch-email'];
-    const { priority } = context.triggerData as EmailInput;
+// Step 2: Convert HTML to plain text
+const convertHtmlToTextStep = createStep({
+  id: 'convert-html-to-text',
+  description: 'Convert HTML email body to plain text',
+  inputSchema: z.object({
+    messageBody: z.object({
+      text: z.string().optional(),
+      html: z.string().optional(),
+    }),
+    fetchedAt: z.string(),
+  }),
+  outputSchema: z.object({
+    plainText: z.string(),
+    conversionMethod: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    const { messageBody } = inputData;
 
-    const agent = mastra.getAgent('email-analyzer');
-    const analysis = await agent.generate(
-      `Analyze this email: ${email.subject}\n\n${email.body}`
-    );
+    // If text is available, use it directly
+    if (messageBody.text && messageBody.text.trim()) {
+      return {
+        plainText: messageBody.text,
+        conversionMethod: 'direct',
+      };
+    }
 
-    return {
-      analysis: analysis.text,
-      sentiment: 'neutral',
-      urgency: priority === 'high' ? 9 : 5,
-    };
-  },
-});
+    // Otherwise, convert HTML to text
+    if (messageBody.html) {
+      // Simple HTML to text conversion
+      let text = messageBody.html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+      text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+      text = text.replace(/&nbsp;/g, ' ');
+      text = text.replace(/<br\s*\/?>/gi, '\n');
+      text = text.replace(/<[^>]+>/g, '');
+      text = text.trim();
 
-// Step 3: Generate response
-const respondStep = new Step({
-  id: 'respond',
-  description: 'Generate appropriate response',
-  execute: async ({ context }) => {
-    const { email } = context.stepResults['fetch-email'];
-    const { analysis, urgency } = context.stepResults['analyze'];
-
-    let response = '';
-    if (urgency > 7) {
-      response = 'High priority - requires immediate attention';
-    } else {
-      response = 'Standard processing';
+      return {
+        plainText: text,
+        conversionMethod: 'html-strip',
+      };
     }
 
     return {
-      response,
-      summary: {
-        subject: email.subject,
-        urgency,
-        analysis,
-      },
+      plainText: '',
+      conversionMethod: 'none',
     };
   },
 });
 
-export const emailProcessor = new Workflow({
-  name: 'email-processor',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      emailId: { type: 'string' },
-      userId: { type: 'string' },
-      priority: {
-        type: 'string',
-        enum: ['low', 'medium', 'high'],
-      },
-    },
-    required: ['emailId', 'userId'],
-  },
-})
-  .step(fetchEmailStep)
-  .step(analyzeStep)
-  .step(respondStep)
-  .commit();
-```
+// Step 3: Summarize email using AI agent
+const summarizeEmailStep = createStep({
+  id: 'summarize-email',
+  description: 'Generate AI summary of email content',
+  inputSchema: z.object({
+    plainText: z.string(),
+    conversionMethod: z.string(),
+  }),
+  outputSchema: z.object({
+    summary: z.string(),
+    status: z.string(),
+  }),
+  execute: async ({ inputData, mastra }) => {
+    const { plainText } = inputData;
 
-### Template 4: Workflow with Agent Integration
+    if (!plainText || plainText.trim().length === 0) {
+      return {
+        summary: 'No content available to summarize.',
+        status: 'empty',
+      };
+    }
 
-```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
+    // Get the email summarizer agent
+    const agent = mastra.getAgent('emailSummarizer');
+    if (!agent) {
+      throw new Error('emailSummarizer agent not found');
+    }
 
-const analyzeWithAgentStep = new Step({
-  id: 'analyze-with-agent',
-  description: 'Use AI agent for analysis',
-  execute: async ({ context, mastra }) => {
-    const input = context.triggerData;
-
-    // Get agent from Mastra instance
-    const agent = mastra.getAgent('analyzer-agent');
-
-    // Use agent to process data
+    // Generate summary
     const result = await agent.generate(
-      `Analyze this data: ${JSON.stringify(input)}`,
-      {
-        memory: {
-          resource: context.runId,
-          thread: context.workflowId,
-        },
-      }
+      `Please summarize the following email:\n\n${plainText}`
     );
 
     return {
-      analysis: result.text,
-      analyzedAt: new Date().toISOString(),
+      summary: result.text,
+      status: 'success',
     };
   },
 });
 
-export const agentWorkflow = new Workflow({
-  name: 'agent-workflow',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      data: { type: 'string' },
-    },
-  },
+export const emailSummarizationWorkflow = createWorkflow({
+  id: 'email-summarization',
+  description: 'Fetch and summarize email messages using AI',
+  inputSchema: z.object({
+    mailboxId: z.string().describe('The Yahoo Mail mailbox ID'),
+    messageId: z.string().describe('The message ID to summarize'),
+  }),
+  outputSchema: z.object({
+    summary: z.string(),
+    status: z.string(),
+  }),
 })
-  .step(analyzeWithAgentStep)
+  .then(fetchMessageStep)
+  .then(convertHtmlToTextStep)
+  .then(summarizeEmailStep)
   .commit();
 ```
 
-### Template 5: Multi-Branch Workflow
-
-```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
-
-// Step 1: Classify input
-const classifyStep = new Step({
-  id: 'classify',
-  description: 'Classify input type',
-  execute: async ({ context }) => {
-    const { type } = context.triggerData;
-    return { classification: type };
-  },
-});
-
-// Step 2A: Handle type A
-const handleTypeA = new Step({
-  id: 'handle-type-a',
-  description: 'Handle type A processing',
-  execute: async ({ context }) => {
-    const { classification } = context.stepResults['classify'];
-    if (classification !== 'A') return { skipped: true };
-
-    // Process type A
-    return { result: 'Processed as type A' };
-  },
-});
-
-// Step 2B: Handle type B
-const handleTypeB = new Step({
-  id: 'handle-type-b',
-  description: 'Handle type B processing',
-  execute: async ({ context }) => {
-    const { classification } = context.stepResults['classify'];
-    if (classification !== 'B') return { skipped: true };
-
-    // Process type B
-    return { result: 'Processed as type B' };
-  },
-});
-
-// Step 3: Merge results
-const mergeStep = new Step({
-  id: 'merge',
-  description: 'Merge processing results',
-  execute: async ({ context }) => {
-    const resultA = context.stepResults['handle-type-a'];
-    const resultB = context.stepResults['handle-type-b'];
-
-    const finalResult = resultA?.result || resultB?.result || 'No result';
-    return { finalResult };
-  },
-});
-
-export const multiBranchWorkflow = new Workflow({
-  name: 'multi-branch',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      type: { type: 'string', enum: ['A', 'B'] },
-    },
-  },
-})
-  .step(classifyStep)
-  .step(handleTypeA)
-  .step(handleTypeB)
-  .step(mergeStep)
-  .commit();
-```
 
 ## Common Patterns
 
-### Pattern 1: Accessing Trigger Data
+### Pattern 1: Automatic Data Flow
 
 ```typescript
-const step = new Step({
-  id: 'use-trigger-data',
-  execute: async ({ context }) => {
-    // All initial workflow input is in triggerData
-    const input = context.triggerData;
-    console.log('Workflow started with:', input);
-    return { processed: true };
-  },
-});
-```
-
-### Pattern 2: Passing Data Between Steps
-
-```typescript
-const step1 = new Step({
+// Data flows automatically from one step to the next
+const step1 = createStep({
   id: 'step-1',
-  execute: async ({ context }) => {
-    // Return data for next steps
+  inputSchema: z.object({ input: z.string() }),
+  outputSchema: z.object({
+    userId: z.string(),
+    timestamp: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    // Return data for next step
     return {
       userId: '123',
       timestamp: new Date().toISOString(),
@@ -558,68 +523,123 @@ const step1 = new Step({
   },
 });
 
-const step2 = new Step({
+const step2 = createStep({
   id: 'step-2',
-  execute: async ({ context }) => {
-    // Access previous step's data
-    const step1Data = context.stepResults['step-1'];
-    console.log('Using data:', step1Data?.userId);
+  inputSchema: z.object({
+    userId: z.string(),
+    timestamp: z.string(),
+  }),
+  outputSchema: z.object({ done: z.boolean() }),
+  execute: async ({ inputData }) => {
+    // Automatically receives step1's output
+    console.log('Using data:', inputData.userId);
     return { done: true };
   },
 });
 ```
 
-### Pattern 3: Logging Execution Info
+### Pattern 2: Using Runtime Context for External Data
 
 ```typescript
-const step = new Step({
-  id: 'log-execution',
-  execute: async ({ context }) => {
-    console.log(`Workflow: ${context.workflowId}`);
-    console.log(`Run: ${context.runId}`);
-    console.log(`Trigger:`, context.triggerData);
-    console.log(`Previous steps:`, Object.keys(context.stepResults));
-    return { logged: true };
+const step = createStep({
+  id: 'authenticated-api-call',
+  inputSchema: z.object({ apiEndpoint: z.string() }),
+  outputSchema: z.object({ data: z.any() }),
+  execute: async ({ inputData, runtimeContext }) => {
+    // Get external data like OAuth tokens
+    const token = runtimeContext.get('oauthToken');
+    const apiKey = runtimeContext.get('apiKey');
+
+    const response = await fetch(inputData.apiEndpoint, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-API-Key': apiKey,
+      },
+    });
+
+    return { data: await response.json() };
   },
 });
 ```
 
-### Pattern 4: Using Mastra Instance
+### Pattern 3: Using Mastra Agents in Workflows
 
 ```typescript
-const step = new Step({
-  id: 'use-mastra',
-  execute: async ({ context, mastra }) => {
-    // Access agents
-    const agent = mastra.getAgent('my-agent');
+const step = createStep({
+  id: 'ai-processing',
+  inputSchema: z.object({ text: z.string() }),
+  outputSchema: z.object({
+    analysis: z.string(),
+    summary: z.string(),
+  }),
+  execute: async ({ inputData, mastra }) => {
+    // Access registered agents
+    const agent = mastra.getAgent('analyzer');
 
-    // Access tools
-    const tool = mastra.getTool('my-tool');
+    const result = await agent.generate(
+      `Analyze this text: ${inputData.text}`
+    );
 
-    // Use storage
-    const storage = mastra.getStorage();
-
-    return { completed: true };
+    return {
+      analysis: result.text,
+      summary: result.text.slice(0, 100),
+    };
   },
 });
 ```
 
-### Pattern 5: Error Handling
+### Pattern 4: Error Handling
 
 ```typescript
-const step = new Step({
+const step = createStep({
   id: 'safe-step',
-  execute: async ({ context }) => {
+  inputSchema: z.object({ data: z.any() }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    result: z.any().optional(),
+    error: z.string().optional(),
+  }),
+  execute: async ({ inputData }) => {
     try {
-      const result = await riskyOperation();
-      return { success: true, result };
+      const result = await riskyOperation(inputData.data);
+      return {
+        success: true,
+        result,
+      };
     } catch (error) {
       console.error('Step failed:', error);
       return {
         success: false,
-        error: error.message,
-        recoverable: true,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  },
+});
+```
+
+### Pattern 5: Conditional Processing
+
+```typescript
+const step = createStep({
+  id: 'conditional-step',
+  inputSchema: z.object({
+    type: z.enum(['A', 'B']),
+    data: z.any(),
+  }),
+  outputSchema: z.object({
+    result: z.string(),
+    skipped: z.boolean().optional(),
+  }),
+  execute: async ({ inputData }) => {
+    if (inputData.type === 'A') {
+      // Process type A
+      return { result: 'Processed as type A', skipped: false };
+    } else if (inputData.type === 'B') {
+      // Process type B
+      return { result: 'Processed as type B', skipped: false };
+    } else {
+      // Skip processing
+      return { result: '', skipped: true };
     }
   },
 });
@@ -627,36 +647,95 @@ const step = new Step({
 
 ## Executing Workflows
 
-### From Code
+### From Code (with Runtime Context)
 
 ```typescript
 import { mastra } from '@/src/mastra';
+import { RuntimeContext } from '@mastra/core/runtime-context';
 
 // Get workflow
-const workflow = mastra.getWorkflow('my-workflow');
+const workflow = mastra.getWorkflow('myWorkflow');
 
-// Execute with trigger data
-const result = await workflow.execute({
-  input: 'data',
-  userId: '123',
+// Create runtime context for external data (like OAuth tokens)
+const runtimeContext = new RuntimeContext();
+runtimeContext.set('oauthToken', userToken);
+runtimeContext.set('apiKey', apiKey);
+
+// Create a run
+const run = await workflow.createRunAsync();
+
+// Execute with input data and runtime context
+const result = await run.start({
+  inputData: {
+    input: 'data',
+    userId: '123',
+  },
+  runtimeContext,
 });
 
 console.log('Workflow result:', result);
 ```
 
-### From API Route
+### From API Route (Real-World Example)
 
 ```typescript
-// app/api/workflow/route.ts
+// app/api/workflows/summarize-email/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import { mastra } from '@/src/mastra';
+import { RuntimeContext } from '@mastra/core/runtime-context';
 
-export async function POST(request: Request) {
-  const body = await request.json();
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { mailboxId, messageId } = body;
 
-  const workflow = mastra.getWorkflow('my-workflow');
-  const result = await workflow.execute(body);
+    // Get OAuth token from request headers
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'Authorization header required' },
+        { status: 401 }
+      );
+    }
 
-  return Response.json(result);
+    const token = authHeader.replace('Bearer ', '');
+
+    // Create runtime context and set OAuth token
+    const runtimeContext = new RuntimeContext();
+    runtimeContext.set('oauthToken', token);
+
+    // Get and execute the workflow
+    const workflow = mastra.getWorkflow('emailSummarizationWorkflow');
+    if (!workflow) {
+      return NextResponse.json(
+        { error: 'Workflow not found' },
+        { status: 500 }
+      );
+    }
+
+    const run = await workflow.createRunAsync();
+    const workflowResult = await run.start({
+      inputData: { mailboxId, messageId },
+      runtimeContext,
+    });
+
+    if (workflowResult.status !== 'success') {
+      throw new Error(`Workflow failed: ${workflowResult.status}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: workflowResult.result,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
 }
 ```
 
@@ -667,43 +746,51 @@ Check workflow is working:
 1. **File Created**: `ls src/mastra/workflows/{workflow-name}.ts`
 2. **Registered**: Check `src/mastra/index.ts` includes workflow
 3. **TypeScript**: `npx tsc --noEmit` (no errors)
-4. **Retrievable**: Workflow can be accessed via `mastra.getWorkflow(name)`
+4. **Retrievable**: Workflow can be accessed via `mastra.getWorkflow('workflowName')`
 
 ### Quick Test
 
 ```typescript
 import { mastra } from '@/src/mastra';
+import { RuntimeContext } from '@mastra/core/runtime-context';
 
-const workflow = mastra.getWorkflow('my-workflow');
-const result = await workflow.execute({ test: 'data' });
-console.log(result);
+const workflow = mastra.getWorkflow('myWorkflow');
+const run = await workflow.createRunAsync();
+
+const result = await run.start({
+  inputData: { test: 'data' },
+  runtimeContext: new RuntimeContext(),
+});
+
+console.log('Status:', result.status);
+console.log('Result:', result.result);
 ```
 
 ## Troubleshooting
 
-**Issue: Workflow name not found when retrieving**
-- Solution: Verify workflow is registered in `src/mastra/index.ts` with correct name. Name must match.
+**Issue: Workflow not found when retrieving**
+- Solution: Verify workflow is registered in `src/mastra/index.ts` with correct name. Use the workflow variable name (e.g., `emailSummarizationWorkflow`), not the `id`.
 
-**Issue: Cannot access stepResults from previous step**
-- Solution: Use the exact step ID from the step definition. Check spelling and case sensitivity.
+**Issue: Input/output schema validation errors**
+- Solution: Ensure the output of each step matches the inputSchema of the next step. Check Zod schema definitions.
 
-**Issue: triggerData is undefined**
-- Solution: Ensure you're passing data when calling `workflow.execute()`. triggerData is the input to execute().
+**Issue: inputData is undefined in step**
+- Solution: Make sure the previous step returns data that matches this step's inputSchema. For the first step, inputData comes from the workflow's initial input.
 
 **Issue: Step executes but data isn't passed to next step**
-- Solution: Verify you're returning an object from the step's execute function. Returned data becomes available in stepResults.
+- Solution: Verify you're returning an object from the step's execute function that matches the outputSchema.
 
-**Issue: TypeScript error "Cannot find module '@mastra/core/workflow'"**
+**Issue: TypeScript error "Cannot find module '@mastra/core/workflows'"**
 - Solution: Install dependencies: `npm install @mastra/core@latest`
 
 **Issue: Agent not found in workflow step**
-- Solution: Verify agent is registered in Mastra instance. Use `mastra.getAgent(id)` with correct agent ID.
+- Solution: Verify agent is registered in Mastra instance at `src/mastra/index.ts`. Use `mastra.getAgent('agentId')` with the correct agent ID.
 
-**Issue: Workflow hangs or doesn't complete**
-- Solution: Check all steps return a value. Ensure no infinite loops. Add console.logs to track execution.
+**Issue: Runtime context value is undefined**
+- Solution: Ensure you create a RuntimeContext and set values before passing it to `run.start()`. Example: `runtimeContext.set('key', value)`.
 
-**Issue: Context properties are undefined**
-- Solution: Access context properties correctly: `context.triggerData`, `context.stepResults`, `context.runId`, `context.workflowId`.
+**Issue: Workflow fails with "status: error"**
+- Solution: Check console logs for error messages. Ensure all async operations are properly awaited. Add try-catch blocks in steps.
 
 ## Next Steps
 
@@ -715,175 +802,15 @@ After creating a workflow:
 4. **Monitor Logs** - Add console.logs to track data flow between steps
 5. **Integrate Agents** - Use Mastra agents in workflow steps for AI-powered processing
 
-## Complete Example: User Onboarding Workflow
-
-Here's a full working example of a workflow that handles user onboarding with multiple steps:
-
-**Workflow File** (`src/mastra/workflows/user-onboarding.ts`):
-```typescript
-import { Step, Workflow } from '@mastra/core/workflow';
-
-interface OnboardingInput {
-  email: string;
-  name: string;
-  plan: 'free' | 'pro' | 'enterprise';
-}
-
-// Step 1: Create user account
-const createAccountStep = new Step({
-  id: 'create-account',
-  description: 'Create user account in database',
-  execute: async ({ context }) => {
-    const { email, name, plan } = context.triggerData as OnboardingInput;
-
-    console.log(`Creating account for ${email}`);
-
-    // Simulate account creation
-    const userId = `user_${Date.now()}`;
-    const account = {
-      userId,
-      email,
-      name,
-      plan,
-      createdAt: new Date().toISOString(),
-    };
-
-    return { account };
-  },
-});
-
-// Step 2: Send welcome email
-const sendWelcomeStep = new Step({
-  id: 'send-welcome',
-  description: 'Send welcome email to user',
-  execute: async ({ context, mastra }) => {
-    const { account } = context.stepResults['create-account'];
-    const { plan } = context.triggerData as OnboardingInput;
-
-    console.log(`Sending welcome email to ${account.email}`);
-
-    // Use AI agent to generate personalized welcome message
-    const agent = mastra.getAgent('email-writer');
-    const welcomeMessage = await agent.generate(
-      `Write a warm welcome email for a new ${plan} plan user named ${account.name}`
-    );
-
-    return {
-      emailSent: true,
-      message: welcomeMessage.text,
-      sentAt: new Date().toISOString(),
-    };
-  },
-});
-
-// Step 3: Setup user workspace
-const setupWorkspaceStep = new Step({
-  id: 'setup-workspace',
-  description: 'Setup initial workspace and resources',
-  execute: async ({ context }) => {
-    const { account } = context.stepResults['create-account'];
-    const { plan } = context.triggerData as OnboardingInput;
-
-    console.log(`Setting up workspace for ${account.userId}`);
-
-    // Configure based on plan
-    const resources = {
-      free: { storage: '5GB', projects: 3 },
-      pro: { storage: '50GB', projects: 10 },
-      enterprise: { storage: '500GB', projects: 100 },
-    };
-
-    const workspace = {
-      workspaceId: `ws_${Date.now()}`,
-      userId: account.userId,
-      resources: resources[plan],
-      setupAt: new Date().toISOString(),
-    };
-
-    return { workspace };
-  },
-});
-
-// Step 4: Log completion
-const logCompletionStep = new Step({
-  id: 'log-completion',
-  description: 'Log onboarding completion',
-  execute: async ({ context }) => {
-    const { account } = context.stepResults['create-account'];
-    const { workspace } = context.stepResults['setup-workspace'];
-    const { emailSent } = context.stepResults['send-welcome'];
-
-    const summary = {
-      userId: account.userId,
-      email: account.email,
-      plan: account.plan,
-      workspaceId: workspace.workspaceId,
-      emailSent,
-      completedAt: new Date().toISOString(),
-      runId: context.runId,
-    };
-
-    console.log('Onboarding complete:', summary);
-
-    return { summary, success: true };
-  },
-});
-
-export const userOnboardingWorkflow = new Workflow({
-  name: 'user-onboarding',
-  triggerSchema: {
-    type: 'object',
-    properties: {
-      email: { type: 'string', format: 'email' },
-      name: { type: 'string' },
-      plan: {
-        type: 'string',
-        enum: ['free', 'pro', 'enterprise'],
-      },
-    },
-    required: ['email', 'name', 'plan'],
-  },
-})
-  .step(createAccountStep)
-  .step(sendWelcomeStep)
-  .step(setupWorkspaceStep)
-  .step(logCompletionStep)
-  .commit();
-```
-
-**Register in** `src/mastra/index.ts`:
-```typescript
-import { userOnboardingWorkflow } from './workflows/user-onboarding';
-
-export const mastra = new Mastra({
-  workflows: { userOnboardingWorkflow },
-  // ... other config
-});
-```
-
-**Usage Example**:
-```typescript
-import { mastra } from '@/src/mastra';
-
-const workflow = mastra.getWorkflow('userOnboardingWorkflow');
-
-const result = await workflow.execute({
-  email: 'user@example.com',
-  name: 'John Doe',
-  plan: 'pro',
-});
-
-console.log('Onboarding result:', result);
-```
-
 ## Important Notes
 
-- **Runtime Context**: All data sharing between steps happens through the context object
-- **Step Order**: Steps execute in the order they're added with `.step()`
-- **Data Access**: Each step can access `triggerData` and all previous `stepResults`
-- **Immutability**: Context is read-only; steps communicate through return values
-- **Execution Tracking**: `runId` uniquely identifies each workflow execution
-- **Mastra Access**: The `mastra` parameter provides access to agents, tools, and storage
-- **Type Safety**: Define TypeScript interfaces for triggerData and step outputs for better type checking
-- **Error Recovery**: Implement try-catch in steps and return error state for downstream steps to handle
-- **Testing**: Test workflows with various inputs to ensure proper data flow between all steps
+- **Automatic Data Flow**: Each step's output automatically becomes the next step's input. Design your schemas accordingly.
+- **Step Order**: Steps execute in the order they're chained with `.then()`
+- **Runtime Context**: Use `runtimeContext` for external data like OAuth tokens, not for step-to-step data flow
+- **Schema Validation**: Zod schemas validate input/output at each step, ensuring type safety
+- **Workflow Execution**: Use `workflow.createRunAsync()` then `run.start()` to execute workflows
+- **Mastra Access**: The `mastra` parameter in steps provides access to registered agents, tools, and storage
+- **Type Safety**: Define proper Zod schemas for compile-time and runtime type checking
+- **Error Handling**: Implement try-catch blocks in steps and return error states in outputSchema
+- **Testing**: Test workflows with various inputs to ensure proper data flow and error handling
+- **API Integration**: See Template 3 for a real-world example of workflow execution from a Next.js API route
