@@ -47,6 +47,9 @@ function MailPageContent() {
   const handleAccountSelected = (account: { id: string }) => {
     console.log('MailPage: Account selected:', account.id);
     setAccountId(account.id);
+    // Reset folder selection when switching accounts
+    setFolderId('');
+    setSelectedMessage(null);
   };
 
   const handleFolderSelected = (id: string) => {
@@ -171,6 +174,7 @@ function MailPageContent() {
                 {isReady ? (
                   <FolderSidebar
                     mailboxId={mailboxId}
+                    accountId={accountId}
                     selectedFolderId={folderId}
                     onFolderSelected={(id) => {
                       handleFolderSelected(id);
