@@ -171,6 +171,7 @@ function MailPageContent() {
                 {isReady ? (
                   <FolderSidebar
                     mailboxId={mailboxId}
+                    accountId={accountId}
                     selectedFolderId={folderId}
                     onFolderSelected={(id) => {
                       handleFolderSelected(id);
