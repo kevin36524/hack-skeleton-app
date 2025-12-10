@@ -2,6 +2,7 @@ import { PinoLogger } from '@mastra/loggers';
 import { Mastra } from '@mastra/core/mastra';
 import { LibSQLStore } from '@mastra/libsql';
 import { emailSummarizer } from './agents/email-summarizer';
+import { emailSummarizationWorkflow } from './workflows/email-summarization';
 
 
 export const mastra = new Mastra({
@@ -9,6 +10,7 @@ export const mastra = new Mastra({
     default: { enabled: true }
   },
   agents: { emailSummarizer },
+  workflows: { emailSummarizationWorkflow },
   storage: new LibSQLStore({
     url: 'file:./mastra-memory.db',
   }),
