@@ -85,7 +85,7 @@ function MailPageContent() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
 
         {/* Mobile Header */}
         <MobileHeader
@@ -138,8 +138,8 @@ function MailPageContent() {
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden relative">
-          <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex overflow-hidden relative min-h-0">
+          <div className="flex-1 flex overflow-hidden relative h-full">
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
               <div
@@ -184,19 +184,19 @@ function MailPageContent() {
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex">
+            <div className="flex-1 flex h-full">
 
               {/* Message List */}
               <div className={`
                 w-full md:w-96 border-r flex flex-col
-                ${mobileView === 'list' ? 'block' : 'hidden md:block'}
+                ${mobileView === 'list' ? 'flex' : 'hidden md:flex'}
               `}>
-                <div className="p-4 border-b">
+                <div className="p-4 border-b flex-shrink-0">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                     Messages
                   </h2>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-h-0">
                   {isReady ? (
                     <MessageList
                       mailboxId={mailboxId}
@@ -213,10 +213,10 @@ function MailPageContent() {
               {/* Message Detail */}
               <div className={`
                 flex-1 flex flex-col
-                ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
-                ${!selectedMessage && 'md:block'}
+                ${mobileView === 'detail' ? 'flex' : 'hidden md:flex'}
+                ${!selectedMessage && 'md:flex'}
               `}>
-                <div className="p-4 border-b flex justify-between items-center">
+                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                     Message Details
                   </h2>
@@ -229,7 +229,7 @@ function MailPageContent() {
                     Back to list
                   </Button>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-auto">
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
