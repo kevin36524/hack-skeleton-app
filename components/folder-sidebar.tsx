@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 interface FolderSidebarProps {
   mailboxId: string;
+  accountId?: string;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
   className?: string;
@@ -22,11 +23,12 @@ interface FolderGroup {
   icon: React.ElementType;
 }
 
-export function FolderSidebar({ 
-  mailboxId, 
-  selectedFolderId, 
+export function FolderSidebar({
+  mailboxId,
+  accountId,
+  selectedFolderId,
   onFolderSelected,
-  className 
+  className
 }: FolderSidebarProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,12 +36,12 @@ export function FolderSidebar({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log('FolderSidebar: mailboxId:', mailboxId);
+    console.log('FolderSidebar: mailboxId:', mailboxId, 'accountId:', accountId);
     if (mailboxId) {
       console.log('FolderSidebar: Loading folders...');
       loadFolders();
     }
-  }, [mailboxId]);
+  }, [mailboxId, accountId]);
 
   const loadFolders = async () => {
     try {
@@ -47,11 +49,18 @@ export function FolderSidebar({
       console.log('FolderSidebar: Calling folderService.getFolders for mailboxId:', mailboxId);
       const foldersData = await folderService.getFolders(mailboxId);
       console.log('FolderSidebar: Got folders:', foldersData.folders.length);
-      setFolders(foldersData.folders);
+
+      // Filter folders by accountId if provided
+      const filteredFolders = accountId
+        ? foldersData.folders.filter(folder => folder.acctId === accountId)
+        : foldersData.folders;
+
+      console.log('FolderSidebar: Filtered folders for accountId:', accountId, 'count:', filteredFolders.length);
+      setFolders(filteredFolders);
       
       // Auto-select inbox if no folder is selected
-      if (!selectedFolderId && foldersData.folders.length > 0) {
-        const inbox = foldersData.folders.find(folder => 
+      if (!selectedFolderId && filteredFolders.length > 0) {
+        const inbox = filteredFolders.find(folder =>
           folder.types.includes('INBOX')
         );
         if (inbox) {
@@ -59,8 +68,8 @@ export function FolderSidebar({
           onFolderSelected?.(inbox.id);
         } else {
           // Fallback to first folder
-          console.log('FolderSidebar: Auto-selecting first folder:', foldersData.folders[0].id);
-          onFolderSelected?.(foldersData.folders[0].id);
+          console.log('FolderSidebar: Auto-selecting first folder:', filteredFolders[0].id);
+          onFolderSelected?.(filteredFolders[0].id);
         }
       }
     } catch (err) {

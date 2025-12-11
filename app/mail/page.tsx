@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Users } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -79,6 +79,12 @@ function MailPageContent() {
 
   const refreshData = () => {
     window.location.reload();
+  };
+
+  const handleViewBySender = () => {
+    if (mailboxId && folderId) {
+      router.push(`/mail/by-sender?mailboxId=${mailboxId}&folderId=${folderId}`);
+    }
   };
 
   const isReady = mailboxId;
@@ -171,6 +177,7 @@ function MailPageContent() {
                 {isReady ? (
                   <FolderSidebar
                     mailboxId={mailboxId}
+                    accountId={accountId}
                     selectedFolderId={folderId}
                     onFolderSelected={(id) => {
                       handleFolderSelected(id);
@@ -192,9 +199,22 @@ function MailPageContent() {
                 ${mobileView === 'list' ? 'block' : 'hidden md:block'}
               `}>
                 <div className="p-4 border-b">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Messages
+                    </h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewBySender}
+                      disabled={!isReady || !folderId}
+                      className="flex items-center space-x-2"
+                      title="View messages grouped by sender"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="hidden sm:inline">By Sender</span>
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {isReady ? (
