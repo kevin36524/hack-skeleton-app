@@ -194,7 +194,8 @@ curl -X POST http://localhost:3000/api/workflows/email-digest \
 Input (mailboxId, accountId, inboxFolderId, duration)
   ↓
 Step 1: Fetch Messages
-  → Calls: GET http://localhost:3000/api/proxy/mailboxes/@.id=={mailboxId}/messages
+  → Calls: GET http://localhost:3000/api/proxy/mailboxes/@.id=={mailboxId}/messages/@.select==q?q={query}
+  → Query: folderId:{id}+-sort:date+date:[{startTime} TO *]+count:200
   → Uses: oauthToken from runtimeContext
   → Returns: { messages: [...], messageCount: N, fetchedAt: "..." }
   ↓

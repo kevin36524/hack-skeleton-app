@@ -114,8 +114,9 @@ curl -X POST http://localhost:3000/api/workflows/email-digest \
 ## 🔍 What Happens Behind the Scenes
 
 1. **Step 1 - Fetch Messages**
-   - Calls: `GET /api/proxy/mailboxes/@.id=={mailboxId}/messages`
-   - Filters by date range (last N days)
+   - Calls: `GET /api/proxy/mailboxes/@.id=={mailboxId}/messages/@.select==q?q={query}`
+   - Query: `folderId:{id}+-sort:date+date:[{startTime} TO *]+count:200`
+   - Filters by date range (last N days using Unix timestamps)
    - Returns message IDs and snippets
 
 2. **Step 2 - Extract Snippets**

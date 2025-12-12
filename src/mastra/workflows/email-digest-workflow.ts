@@ -28,19 +28,20 @@ const fetchMessagesStep = createStep({
       throw new Error('OAuth token not found in runtime context');
     }
 
-    // Calculate date range (duration days ago to now)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - duration);
+    // Calculate time range in seconds since epoch
+    const currentTimeSeconds = Math.floor(Date.now() / 1000);
+    const durationInSeconds = duration * 24 * 60 * 60; // Convert days to seconds
+    const timeRangeAgo = currentTimeSeconds - durationInSeconds;
 
-    const startDateStr = startDate.toISOString();
-    const endDateStr = endDate.toISOString();
+    // Build the query for messages in the specified time range
+    // Format: folderId:{id}+-sort:date+date:[{startTime} TO *]+count:200
+    const query = `folderId:${inboxFolderId}+-sort:date+date:[${timeRangeAgo} TO *]+count:200`;
 
-    // Build API URL to fetch messages
-    // Using the proxy API with filters for date range
-    const apiUrl = `http://localhost:3000/api/proxy/mailboxes/@.id==${mailboxId}/messages?folderId=${inboxFolderId}&startDate=${startDateStr}&endDate=${endDateStr}`;
+    // Build API URL using the correct format
+    const apiUrl = `http://localhost:3000/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${encodeURIComponent(query)}`;
 
-    console.log('Fetching messages from:', apiUrl);
+    console.log('Fetching messages with query:', query);
+    console.log('API URL:', apiUrl);
 
     const response = await fetch(apiUrl, {
       method: 'GET',
