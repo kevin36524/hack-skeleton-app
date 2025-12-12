@@ -10,6 +10,7 @@ const fetchMessagesStep = createStep({
     accountId: z.string().describe('The account ID'),
     inboxFolderId: z.string().describe('The inbox folder ID'),
     duration: z.number().default(1).describe('Duration in days to fetch emails (default: 1 day)'),
+    appid: z.string().describe('The application ID'),
   }),
   outputSchema: z.object({
     messages: z.array(z.object({
@@ -20,13 +21,15 @@ const fetchMessagesStep = createStep({
     fetchedAt: z.string(),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    const { mailboxId, accountId, inboxFolderId, duration } = inputData;
+    const { mailboxId, accountId, inboxFolderId, duration, appid } = inputData;
 
     // Get OAuth token from runtime context
     const oauthToken = runtimeContext.get('oauthToken');
     if (!oauthToken) {
       throw new Error('OAuth token not found in runtime context');
     }
+
+    console.log('OAuth Token:', oauthToken);
 
     // Calculate time range in seconds since epoch
     const currentTimeSeconds = Math.floor(Date.now() / 1000);
@@ -38,7 +41,7 @@ const fetchMessagesStep = createStep({
     const query = `folderId:${inboxFolderId}+-sort:date+date:[${timeRangeAgo} TO *]+count:200`;
 
     // Build API URL using the correct format
-    const apiUrl = `http://localhost:3000/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${encodeURIComponent(query)}`;
+    const apiUrl = `http://localhost:3000/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${query}`;
 
     console.log('Fetching messages with query:', query);
     console.log('API URL:', apiUrl);
@@ -177,6 +180,7 @@ export const emailDigestWorkflow = createWorkflow({
     accountId: z.string().describe('The account ID'),
     inboxFolderId: z.string().describe('The inbox folder ID'),
     duration: z.number().default(1).describe('Duration in days to fetch emails (default: 1 day)'),
+    appid: z.string().describe('The application ID'),
   }),
   outputSchema: z.object({
     digest: z.string().describe('The generated email digest summary'),
