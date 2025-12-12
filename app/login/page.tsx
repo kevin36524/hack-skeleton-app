@@ -8,13 +8,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Mail } from 'lucide-react';
+import { Eye, EyeOff, Mail, User } from 'lucide-react';
+
+type TestAccount = {
+  id: string;
+  email: string;
+  oauth_token: string;
+  created_at: string;
+  is_active: boolean;
+};
 
 function LoginForm() {
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [testAccounts, setTestAccounts] = useState<TestAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [showTestAccounts, setShowTestAccounts] = useState(false);
   const { login } = useAuth();
   const searchParams = useSearchParams();
 
@@ -32,6 +43,28 @@ function LoginForm() {
       }
     }
   }, [searchParams]);
+
+  // Fetch test accounts
+  useEffect(() => {
+    const fetchTestAccounts = async () => {
+      setLoadingAccounts(true);
+      try {
+        const response = await fetch('/api/test-accounts');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.accounts) {
+            setTestAccounts(data.accounts);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch test accounts:', err);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+
+    fetchTestAccounts();
+  }, []);
 
   const handleLoginWithToken = async (tokenToLogin: string) => {
     setIsLoading(true);
@@ -54,6 +87,12 @@ function LoginForm() {
   const validateTokenFormat = (value: string) => {
     const tokenPattern = /^[A-Za-z.0-9\-_]+$/;
     return tokenPattern.test(value.trim());
+  };
+
+  const handleTestAccountSelect = (account: TestAccount) => {
+    setToken(account.oauth_token);
+    setShowTestAccounts(false);
+    setError('');
   };
 
   return (
@@ -132,6 +171,49 @@ function LoginForm() {
                   <li>Copy and paste the token above</li>
                 </ol>
               </div>
+
+              {testAccounts.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Or use a test account</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowTestAccounts(!showTestAccounts)}
+                      className="text-xs"
+                    >
+                      {showTestAccounts ? 'Hide' : 'Show'} ({testAccounts.length})
+                    </Button>
+                  </div>
+
+                  {showTestAccounts && (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {testAccounts.map((account) => (
+                        <button
+                          key={account.id}
+                          type="button"
+                          onClick={() => handleTestAccountSelect(account)}
+                          disabled={isLoading}
+                          className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                            <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {account.email}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              Click to use this token
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button
