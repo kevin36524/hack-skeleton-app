@@ -65,6 +65,58 @@ class MessageService {
     return this.getConversations(mailboxId, folderId);
   }
 
+  /**
+   * Gets messages from the inbox received in the last 24 hours
+   *
+   * @param mailboxId - The user's mailbox identifier
+   * @param inboxFolderId - The inbox folder ID
+   * @returns Promise resolving to messages and conversations from last 24h
+   *
+   * @example
+   * ```typescript
+   * const recentData = await messageService.getRecentMessages24h(
+   *   'mailbox-123',
+   *   'inbox-folder-id'
+   * );
+   * console.log(`Found ${recentData.messages.length} recent messages`);
+   * ```
+   */
+  async getRecentMessages24h(
+    mailboxId: string,
+    inboxFolderId: string
+  ): Promise<{
+    messages: Message[];
+    conversations: Conversation[];
+  }> {
+    try {
+      console.log('[MESSAGE SERVICE] getRecentMessages24h called with:', { mailboxId, inboxFolderId });
+
+      // Calculate time 24 hours ago in seconds since epoch
+      const currentTimeSeconds = Math.floor(Date.now() / 1000);
+      const time24hAgo = currentTimeSeconds - (24 * 60 * 60);
+
+      // Build the query for messages in the last 24 hours (without groupBy)
+      const query = `folderId:${inboxFolderId}+-sort:date+date:[${time24hAgo} TO *]+count:200`;
+
+      console.log('[MESSAGE SERVICE] Query:', query);
+      console.log('[MESSAGE SERVICE] Calling apiClient.get...');
+
+      const response = await apiClient.get<ApiResponse<ListConversationsApiResponse>>(
+        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${query}`
+      );
+
+      console.log('[MESSAGE SERVICE] Response received:', response.result);
+
+      return {
+        messages: response.result.messages,
+        conversations: response.result.conversations
+      };
+    } catch (error) {
+      console.error('[MESSAGE SERVICE] Failed to fetch recent messages:', error);
+      throw error;
+    }
+  }
+
   async getMessagesBySearch(
     mailboxId: string,
     query: string,

@@ -73,6 +73,17 @@ export function useConversations(mailboxId: string, folderId: string) {
   });
 }
 
+// Recent messages hook (last 24 hours)
+export function useRecentMessages(mailboxId: string, inboxFolderId: string) {
+  return useQuery({
+    queryKey: ['recent-messages', mailboxId, inboxFolderId],
+    queryFn: () => messageService.getRecentMessages24h(mailboxId, inboxFolderId),
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1,
+    enabled: !!mailboxId && !!inboxFolderId,
+  });
+}
+
 // Conversation messages hook
 export function useConversationMessages(mailboxId: string, folderId: string, conversationId: string) {
   return useQuery({

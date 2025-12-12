@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { MailboxSelector } from '@/components/mailbox-selector';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
-import { MessageList } from '@/components/message-list';
+import { MessageListWithTabs } from '@/components/message-list-with-tabs';
 import { MessageDetail } from '@/components/message-detail';
 import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Message } from '@/lib/types/api';
+import { Message, Folder } from '@/lib/types/api';
+import { useFolders } from '@/lib/hooks/use-yahoo-mail';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -26,6 +27,13 @@ function MailPageContent() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+
+  // Get folders to find inbox folder ID for the current account
+  const foldersQuery = useFolders(mailboxId);
+  const inboxFolder = foldersQuery.data?.folders.find(folder =>
+    folder.types.includes('INBOX') && (!accountId || folder.acctId === accountId)
+  );
+  const inboxFolderId = inboxFolder?.id || '';
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -199,9 +207,10 @@ function MailPageContent() {
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {isReady ? (
-                    <MessageList
+                    <MessageListWithTabs
                       mailboxId={mailboxId}
                       folderId={folderId}
+                      inboxFolderId={inboxFolderId}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
                     />

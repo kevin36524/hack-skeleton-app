@@ -31,7 +31,12 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    console.log('[API CLIENT] Request called for endpoint:', endpoint);
+    console.log('[API CLIENT] Token present:', !!this.token);
+    console.log('[API CLIENT] Token length:', this.token?.length || 0);
+
     if (!this.token) {
+      console.error('[API CLIENT] ERROR: No authorization token provided');
       throw new Error('No authorization token provided');
     }
 
@@ -40,6 +45,8 @@ class ApiClient {
       // Use proxy endpoint - strip leading slash from endpoint if present
       const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
       url = `${BASE_URL}/${cleanEndpoint}${cleanEndpoint.includes('?') ? '&' : '?'}appid=${APP_ID}`;
+      console.log('[API CLIENT] Proxy mode - Clean endpoint:', cleanEndpoint);
+      console.log('[API CLIENT] Proxy mode - Final URL:', url);
     } else {
       // Server-side: Direct Yahoo API call - no encoding needed
       // Fix the @.id== format which might not work in direct calls
@@ -58,6 +65,8 @@ class ApiClient {
         ...options.headers,
       },
     };
+
+    console.log('[API CLIENT] Authorization header set:', `Bearer ${this.token?.substring(0, 20)}...`);
 
     // Create request key for deduplication
     const method = (options.method || 'GET').toUpperCase();
