@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  experimental: {
-    serverComponentsExternalPackages: ['@mastra/libsql', '@libsql/client'],
-  },
+  output: 'standalone',
+  serverExternalPackages: ['@mastra/libsql', '@libsql/client'],
   turbopack: {},
 };
 
