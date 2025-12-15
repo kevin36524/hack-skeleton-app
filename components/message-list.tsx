@@ -10,13 +10,15 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
+import { Star, Paperclip, Reply, Forward, AlertCircle, Mic } from 'lucide-react';
 
 interface MessageListProps {
   mailboxId: string;
   folderId: string;
   onMessageSelected?: (message: Message) => void;
   selectedMessageId?: string;
+  selectedMessages?: Set<string>;
+  onSelectedMessagesChange?: (selectedMessages: Set<string>) => void;
 }
 
 interface GroupedMessage {
@@ -26,17 +28,23 @@ interface GroupedMessage {
   conversation: Conversation | undefined;
 }
 
-export function MessageList({ 
-  mailboxId, 
-  folderId, 
-  onMessageSelected, 
-  selectedMessageId 
+export function MessageList({
+  mailboxId,
+  folderId,
+  onMessageSelected,
+  selectedMessageId,
+  selectedMessages: externalSelectedMessages,
+  onSelectedMessagesChange
 }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [internalSelectedMessages, setInternalSelectedMessages] = useState<Set<string>>(new Set());
+
+  // Use external state if provided, otherwise use internal state
+  const selectedMessages = externalSelectedMessages ?? internalSelectedMessages;
+  const setSelectedMessages = onSelectedMessagesChange ?? setInternalSelectedMessages;
 
   const loadMessages = useCallback(async () => {
     try {
