@@ -32,11 +32,14 @@ const fetchMessagesStep = createStep({
 
     console.log(`[WORKFLOW] Fetching ${messageIds.length} messages`);
 
+    // Determine base URL: use env var if set, otherwise use localhost with appropriate port
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+
     // Fetch all messages in parallel
     const messagePromises = messageIds.map(async (messageId) => {
       try {
         // Fetch full message body
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}/content/simplebody/full`;
+        const apiUrl = `${baseUrl}/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}/content/simplebody/full`;
 
         const response = await fetch(apiUrl, {
           headers: {
@@ -53,7 +56,7 @@ const fetchMessagesStep = createStep({
         const data = await response.json();
 
         // Also fetch message metadata for subject and from
-        const metadataUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}`;
+        const metadataUrl = `${baseUrl}/api/proxy/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}`;
 
         const metadataResponse = await fetch(metadataUrl, {
           headers: {
