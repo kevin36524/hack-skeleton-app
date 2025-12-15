@@ -33,7 +33,7 @@ const fetchMessagesStep = createStep({
     console.log(`[WORKFLOW] Fetching ${messageIds.length} messages`);
 
     // Determine base URL: use env var if set, otherwise use localhost with appropriate port
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
 
     // Fetch all messages in parallel
     const messagePromises = messageIds.map(async (messageId) => {

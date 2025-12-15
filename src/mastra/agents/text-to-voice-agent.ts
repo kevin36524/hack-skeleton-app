@@ -1,5 +1,4 @@
 import { Agent } from '@mastra/core/agent';
-import { elevenLabsTTSTool } from '../tools/elevenlabs-tts-tool';
 
 export const textToVoiceAgent = new Agent({
   id: 'text-to-voice-agent',
@@ -30,7 +29,4 @@ Voice settings:
 
 Always be helpful and explain what you're doing when converting text to speech.`,
   model: 'google/gemini-2.5-flash-lite',
-  tools: {
-    elevenLabsTTSTool,
-  },
 });
