@@ -17,7 +17,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
 
 function MailPageContent() {
-  const { logout } = useAuth();
+  const { logout, token } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -94,17 +94,16 @@ function MailPageContent() {
       return;
     }
 
+    if (!token) {
+      alert('No authentication token found. Please log in again.');
+      return;
+    }
+
     setShowSummaryModal(true);
     setSummaryLoading(true);
     setPodcastSummary(null);
 
     try {
-      // Get the auth token from localStorage
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const response = await fetch('/api/workflows/podcast-summary', {
         method: 'POST',
         headers: {
