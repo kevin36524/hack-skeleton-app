@@ -67,8 +67,8 @@ export function PodcastSummaryModal({
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to generate audio');
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to generate audio');
       }
 
       // Convert base64 to blob and create URL
@@ -79,7 +79,7 @@ export function PodcastSummaryModal({
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: data.data.contentType });
+      const blob = new Blob([byteArray], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
 
       setAudioUrl(url);
