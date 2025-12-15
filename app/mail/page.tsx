@@ -9,7 +9,8 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Users } from 'lucide-react';
+import Link from 'next/link';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -109,6 +110,16 @@ function MailPageContent() {
               </div>
 
               <div className="flex items-center space-x-4">
+                <Link href="/grouped-emails">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Grouped View</span>
+                  </Button>
+                </Link>
                 <AccountSwitcher
                   mailboxId={mailboxId}
                   onAccountSelected={handleAccountSelected}

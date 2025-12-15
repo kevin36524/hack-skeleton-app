@@ -200,7 +200,7 @@ export function useFolderNavigation(mailboxId: string) {
   const queryClient = useQueryClient();
 
   const getFolderByType = (type: string) => {
-    return folders.find(folder => 
+    return folders.find(folder =>
       folder.types.includes(type)
     );
   };
@@ -223,4 +223,15 @@ export function useFolderNavigation(mailboxId: string) {
     isLoading: !mailboxId,
     error: null,
   };
+}
+
+// Hook to fetch many messages (100 by default)
+export function useManyMessages(mailboxId: string, folderId: string, count: number = 100) {
+  return useQuery({
+    queryKey: ['many-messages', mailboxId, folderId, count],
+    queryFn: () => messageService.getMany(mailboxId, folderId, count),
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1,
+    enabled: !!mailboxId && !!folderId,
+  });
 }

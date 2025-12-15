@@ -65,6 +65,23 @@ class MessageService {
     return this.getConversations(mailboxId, folderId);
   }
 
+  async getMany(mailboxId: string, folderId: string, count: number = 100): Promise<{
+    messages: Message[];
+    conversations: Conversation[];
+  }> {
+    try {
+      const data = await this.getMessages(mailboxId, folderId, 0, count);
+
+      return {
+        messages: data.messages,
+        conversations: data.conversations
+      };
+    } catch (error) {
+      console.error('Failed to fetch many messages:', error);
+      throw error;
+    }
+  }
+
   async getMessagesBySearch(
     mailboxId: string,
     query: string,
