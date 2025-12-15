@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { mastra } from '@/mastra';
-import { elevenLabsTTSTool } from '@/mastra/tools/elevenlabs-tts-tool';
+import { mastra } from '@/src/mastra';
+import { elevenLabsTTSTool } from '@/src/mastra/tools/elevenlabs-tts-tool';
 
 export async function POST(request: NextRequest) {
   try {
