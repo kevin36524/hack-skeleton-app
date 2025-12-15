@@ -62,6 +62,10 @@ export function PodcastSummaryModal({
         },
         body: JSON.stringify({
           text: summary,
+          voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel voice
+          modelId: 'eleven_monolingual_v1',
+          stability: 0.5,
+          similarityBoost: 0.75,
         }),
       });
 
