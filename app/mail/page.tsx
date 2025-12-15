@@ -28,6 +28,12 @@ function MailPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
+  // Podcast summary state
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [podcastSummary, setPodcastSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   // Initialize folderId from URL on mount
   useEffect(() => {
     const folderFromUrl = searchParams.get('folder');
@@ -80,6 +86,51 @@ function MailPageContent() {
 
   const refreshData = () => {
     window.location.reload();
+  };
+
+  const handleGeneratePodcastSummary = async () => {
+    if (selectedMessages.size === 0) {
+      alert('Please select at least one email to summarize');
+      return;
+    }
+
+    setShowSummaryModal(true);
+    setSummaryLoading(true);
+    setPodcastSummary(null);
+
+    try {
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch('/api/workflows/podcast-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mailboxId,
+          messageIds: Array.from(selectedMessages),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate summary');
+      }
+
+      setPodcastSummary(data.data.podcastSummary);
+    } catch (error) {
+      console.error('Error generating podcast summary:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate podcast summary');
+      setShowSummaryModal(false);
+    } finally {
+      setSummaryLoading(false);
+    }
   };
 
   const isReady = mailboxId;
@@ -193,9 +244,21 @@ function MailPageContent() {
                 ${mobileView === 'list' ? 'block' : 'hidden md:block'}
               `}>
                 <div className="p-4 border-b">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Messages
+                    </h2>
+                    {selectedMessages.size > 0 && (
+                      <Button
+                        onClick={handleGeneratePodcastSummary}
+                        size="sm"
+                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Mic className="h-4 w-4" />
+                        Summarize ({selectedMessages.size})
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {isReady ? (
@@ -204,6 +267,8 @@ function MailPageContent() {
                       folderId={folderId}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
+                      selectedMessages={selectedMessages}
+                      onSelectedMessagesChange={setSelectedMessages}
                     />
                   ) : (
                     <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
@@ -247,6 +312,15 @@ function MailPageContent() {
             </div>
           </div>
         </div>
+
+        {/* Podcast Summary Modal */}
+        <PodcastSummaryModal
+          open={showSummaryModal}
+          onOpenChange={setShowSummaryModal}
+          summary={podcastSummary}
+          loading={summaryLoading}
+          emailCount={selectedMessages.size}
+        />
       </div>
     </ProtectedRoute>
   );
