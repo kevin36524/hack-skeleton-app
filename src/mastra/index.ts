@@ -4,7 +4,6 @@ import { LibSQLStore } from '@mastra/libsql';
 import { podcastSummarizer } from './agents/podcast-summarizer';
 import { textToVoiceAgent } from './agents/text-to-voice-agent';
 import { podcastEmailSummaryWorkflow } from './workflows/podcast-email-summary';
-import { elevenLabsTTSTool } from './tools/elevenlabs-tts-tool';
 
 
 export const mastra = new Mastra({
@@ -17,9 +16,6 @@ export const mastra = new Mastra({
   },
   workflows: {
     podcastEmailSummaryWorkflow,
-  },
-  tools: {
-    elevenLabsTTSTool,
   },
   storage: new LibSQLStore({
     url: 'file:./mastra-memory.db',

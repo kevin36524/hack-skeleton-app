@@ -19,8 +19,8 @@ export const elevenLabsTTSTool = createTool({
     textLength: z.number().describe('Length of input text'),
     voiceId: z.string().describe('Voice ID used'),
   }),
-  execute: async (input: z.infer<typeof inputSchema>) => {
-    const { text, voiceId, modelId, stability, similarityBoost } = input;
+  execute: async (context) => {
+    const { text, voiceId, modelId, stability, similarityBoost } = (context as any).inputData;
 
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {

@@ -15,12 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute the ElevenLabs TTS tool
-    const result = await elevenLabsTTSTool.execute({
-      text,
-      voiceId,
-      modelId,
-      stability,
-      similarityBoost,
+    const result = await (elevenLabsTTSTool.execute as any)({
+      inputData: {
+        text,
+        voiceId,
+        modelId,
+        stability,
+        similarityBoost,
+      },
     });
 
     return NextResponse.json({
