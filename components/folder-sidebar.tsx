@@ -6,8 +6,9 @@ import { Folder } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface FolderSidebarProps {
   mailboxId: string;
@@ -22,12 +23,13 @@ interface FolderGroup {
   icon: React.ElementType;
 }
 
-export function FolderSidebar({ 
-  mailboxId, 
-  selectedFolderId, 
+export function FolderSidebar({
+  mailboxId,
+  selectedFolderId,
   onFolderSelected,
-  className 
+  className
 }: FolderSidebarProps) {
+  const router = useRouter();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,9 +187,28 @@ export function FolderSidebar({
 
   const folderGroups = groupFolders();
 
+  const handleYmailSummaryClick = () => {
+    router.push('/mail/summary');
+  };
+
   return (
     <ScrollArea className={cn('h-full', className)}>
       <div className="space-y-4 p-4">
+        {/* YMAIL Summary Section */}
+        <div className="pb-2 border-b border-gray-200 dark:border-gray-700">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleYmailSummaryClick}
+            className="w-full justify-start text-left font-normal hover:bg-purple-50 dark:hover:bg-purple-900/30"
+          >
+            <div className="flex items-center space-x-2">
+              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="font-medium text-purple-700 dark:text-purple-300">YMAIL Summary</span>
+            </div>
+          </Button>
+        </div>
+
         {folderGroups.map((group) => (
           <div key={group.name}>
             <Collapsible
