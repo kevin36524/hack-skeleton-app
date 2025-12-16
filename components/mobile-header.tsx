@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, BarChart3, Bot } from 'lucide-react';
+import { Menu, Mail, LogOut, RefreshCw, X, BarChart3, Bot, Users, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -15,6 +15,8 @@ interface MobileHeaderProps {
   mailboxId: string;
   onLogout: () => void;
   onRefresh: () => void;
+  onGroupBySender?: () => void;
+  groupBySenderIcon?: 'users' | 'back';
   activeTab?: 'mail' | 'digest' | 'autopilot';
   onTabChange?: (tab: 'mail' | 'digest' | 'autopilot') => void;
 }
@@ -27,6 +29,8 @@ export function MobileHeader({
   mailboxId,
   onLogout,
   onRefresh,
+  onGroupBySender,
+  groupBySenderIcon = 'users',
   activeTab = 'mail',
   onTabChange,
 }: MobileHeaderProps) {
@@ -58,6 +62,21 @@ export function MobileHeader({
           
           <div className="flex items-center space-x-2">
             <ThemeToggle size="sm" />
+            {onGroupBySender && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onGroupBySender}
+                className="p-2"
+                title={groupBySenderIcon === 'back' ? 'Back to Mail' : 'Group by Sender'}
+              >
+                {groupBySenderIcon === 'back' ? (
+                  <ArrowLeft className="h-4 w-4" />
+                ) : (
+                  <Users className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

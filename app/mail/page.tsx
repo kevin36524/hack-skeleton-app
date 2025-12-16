@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Users } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -81,6 +81,15 @@ function MailPageContent() {
     window.location.reload();
   };
 
+  const handleGroupBySender = () => {
+    // Preserve current folder selection when navigating
+    const newSearchParams = new URLSearchParams();
+    if (folderId) {
+      newSearchParams.set('folder', folderId);
+    }
+    router.push(`/emails-by-sender?${newSearchParams.toString()}`);
+  };
+
   const isReady = mailboxId;
 
   return (
@@ -96,6 +105,7 @@ function MailPageContent() {
           mailboxId={mailboxId}
           onLogout={handleLogout}
           onRefresh={refreshData}
+          onGroupBySender={handleGroupBySender}
         />
 
         {/* Desktop Header */}
@@ -114,6 +124,16 @@ function MailPageContent() {
                   onAccountSelected={handleAccountSelected}
                 />
                 <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGroupBySender}
+                  className="flex items-center space-x-2"
+                  title="Group by Sender"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="hidden lg:inline">Group by Sender</span>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
