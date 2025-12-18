@@ -5,3 +5,4 @@ export { StatusBar } from './StatusBar';
 export { GameControls } from './GameControls';
 export { GameInfo } from './GameInfo';
 export { GameNotification } from './GameNotification';
+export { AIThinking } from './AIThinking';

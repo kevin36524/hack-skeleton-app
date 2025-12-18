@@ -6,12 +6,16 @@ import { StatusBar } from '@/components/StatusBar';
 import { GameControls } from '@/components/GameControls';
 import { GameInfo } from '@/components/GameInfo';
 import { GameNotification } from '@/components/GameNotification';
+import { AIThinking } from '@/components/AIThinking';
 
 export default function Home() {
-  const { gameState, startGame, revealCard, passTurn, resetGame, clearEvent } = useGameState();
+  const { gameState, isAIThinking, startGame, revealCard, passTurn, resetGame, clearEvent } = useGameState();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-6">
+      {/* AI Thinking Overlay */}
+      <AIThinking team={gameState.currentTurn} isVisible={isAIThinking} />
+
       {/* Game Notification */}
       <GameNotification
         event={gameState.lastEvent}
