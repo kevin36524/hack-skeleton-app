@@ -8,6 +8,7 @@ import { MailboxSelector } from '@/components/mailbox-selector';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { messageService } from '@/lib/services/message-service';
+import { folderService } from '@/lib/services/folder-service';
 import { Message } from '@/lib/types/api';
 import { LogOut, Mail, ArrowLeft, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -55,13 +56,29 @@ function GroupBySenderContent() {
         setLoading(true);
         setError(null);
 
-        // Fetch messages from Inbox folder - we need to get the inbox folder ID first
-        // For now, we'll use a common inbox folder ID pattern
-        // In a production app, you'd fetch the folder list and find the inbox
-        const inboxFolderId = 'Inbox';
+        // First, fetch folders to find the inbox folder ID
+        const foldersData = await folderService.getFolders(mailboxId);
+
+        // Find the inbox folder - filter by accountId if provided, otherwise use the first inbox
+        let inboxFolder;
+        if (accountId) {
+          inboxFolder = foldersData.folders.find(folder =>
+            folder.types.includes('INBOX') && folder.acctId === accountId
+          );
+        } else {
+          inboxFolder = foldersData.folders.find(folder =>
+            folder.types.includes('INBOX')
+          );
+        }
+
+        if (!inboxFolder) {
+          setError('Inbox folder not found. Please select a mailbox.');
+          setLoading(false);
+          return;
+        }
 
         // Fetch 100 messages by using count parameter
-        const data = await messageService.getMessages(mailboxId, inboxFolderId, 0, 100);
+        const data = await messageService.getMessages(mailboxId, inboxFolder.id, 0, 100);
         setMessages(data.messages);
       } catch (err) {
         console.error('Failed to load messages:', err);
