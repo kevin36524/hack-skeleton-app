@@ -63,3 +63,33 @@ export interface BoardConfig {
   neutralCards: number;
   assassinCards: number;
 }
+
+/**
+ * Turn outcome types
+ */
+export type TurnOutcome =
+  | 'CORRECT_TEAM'      // Revealed own team's card, can continue
+  | 'WRONG_TEAM'        // Revealed opponent's card, turn ends
+  | 'NEUTRAL'           // Revealed neutral card, turn ends
+  | 'ASSASSIN'          // Revealed assassin, game over
+  | 'WIN'               // All team cards revealed, game won
+  | 'PASS';             // Turn passed voluntarily
+
+/**
+ * Game event for notifications/feedback
+ */
+export interface GameEvent {
+  type: TurnOutcome;
+  message: string;
+  team?: Team;
+  cardRevealed?: string;
+  timestamp: number;
+}
+
+/**
+ * Extended game state with events
+ */
+export interface GameStateWithEvents extends GameState {
+  lastEvent: GameEvent | null;
+  eventHistory: GameEvent[];
+}

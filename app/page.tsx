@@ -5,12 +5,21 @@ import { GameBoard } from '@/components/GameBoard';
 import { StatusBar } from '@/components/StatusBar';
 import { GameControls } from '@/components/GameControls';
 import { GameInfo } from '@/components/GameInfo';
+import { GameNotification } from '@/components/GameNotification';
 
 export default function Home() {
-  const { gameState, startGame, revealCard, passTurn, resetGame } = useGameState();
+  const { gameState, startGame, revealCard, passTurn, resetGame, clearEvent } = useGameState();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-6">
+      {/* Game Notification */}
+      <GameNotification
+        event={gameState.lastEvent}
+        onDismiss={clearEvent}
+        autoDismiss={true}
+        autoDismissDelay={3500}
+      />
+
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <header className="text-center mb-4">

@@ -1,27 +1,30 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { GameState } from '../types/game';
+import { GameStateWithEvents } from '../types/game';
 import {
-  createInitialGameState,
-  startGame,
-  revealCard,
-  setClue,
-  passTurn,
-  resetGame
-} from '../game/gameState';
+  createInitialGameStateWithEvents,
+  startGameWithEvents,
+  revealCardWithEvents,
+  setClueWithEvents,
+  passTurnWithEvents,
+  resetGameWithEvents,
+  clearLastEvent
+} from '../game/gameStateWithEvents';
 
 /**
- * Custom hook for managing Codenames game state
+ * Custom hook for managing Codenames game state with events
  */
 export function useGameState() {
-  const [gameState, setGameState] = useState<GameState>(createInitialGameState());
+  const [gameState, setGameState] = useState<GameStateWithEvents>(
+    createInitialGameStateWithEvents()
+  );
 
   /**
    * Start the game
    */
   const handleStartGame = useCallback(() => {
-    setGameState(prevState => startGame(prevState));
+    setGameState(prevState => startGameWithEvents(prevState));
   }, []);
 
   /**
@@ -29,10 +32,9 @@ export function useGameState() {
    */
   const handleRevealCard = useCallback((cardIndex: number) => {
     try {
-      setGameState(prevState => revealCard(prevState, cardIndex));
+      setGameState(prevState => revealCardWithEvents(prevState, cardIndex));
     } catch (error) {
       console.error('Error revealing card:', error);
-      // In production, you might want to show a user-friendly error message
     }
   }, []);
 
@@ -41,7 +43,7 @@ export function useGameState() {
    */
   const handleSetClue = useCallback((word: string, number: number) => {
     try {
-      setGameState(prevState => setClue(prevState, word, number));
+      setGameState(prevState => setClueWithEvents(prevState, word, number));
     } catch (error) {
       console.error('Error setting clue:', error);
     }
@@ -52,7 +54,7 @@ export function useGameState() {
    */
   const handlePassTurn = useCallback(() => {
     try {
-      setGameState(prevState => passTurn(prevState));
+      setGameState(prevState => passTurnWithEvents(prevState));
     } catch (error) {
       console.error('Error passing turn:', error);
     }
@@ -62,7 +64,14 @@ export function useGameState() {
    * Reset the game
    */
   const handleResetGame = useCallback(() => {
-    setGameState(resetGame());
+    setGameState(resetGameWithEvents());
+  }, []);
+
+  /**
+   * Clear the last event notification
+   */
+  const handleClearEvent = useCallback(() => {
+    setGameState(prevState => clearLastEvent(prevState));
   }, []);
 
   return {
@@ -71,6 +80,7 @@ export function useGameState() {
     revealCard: handleRevealCard,
     setClue: handleSetClue,
     passTurn: handlePassTurn,
-    resetGame: handleResetGame
+    resetGame: handleResetGame,
+    clearEvent: handleClearEvent
   };
 }
