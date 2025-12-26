@@ -36,5 +36,5 @@ Example:
 }
 
 Do NOT include any other text, explanations, or formatting outside the JSON object.`,
-  model: "google/gemini-2.5-flash-lite",
+  model: "google/gemini-2.5-flash",
 });
