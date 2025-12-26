@@ -86,6 +86,7 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   // Determine if turn should continue or switch
   let newTurn = state.currentTurn;
   let newGuessesRemaining = state.guessesRemaining - 1;
+  let newClue = state.currentClue;
 
   // Switch turn if:
   // 1. Wrong color was revealed
@@ -99,6 +100,7 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   ) {
     newTurn = state.currentTurn === 'RED' ? 'BLUE' : 'RED';
     newGuessesRemaining = 0;
+    newClue = null; // Clear the clue when turn switches
   }
 
   return {
@@ -108,7 +110,8 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
     currentTurn: newTurn,
     gameStatus: newStatus,
     guessesRemaining: newGuessesRemaining,
-    revealedCards: state.revealedCards + 1
+    revealedCards: state.revealedCards + 1,
+    currentClue: newClue
   };
 }
 
