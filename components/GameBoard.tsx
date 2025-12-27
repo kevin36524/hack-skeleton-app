@@ -16,12 +16,12 @@ export function GameBoard({ cards, onRevealCard, disabled }: GameBoardProps) {
 
   return (
     <div
-      className="grid grid-cols-5 gap-2 w-full"
+      className="grid grid-cols-5 gap-2 w-full max-w-4xl mx-auto"
       role="grid"
       aria-label="Codenames game board"
     >
       {cards.map((card, index) => (
-        <div key={index} role="gridcell">
+        <div key={index} role="gridcell" className="w-full" style={{ aspectRatio: '1 / 0.6' }}>
           <GameCard
             card={card}
             index={index}

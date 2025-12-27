@@ -87,7 +87,7 @@ export function GameCard({ card, index, onReveal, disabled }: GameCardProps) {
       onClick={handleClick}
       disabled={disabled || card.revealed}
       className={`
-        relative aspect-square p-2 rounded-lg border-2
+        relative w-full h-full p-2 rounded-lg border-2
         font-bold text-sm
         transition-all duration-300 ease-out
         flex items-center justify-center text-center
@@ -110,6 +110,7 @@ export function GameCard({ card, index, onReveal, disabled }: GameCardProps) {
         relative z-10 select-none
         ${isFlipping ? 'opacity-0' : 'opacity-100'}
         transition-opacity duration-150
+        break-words hyphens-auto px-1
       `}>
         {card.word}
       </span>
