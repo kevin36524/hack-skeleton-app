@@ -26,7 +26,8 @@ export function createInitialGameState(): GameState {
     },
     currentClue: null,
     guessesRemaining: 0,
-    revealedCards: 0
+    revealedCards: 0,
+    assassinNeutralized: false
   };
 }
 
@@ -71,7 +72,7 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   };
 
   // Check win condition
-  const winner = checkWinCondition(newBoard);
+  const winner = checkWinCondition(newBoard, state.assassinNeutralized);
   let newStatus: GameStatus = state.gameStatus;
 
   if (winner === 'ASSASSIN') {
@@ -88,14 +89,19 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   let newGuessesRemaining = state.guessesRemaining - 1;
   let newClue = state.currentClue;
 
+  // Treat assassin as neutral if assassinNeutralized is true
+  const effectiveCardColor = (card.color === 'ASSASSIN' && state.assassinNeutralized)
+    ? 'NEUTRAL'
+    : card.color;
+
   // Switch turn if:
   // 1. Wrong color was revealed
-  // 2. Neutral or assassin was revealed
+  // 2. Neutral or assassin was revealed (unless assassin is neutralized)
   // 3. No guesses remaining
   if (
-    card.color !== state.currentTurn ||
-    card.color === 'NEUTRAL' ||
-    card.color === 'ASSASSIN' ||
+    effectiveCardColor !== state.currentTurn ||
+    effectiveCardColor === 'NEUTRAL' ||
+    (card.color === 'ASSASSIN' && !state.assassinNeutralized) ||
     newGuessesRemaining <= 0
   ) {
     newTurn = state.currentTurn === 'RED' ? 'BLUE' : 'RED';
@@ -157,6 +163,16 @@ export function passTurn(state: GameState): GameState {
  */
 export function resetGame(): GameState {
   return createInitialGameState();
+}
+
+/**
+ * Toggles whether assassin cards are neutralized
+ */
+export function toggleAssassinNeutralized(state: GameState): GameState {
+  return {
+    ...state,
+    assassinNeutralized: !state.assassinNeutralized
+  };
 }
 
 /**

@@ -123,15 +123,17 @@ export function countRemainingCards(board: Card[]): {
 /**
  * Checks if the game is won by either team
  */
-export function checkWinCondition(board: Card[]): 'RED' | 'BLUE' | 'ASSASSIN' | null {
+export function checkWinCondition(board: Card[], assassinNeutralized: boolean = false): 'RED' | 'BLUE' | 'ASSASSIN' | null {
   const remaining = countRemainingCards(board);
 
-  // Check if assassin was revealed
-  const assassinRevealed = board.some(
-    card => card.color === 'ASSASSIN' && card.revealed
-  );
-  if (assassinRevealed) {
-    return 'ASSASSIN';
+  // Check if assassin was revealed (only if assassin is not neutralized)
+  if (!assassinNeutralized) {
+    const assassinRevealed = board.some(
+      card => card.color === 'ASSASSIN' && card.revealed
+    );
+    if (assassinRevealed) {
+      return 'ASSASSIN';
+    }
   }
 
   // Check if red team won

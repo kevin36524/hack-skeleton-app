@@ -9,7 +9,10 @@ import {
   setClueWithEvents,
   passTurnWithEvents,
   resetGameWithEvents,
-  clearLastEvent
+  clearLastEvent,
+  toggleAssassinNeutralizedWithEvents,
+  undoLastAction,
+  canUndo
 } from '../game/gameStateWithEvents';
 import { generateAIClue } from '../services/aiService';
 
@@ -77,6 +80,20 @@ export function useGameState() {
   }, []);
 
   /**
+   * Toggle assassin neutralization
+   */
+  const handleToggleAssassinNeutralized = useCallback(() => {
+    setGameState(prevState => toggleAssassinNeutralizedWithEvents(prevState));
+  }, []);
+
+  /**
+   * Undo the last action
+   */
+  const handleUndo = useCallback(() => {
+    setGameState(prevState => undoLastAction(prevState));
+  }, []);
+
+  /**
    * Request AI to generate a clue for the current team
    */
   const requestAIClue = useCallback(async () => {
@@ -123,6 +140,9 @@ export function useGameState() {
     passTurn: handlePassTurn,
     resetGame: handleResetGame,
     clearEvent: handleClearEvent,
-    requestAIClue
+    requestAIClue,
+    toggleAssassinNeutralized: handleToggleAssassinNeutralized,
+    undo: handleUndo,
+    canUndo: canUndo(gameState)
   };
 }

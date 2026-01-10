@@ -9,7 +9,7 @@ import { GameNotification } from '@/components/GameNotification';
 import { AIThinking } from '@/components/AIThinking';
 
 export default function Home() {
-  const { gameState, isAIThinking, startGame, revealCard, passTurn, resetGame, clearEvent } = useGameState();
+  const { gameState, isAIThinking, startGame, revealCard, passTurn, resetGame, clearEvent, toggleAssassinNeutralized, undo, canUndo } = useGameState();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-6">
@@ -52,6 +52,10 @@ export default function Home() {
             onStartGame={startGame}
             onPassTurn={passTurn}
             onResetGame={resetGame}
+            assassinNeutralized={gameState.assassinNeutralized}
+            onToggleAssassinNeutralized={toggleAssassinNeutralized}
+            onUndo={undo}
+            canUndo={canUndo}
           />
         </div>
 

@@ -51,6 +51,7 @@ export interface GameState {
   currentClue: Clue | null;
   guessesRemaining: number;
   revealedCards: number;
+  assassinNeutralized: boolean; // Whether assassin cards act as neutral cards
 }
 
 /**
@@ -92,4 +93,5 @@ export interface GameEvent {
 export interface GameStateWithEvents extends GameState {
   lastEvent: GameEvent | null;
   eventHistory: GameEvent[];
+  history: GameState[]; // Stack of previous states for undo functionality
 }

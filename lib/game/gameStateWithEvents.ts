@@ -12,7 +12,8 @@ import {
   revealCard as baseRevealCard,
   passTurn as basePassTurn,
   resetGame as baseResetGame,
-  setClue as baseSetClue
+  setClue as baseSetClue,
+  toggleAssassinNeutralized as baseToggleAssassinNeutralized
 } from './gameState';
 
 /**
@@ -39,10 +40,14 @@ function createEvent(
 function determineOutcome(
   cardColor: CardColor,
   currentTeam: Team,
-  isWin: boolean
+  isWin: boolean,
+  assassinNeutralized: boolean = false
 ): TurnOutcome {
   if (isWin) return 'WIN';
-  if (cardColor === 'ASSASSIN') return 'ASSASSIN';
+  // If assassin is neutralized, treat it as neutral
+  if (cardColor === 'ASSASSIN') {
+    return assassinNeutralized ? 'NEUTRAL' : 'ASSASSIN';
+  }
   if (cardColor === 'NEUTRAL') return 'NEUTRAL';
   if (cardColor === currentTeam) return 'CORRECT_TEAM';
   return 'WRONG_TEAM';
@@ -75,6 +80,16 @@ function createOutcomeMessage(
 }
 
 /**
+ * Helper to save current state to history before making changes
+ */
+function saveToHistory(state: GameStateWithEvents): GameState[] {
+  const { lastEvent, eventHistory, history, ...baseState } = state;
+  // Keep last 20 states for undo (prevents unbounded memory growth)
+  const newHistory = [...history, baseState];
+  return newHistory.length > 20 ? newHistory.slice(1) : newHistory;
+}
+
+/**
  * Creates an initial game state with events
  */
 export function createInitialGameStateWithEvents(): GameStateWithEvents {
@@ -82,7 +97,8 @@ export function createInitialGameStateWithEvents(): GameStateWithEvents {
   return {
     ...baseState,
     lastEvent: null,
-    eventHistory: []
+    eventHistory: [],
+    history: []
   };
 }
 
@@ -100,7 +116,8 @@ export function startGameWithEvents(state: GameStateWithEvents): GameStateWithEv
   return {
     ...newState,
     lastEvent: event,
-    eventHistory: [...state.eventHistory, event]
+    eventHistory: [...state.eventHistory, event],
+    history: saveToHistory(state)
   };
 }
 
@@ -121,8 +138,8 @@ export function revealCardWithEvents(
   // Determine if this was a win
   const isWin = newState.gameStatus === 'RED_WIN' || newState.gameStatus === 'BLUE_WIN';
 
-  // Determine outcome
-  const outcome = determineOutcome(card.color, currentTeam, isWin);
+  // Determine outcome (consider assassinNeutralized setting)
+  const outcome = determineOutcome(card.color, currentTeam, isWin, state.assassinNeutralized);
 
   // Create message
   const message = createOutcomeMessage(outcome, card.word, card.color, currentTeam);
@@ -133,7 +150,8 @@ export function revealCardWithEvents(
   return {
     ...newState,
     lastEvent: event,
-    eventHistory: [...state.eventHistory, event]
+    eventHistory: [...state.eventHistory, event],
+    history: saveToHistory(state)
   };
 }
 
@@ -153,7 +171,8 @@ export function passTurnWithEvents(state: GameStateWithEvents): GameStateWithEve
   return {
     ...newState,
     lastEvent: event,
-    eventHistory: [...state.eventHistory, event]
+    eventHistory: [...state.eventHistory, event],
+    history: saveToHistory(state)
   };
 }
 
@@ -176,7 +195,8 @@ export function setClueWithEvents(
   return {
     ...newState,
     lastEvent: event,
-    eventHistory: [...state.eventHistory, event]
+    eventHistory: [...state.eventHistory, event],
+    history: saveToHistory(state)
   };
 }
 
@@ -188,7 +208,8 @@ export function resetGameWithEvents(): GameStateWithEvents {
   return {
     ...baseState,
     lastEvent: null,
-    eventHistory: []
+    eventHistory: [],
+    history: []
   };
 }
 
@@ -200,6 +221,64 @@ export function clearLastEvent(state: GameStateWithEvents): GameStateWithEvents 
     ...state,
     lastEvent: null
   };
+}
+
+/**
+ * Toggles assassin neutralization with event tracking
+ */
+export function toggleAssassinNeutralizedWithEvents(
+  state: GameStateWithEvents
+): GameStateWithEvents {
+  const newState = baseToggleAssassinNeutralized(state);
+
+  const event = createEvent(
+    'CORRECT_TEAM',
+    newState.assassinNeutralized
+      ? '🛡️ Assassin cards are now neutralized (treated as neutral cards)'
+      : '⚠️ Assassin cards are now active (will end the game)',
+    state.currentTurn
+  );
+
+  return {
+    ...newState,
+    lastEvent: event,
+    eventHistory: [...state.eventHistory, event],
+    history: saveToHistory(state)
+  };
+}
+
+/**
+ * Undo the last action and restore the previous game state
+ */
+export function undoLastAction(state: GameStateWithEvents): GameStateWithEvents {
+  if (state.history.length === 0) {
+    return state; // Nothing to undo
+  }
+
+  // Get the previous state from history
+  const previousState = state.history[state.history.length - 1];
+  const newHistory = state.history.slice(0, -1);
+
+  // Create an event for the undo action
+  const event = createEvent(
+    'CORRECT_TEAM',
+    '↩️ Action undone',
+    previousState.currentTurn
+  );
+
+  return {
+    ...previousState,
+    lastEvent: event,
+    eventHistory: state.eventHistory, // Keep full event history
+    history: newHistory
+  };
+}
+
+/**
+ * Check if undo is available
+ */
+export function canUndo(state: GameStateWithEvents): boolean {
+  return state.history.length > 0;
 }
 
 /**
