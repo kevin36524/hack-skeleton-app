@@ -1,4 +1,4 @@
-import { GameState, Team, Card, GameStatus } from '../types/game';
+import { GameState, Team, Card, GameStatus, CardColor } from '../types/game';
 import {
   generateBoard,
   determineStartingTeam,
@@ -90,7 +90,7 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   let newClue = state.currentClue;
 
   // Treat assassin as neutral if assassinNeutralized is true
-  const effectiveCardColor = (card.color === 'ASSASSIN' && state.assassinNeutralized)
+  const effectiveCardColor: CardColor = (card.color === 'ASSASSIN' && state.assassinNeutralized)
     ? 'NEUTRAL'
     : card.color;
 
@@ -100,7 +100,6 @@ export function revealCard(state: GameState, cardIndex: number): GameState {
   // 3. No guesses remaining
   if (
     effectiveCardColor !== state.currentTurn ||
-    effectiveCardColor === 'NEUTRAL' ||
     (card.color === 'ASSASSIN' && !state.assassinNeutralized) ||
     newGuessesRemaining <= 0
   ) {
