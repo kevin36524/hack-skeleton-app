@@ -382,3 +382,18 @@ export interface ApiResponseWrapper<T> {
   error?: ApiError;
   loading: boolean;
 }
+
+// Spaces API Types
+export interface Space {
+  id: string;
+  name: string;
+  description?: string;
+  messageCount?: number;
+  lastUpdated?: string;
+  [key: string]: unknown;
+}
+
+export interface GetSpacesApiResponse {
+  spaces: Space[];
+  [key: string]: unknown;
+}

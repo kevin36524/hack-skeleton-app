@@ -23,6 +23,7 @@ function MailPageContent() {
   const [mailboxId, setMailboxId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
+  const [spaceId, setSpaceId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
@@ -51,12 +52,23 @@ function MailPageContent() {
 
   const handleFolderSelected = (id: string) => {
     setFolderId(id);
+    setSpaceId(''); // Clear space selection when folder is selected
     setSelectedMessage(null);
     setMobileView('list');
     // Update URL without causing re-render loop
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set('folder', id);
     router.replace(`/mail?${newSearchParams.toString()}`, { scroll: false });
+  };
+
+  const handleSpaceSelected = (id: string) => {
+    console.log('MailPage: Space selected:', id);
+    setSpaceId(id);
+    setFolderId(''); // Clear folder selection when space is selected
+    setSelectedMessage(null);
+    setMobileView('list');
+    // Note: Space messages will need a separate implementation
+    // For now, this just tracks the selection
   };
 
   const handleMessageSelected = (message: Message) => {
@@ -173,8 +185,13 @@ function MailPageContent() {
                     mailboxId={mailboxId}
                     accountId={accountId}
                     selectedFolderId={folderId}
+                    selectedSpaceId={spaceId}
                     onFolderSelected={(id) => {
                       handleFolderSelected(id);
+                      setSidebarOpen(false);
+                    }}
+                    onSpaceSelected={(id) => {
+                      handleSpaceSelected(id);
                       setSidebarOpen(false);
                     }}
                   />

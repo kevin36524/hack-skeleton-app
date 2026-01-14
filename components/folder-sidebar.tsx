@@ -8,12 +8,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SpacesSection } from '@/components/spaces-section';
 
 interface FolderSidebarProps {
   mailboxId: string;
   accountId?: string;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
+  onSpaceSelected?: (spaceId: string) => void;
+  selectedSpaceId?: string;
   className?: string;
 }
 
@@ -28,6 +31,8 @@ export function FolderSidebar({
   accountId,
   selectedFolderId,
   onFolderSelected,
+  onSpaceSelected,
+  selectedSpaceId,
   className
 }: FolderSidebarProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -196,8 +201,21 @@ export function FolderSidebar({
 
   return (
     <ScrollArea className={cn('h-full', className)}>
-      <div className="space-y-4 p-4">
-        {folderGroups.map((group) => (
+      <div className="space-y-4">
+        {/* Spaces Section */}
+        {accountId && (
+          <div className="pt-4">
+            <SpacesSection
+              accountId={accountId}
+              selectedSpaceId={selectedSpaceId}
+              onSpaceSelected={onSpaceSelected}
+            />
+          </div>
+        )}
+
+        {/* Folders Section */}
+        <div className="px-4">
+          {folderGroups.map((group) => (
           <div key={group.name}>
             <Collapsible
               open={!collapsedGroups.has(group.name)}
@@ -250,7 +268,8 @@ export function FolderSidebar({
               </CollapsibleContent>
             </Collapsible>
           </div>
-        ))}
+          ))}
+        </div>
       </div>
     </ScrollArea>
   );
