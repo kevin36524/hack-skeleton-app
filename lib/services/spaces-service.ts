@@ -8,14 +8,11 @@
 import { apiClient } from './api-client';
 import { Space, GetSpacesApiResponse } from '@/lib/types/api';
 
-// Note: The Spaces API uses a different base URL than the standard Yahoo Mail API
-// Base URL: https://stg-mobile.mail.yahoo.com/yai/autopilot
-const SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
-
 /**
  * Spaces Service Class
  *
  * Provides methods to interact with Yahoo Mail Autopilot Spaces API
+ * Routes requests through Next.js API to avoid CORS issues
  */
 class SpacesService {
   /**
@@ -23,6 +20,9 @@ class SpacesService {
    *
    * This function retrieves the list of AI-powered spaces configured for the user's account.
    * Spaces help organize emails into intelligent categories.
+   *
+   * Note: This calls the Next.js API route (/api/spaces) which then makes the server-side
+   * request to Yahoo Mail Autopilot API to avoid CORS issues.
    *
    * @param acctId - The account identifier (mailbox ID or account ID)
    * @param retryCount - Number of retry attempts (default: 0)
@@ -43,16 +43,15 @@ class SpacesService {
     genAI: boolean = true
   ): Promise<GetSpacesApiResponse> {
     try {
-      // Build query parameters
+      // Build query parameters for our Next.js API route
       const params = new URLSearchParams({
         acctId,
-        appid: 'YahooMailIosMobile',
         retryCount: retryCount.toString(),
         genAI: genAI.toString()
       });
 
-      // Construct the full URL
-      const url = `${SPACES_BASE_URL}/getSpaces?${params.toString()}`;
+      // Call our Next.js API route (server-side) to avoid CORS issues
+      const url = `/api/spaces?${params.toString()}`;
 
       // Get the current token for authorization
       const token = (apiClient as any).token;
