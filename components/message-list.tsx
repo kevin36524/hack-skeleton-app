@@ -65,39 +65,54 @@ export function MessageList({
       setLoading(true);
       setError(null);
 
-      // Extract email addresses from space data
-      const fromEmails = spaceData.emailSenders.map(sender => sender.email);
+      // Check if semantic filtering is enabled
+      const showSemanticMessages = spaceData.extraData?.showSemanticMessages === true;
+      const filteredMessageIds = spaceData.extraData?.filteredMessageIds || [];
 
-      // Extract keywords from space data
-      const keywords = spaceData.keywords;
+      if (showSemanticMessages && filteredMessageIds.length > 0) {
+        // Load only the filtered semantic messages
+        console.log('Loading semantic messages for space:', {
+          spaceId: spaceData.id,
+          messageCount: filteredMessageIds.length,
+        });
 
-      // Check if keywords should be included (default to true if not specified)
-      const includeKeywords = spaceData.extraData?.includeKeywords !== false;
+        const data = await messageService.getMessagesByIds(
+          mailboxId,
+          accountId,
+          filteredMessageIds
+        );
 
-      // Get message count (default to 50 if not specified)
-      const messageCount = spaceData.extraData?.messageCount || 50;
+        setMessages(data.messages || []);
+        setConversations(data.conversations || []);
+      } else {
+        // Load all messages using regular space query
+        const fromEmails = spaceData.emailSenders.map(sender => sender.email);
+        const keywords = spaceData.keywords;
+        const includeKeywords = spaceData.extraData?.includeKeywords !== false;
+        const messageCount = spaceData.extraData?.messageCount || 50;
 
-      console.log('Loading messages for space:', {
-        spaceId: spaceData.id,
-        fromEmails,
-        keywords,
-        includeKeywords,
-        messageCount,
-        accountId
-      });
+        console.log('Loading messages for space:', {
+          spaceId: spaceData.id,
+          fromEmails,
+          keywords,
+          includeKeywords,
+          messageCount,
+          accountId
+        });
 
-      const data = await messageService.getMessagesForSpace(
-        mailboxId,
-        accountId,
-        fromEmails,
-        keywords,
-        includeKeywords,
-        0, // offset
-        messageCount
-      );
+        const data = await messageService.getMessagesForSpace(
+          mailboxId,
+          accountId,
+          fromEmails,
+          keywords,
+          includeKeywords,
+          0, // offset
+          messageCount
+        );
 
-      setMessages(data.messages || []);
-      setConversations(data.conversations || []);
+        setMessages(data.messages || []);
+        setConversations(data.conversations || []);
+      }
     } catch (err) {
       setError('Failed to load space messages');
       console.error('Error loading space messages:', err);

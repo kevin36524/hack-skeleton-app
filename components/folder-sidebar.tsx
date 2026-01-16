@@ -13,6 +13,7 @@ import { SpacesSection } from '@/components/spaces-section';
 interface FolderSidebarProps {
   mailboxId: string;
   accountId?: string;
+  guid?: string;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
   onSpaceSelected?: (spaceId: string) => void;
@@ -30,6 +31,7 @@ interface FolderGroup {
 export function FolderSidebar({
   mailboxId,
   accountId,
+  guid,
   selectedFolderId,
   onFolderSelected,
   onSpaceSelected,
@@ -205,10 +207,12 @@ export function FolderSidebar({
     <ScrollArea className={cn('h-full', className)}>
       <div className="space-y-4">
         {/* Spaces Section */}
-        {accountId && (
+        {accountId && guid && (
           <div className="pt-4">
             <SpacesSection
               accountId={accountId}
+              mailboxId={mailboxId}
+              guid={guid}
               selectedSpaceId={selectedSpaceId}
               onSpaceSelected={onSpaceSelected}
               onSpaceDataUpdated={onSpaceDataUpdated}

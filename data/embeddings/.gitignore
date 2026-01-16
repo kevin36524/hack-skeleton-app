@@ -1,0 +1,9 @@
+# Ignore all faiss index files
+*.faiss
+*.index
+
+# Ignore metadata JSON files
+*.json
+
+# But keep this directory
+!.gitignore

@@ -113,6 +113,28 @@ class MessageService {
     }
   }
 
+  async getMessagesByIds(
+    mailboxId: string,
+    accountId: string,
+    messageIds: string[]
+  ): Promise<ListConversationsApiResponse> {
+    try {
+      // Build query with specific message IDs: id:(msgId1 msgId2 msgId3)
+      const idsQuery = messageIds.join(' ');
+      const query = `acctId:(${accountId})+id:(${idsQuery})`;
+
+      console.log('[MESSAGE SERVICE] Fetching messages by IDs, count:', messageIds.length);
+
+      const response = await apiClient.get<ApiResponse<ListConversationsApiResponse>>(
+        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${encodeURIComponent(query)}&responseTransform=btd_lm_ios&appid=YahooMailIosMobile`
+      );
+      return response.result;
+    } catch (error) {
+      console.error('Failed to fetch messages by IDs:', error);
+      throw error;
+    }
+  }
+
   async getMessagesBySearch(
     mailboxId: string,
     query: string,

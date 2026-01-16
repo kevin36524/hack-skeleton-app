@@ -15,6 +15,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Message, Space } from '@/lib/types/api';
 import { spacesService } from '@/lib/services/spaces-service';
+import { mailboxService } from '@/lib/services/mailbox-service';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -23,6 +24,7 @@ function MailPageContent() {
 
   const [mailboxId, setMailboxId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
+  const [guid, setGuid] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [spaceId, setSpaceId] = useState<string>('');
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
@@ -39,9 +41,26 @@ function MailPageContent() {
     }
   }, [searchParams]);
 
+  // Fetch guid when mailboxId is available
   useEffect(() => {
-    console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId);
-  }, [mailboxId, accountId, folderId]);
+    const fetchGuid = async () => {
+      if (mailboxId) {
+        try {
+          const mailboxData = await mailboxService.getMailbox();
+          setGuid(mailboxData.guid);
+          console.log('MailPage: Fetched guid:', mailboxData.guid);
+        } catch (error) {
+          console.error('Failed to fetch guid:', error);
+        }
+      }
+    };
+
+    fetchGuid();
+  }, [mailboxId]);
+
+  useEffect(() => {
+    console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId, 'guid:', guid);
+  }, [mailboxId, accountId, folderId, guid]);
 
   // Fetch space data when spaceId changes
   useEffect(() => {
@@ -225,6 +244,7 @@ function MailPageContent() {
                   <FolderSidebar
                     mailboxId={mailboxId}
                     accountId={accountId}
+                    guid={guid}
                     selectedFolderId={folderId}
                     selectedSpaceId={spaceId}
                     onFolderSelected={(id) => {

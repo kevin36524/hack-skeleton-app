@@ -421,6 +421,9 @@ export interface ExtraData {
   links?: string[];
   includeKeywords?: boolean;
   messageCount?: number;
+  allowlistedPhrases?: string[];
+  filteredMessageIds?: string[];
+  showSemanticMessages?: boolean;
   [key: string]: unknown;
 }
 

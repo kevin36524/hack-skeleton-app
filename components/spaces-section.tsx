@@ -11,6 +11,8 @@ import { SpaceDataDialog } from '@/components/space-data-dialog';
 
 interface SpacesSectionProps {
   accountId: string;
+  mailboxId: string;
+  guid: string;
   selectedSpaceId?: string;
   onSpaceSelected?: (spaceId: string) => void;
   onSpaceDataUpdated?: (spaceId: string, updatedSpace: Space) => void;
@@ -19,6 +21,8 @@ interface SpacesSectionProps {
 
 export function SpacesSection({
   accountId,
+  mailboxId,
+  guid,
   selectedSpaceId,
   onSpaceSelected,
   onSpaceDataUpdated,
@@ -230,6 +234,9 @@ export function SpacesSection({
 
       <SpaceDataDialog
         space={editingSpace}
+        accountId={accountId}
+        mailboxId={mailboxId}
+        guid={guid}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSave={handleSaveSpace}
