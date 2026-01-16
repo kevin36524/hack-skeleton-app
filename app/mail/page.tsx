@@ -13,7 +13,8 @@ import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Message } from '@/lib/types/api';
+import { Message, Space } from '@/lib/types/api';
+import { spacesService } from '@/lib/services/spaces-service';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -24,9 +25,11 @@ function MailPageContent() {
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [spaceId, setSpaceId] = useState<string>('');
+  const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [customSpaceData, setCustomSpaceData] = useState<Map<string, Space>>(new Map());
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -39,6 +42,32 @@ function MailPageContent() {
   useEffect(() => {
     console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId);
   }, [mailboxId, accountId, folderId]);
+
+  // Fetch space data when spaceId changes
+  useEffect(() => {
+    const fetchSpace = async () => {
+      if (spaceId && accountId) {
+        try {
+          // Check if we have custom data for this space
+          if (customSpaceData.has(spaceId)) {
+            setSelectedSpace(customSpaceData.get(spaceId)!);
+          } else {
+            const spacesResponse = await spacesService.getSpaces(accountId);
+            const allSpaces = [...spacesResponse.suggestedSpaces, ...spacesResponse.acceptedSpaces];
+            const space = allSpaces.find(s => s.id === spaceId);
+            setSelectedSpace(space || null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch space:', error);
+          setSelectedSpace(null);
+        }
+      } else {
+        setSelectedSpace(null);
+      }
+    };
+
+    fetchSpace();
+  }, [spaceId, accountId, customSpaceData]);
 
   const handleMailboxSelected = (id: string) => {
     console.log('MailPage: Mailbox selected:', id);
@@ -67,8 +96,20 @@ function MailPageContent() {
     setFolderId(''); // Clear folder selection when space is selected
     setSelectedMessage(null);
     setMobileView('list');
-    // Note: Space messages will need a separate implementation
-    // For now, this just tracks the selection
+  };
+
+  const handleSpaceDataUpdated = (updatedSpaceId: string, updatedSpace: Space) => {
+    console.log('MailPage: Space data updated:', updatedSpaceId, updatedSpace);
+    // Store the updated space data
+    setCustomSpaceData(prev => {
+      const newMap = new Map(prev);
+      newMap.set(updatedSpaceId, updatedSpace);
+      return newMap;
+    });
+    // Update the selected space if it's the current one
+    if (updatedSpaceId === spaceId) {
+      setSelectedSpace(updatedSpace);
+    }
   };
 
   const handleMessageSelected = (message: Message) => {
@@ -194,6 +235,7 @@ function MailPageContent() {
                       handleSpaceSelected(id);
                       setSidebarOpen(false);
                     }}
+                    onSpaceDataUpdated={handleSpaceDataUpdated}
                   />
                 ) : (
                   <div className="p-4 text-sm text-gray-500">Loading folders...</div>
@@ -218,7 +260,10 @@ function MailPageContent() {
                   {isReady ? (
                     <MessageList
                       mailboxId={mailboxId}
+                      accountId={accountId}
                       folderId={folderId}
+                      spaceId={spaceId}
+                      spaceData={selectedSpace}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
                     />
@@ -251,6 +296,7 @@ function MailPageContent() {
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
+                    rawJsonData={spaceId && selectedSpace ? selectedSpace : undefined}
                     onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
                     onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
                     onToggleStar={(messageId) => console.log('Toggle star:', messageId)}

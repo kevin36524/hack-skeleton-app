@@ -32,6 +32,7 @@ import { messageService } from '@/lib/services/message-service';
 interface MessageDetailProps {
   message: Message | null;
   mailboxId?: string;
+  rawJsonData?: any;
   onMarkAsRead?: (messageId: string) => void;
   onMarkAsUnread?: (messageId: string) => void;
   onToggleStar?: (messageId: string) => void;
@@ -44,6 +45,7 @@ interface MessageDetailProps {
 export function MessageDetail({
   message,
   mailboxId,
+  rawJsonData,
   onMarkAsRead,
   onMarkAsUnread,
   onToggleStar,
@@ -59,7 +61,7 @@ export function MessageDetail({
 
   // Fetch full message body when message changes
   useEffect(() => {
-    if (message && mailboxId) {
+    if (message && mailboxId && !rawJsonData) {
       const fetchFullBody = async () => {
         setLoadingBody(true);
         setBodyError(null);
@@ -81,7 +83,37 @@ export function MessageDetail({
       setFullBody(null);
       setBodyError(null);
     }
-  }, [message?.id, mailboxId]);
+  }, [message?.id, mailboxId, rawJsonData]);
+
+  // Handle raw JSON data display (for spaces)
+  if (rawJsonData && message?.id === 'raw-message') {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="border-b p-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold">
+                Raw Message - Space JSON Data
+              </h1>
+            </div>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto bg-gray-50 dark:bg-gray-900 p-4 rounded">
+                  {JSON.stringify(rawJsonData, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
 
   if (!message) {
     return (

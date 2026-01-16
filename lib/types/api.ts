@@ -384,16 +384,81 @@ export interface ApiResponseWrapper<T> {
 }
 
 // Spaces API Types
-export interface Space {
-  id: string;
+export interface EmailSender {
   name: string;
-  description?: string;
+  email: string;
+}
+
+export interface Attachment {
+  size: number;
+  contentId: string;
+  filename: string;
+  type: string;
+  subtype: string;
+  downloadUrl: string;
+}
+
+export interface PinnedMessage {
+  mid: string;
+  fid: string;
+  pinnedTime: number;
+  cid?: string;
+}
+
+export interface Note {
+  id: string;
+  type: string;
+  text: string;
+  createdTime: number;
+  updatedTime: number;
+}
+
+export interface ExtraData {
+  sectionOrder?: string[];
+  attachments?: Attachment[];
+  pinnedMessages?: PinnedMessage[];
+  notes?: Note[];
+  links?: string[];
+  includeKeywords?: boolean;
   messageCount?: number;
-  lastUpdated?: string;
   [key: string]: unknown;
 }
 
+export interface Space {
+  id: string;
+  name: string;
+  shortName: string;
+  justification: string;
+  relevanceScore: number;
+  subjects: string[];
+  keywords: string[];
+  emailSenders: EmailSender[];
+  status: "suggested" | "accepted";
+  createdAt: string;
+  updatedAt: string;
+  extraData?: ExtraData;
+}
+
+export interface Performance {
+  totalTimeMs: number;
+  uapRetrievalMs: number;
+  recentSearchesMs: number;
+  aiProcessingMs: number;
+  storageRetrievalMs: number;
+  storageSaveMs: number;
+}
+
+export interface Storage {
+  isFromCache: boolean;
+  lastGenerated: string;
+  version: string;
+  compressionRatio: number;
+}
+
 export interface GetSpacesApiResponse {
-  spaces: Space[];
-  [key: string]: unknown;
+  success: boolean;
+  suggestedSpaces: Space[];
+  acceptedSpaces: Space[];
+  performance: Performance;
+  storage: Storage;
 }

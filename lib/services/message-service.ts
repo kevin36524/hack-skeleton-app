@@ -65,6 +65,54 @@ class MessageService {
     return this.getConversations(mailboxId, folderId);
   }
 
+  async getMessagesForSpace(
+    mailboxId: string,
+    accountId: string,
+    fromEmails: string[],
+    keywords: string[],
+    includeKeywords = true,
+    offset = 0,
+    count = 50
+  ): Promise<ListConversationsApiResponse> {
+    try {
+      // Build fromEmail query part: fromEmail:(email1 OR email2 OR email3)
+      const fromEmailQuery = fromEmails.length > 0
+        ? `fromEmail:(${fromEmails.map(email => encodeURIComponent(email)).join('%20OR%20')})`
+        : '';
+
+      // Build keyword query part: keyword:(keyword1 OR keyword2 OR keyword3)
+      // Only include if includeKeywords is true
+      const keywordQuery = includeKeywords && keywords.length > 0
+        ? `keyword:(${keywords.map(kw => encodeURIComponent(kw)).join('%20OR%20')})`
+        : '';
+
+      // Build the full query
+      let query = `acctId:(${accountId})+offset:${offset}+count:${count}`;
+
+      if (fromEmailQuery && keywordQuery) {
+        query += `+${fromEmailQuery}+AND+${keywordQuery}`;
+      } else if (fromEmailQuery) {
+        query += `+${fromEmailQuery}`;
+      } else if (keywordQuery) {
+        query += `+${keywordQuery}`;
+      }
+
+      // Add folder type filters
+      query += '+-foldertype:BULK+-foldertype:TRASH+-foldertype:DRAFT+-foldertype:ARCHIVE+-foldertype:EXTERNAL_ALL';
+
+      console.log('[MESSAGE SERVICE] Space query:', query);
+      console.log('[MESSAGE SERVICE] Include keywords:', includeKeywords, 'Count:', count);
+
+      const response = await apiClient.get<ApiResponse<ListConversationsApiResponse>>(
+        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${query}&responseTransform=btd_lm_ios&appid=YahooMailIosMobile`
+      );
+      return response.result;
+    } catch (error) {
+      console.error('Failed to fetch messages for space:', error);
+      throw error;
+    }
+  }
+
   async getMessagesBySearch(
     mailboxId: string,
     query: string,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { folderService } from '@/lib/services/folder-service';
-import { Folder } from '@/lib/types/api';
+import { Folder, Space } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -17,6 +17,7 @@ interface FolderSidebarProps {
   onFolderSelected?: (folderId: string) => void;
   onSpaceSelected?: (spaceId: string) => void;
   selectedSpaceId?: string;
+  onSpaceDataUpdated?: (spaceId: string, updatedSpace: Space) => void;
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export function FolderSidebar({
   onFolderSelected,
   onSpaceSelected,
   selectedSpaceId,
+  onSpaceDataUpdated,
   className
 }: FolderSidebarProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -209,6 +211,7 @@ export function FolderSidebar({
               accountId={accountId}
               selectedSpaceId={selectedSpaceId}
               onSpaceSelected={onSpaceSelected}
+              onSpaceDataUpdated={onSpaceDataUpdated}
             />
           </div>
         )}

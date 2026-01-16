@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { messageService } from '@/lib/services/message-service';
-import { Message, Conversation } from '@/lib/types/api';
+import { Message, Conversation, Space } from '@/lib/types/api';
 import { formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +10,14 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
+import { Star, Paperclip, Reply, Forward, AlertCircle, FileJson } from 'lucide-react';
 
 interface MessageListProps {
   mailboxId: string;
   folderId: string;
+  accountId: string;
+  spaceId?: string;
+  spaceData?: Space | null;
   onMessageSelected?: (message: Message) => void;
   selectedMessageId?: string;
 }
@@ -26,11 +29,14 @@ interface GroupedMessage {
   conversation: Conversation | undefined;
 }
 
-export function MessageList({ 
-  mailboxId, 
-  folderId, 
-  onMessageSelected, 
-  selectedMessageId 
+export function MessageList({
+  mailboxId,
+  folderId,
+  accountId,
+  spaceId,
+  spaceData,
+  onMessageSelected,
+  selectedMessageId
 }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -52,11 +58,68 @@ export function MessageList({
     }
   }, [mailboxId, folderId]);
 
-  useEffect(() => {
-    if (mailboxId && folderId) {
-      loadMessages();
+  const loadSpaceMessages = useCallback(async () => {
+    if (!spaceData || !accountId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Extract email addresses from space data
+      const fromEmails = spaceData.emailSenders.map(sender => sender.email);
+
+      // Extract keywords from space data
+      const keywords = spaceData.keywords;
+
+      // Check if keywords should be included (default to true if not specified)
+      const includeKeywords = spaceData.extraData?.includeKeywords !== false;
+
+      // Get message count (default to 50 if not specified)
+      const messageCount = spaceData.extraData?.messageCount || 50;
+
+      console.log('Loading messages for space:', {
+        spaceId: spaceData.id,
+        fromEmails,
+        keywords,
+        includeKeywords,
+        messageCount,
+        accountId
+      });
+
+      const data = await messageService.getMessagesForSpace(
+        mailboxId,
+        accountId,
+        fromEmails,
+        keywords,
+        includeKeywords,
+        0, // offset
+        messageCount
+      );
+
+      setMessages(data.messages || []);
+      setConversations(data.conversations || []);
+    } catch (err) {
+      setError('Failed to load space messages');
+      console.error('Error loading space messages:', err);
+    } finally {
+      setLoading(false);
     }
-  }, [loadMessages]);
+  }, [mailboxId, accountId, spaceData]);
+
+  useEffect(() => {
+    if (spaceId && spaceData) {
+      // Load messages for space
+      loadSpaceMessages();
+    } else if (mailboxId && folderId) {
+      // Load messages for folder
+      loadMessages();
+    } else {
+      // No selection
+      setLoading(false);
+      setMessages([]);
+      setConversations([]);
+    }
+  }, [loadMessages, loadSpaceMessages, mailboxId, folderId, spaceId, spaceData]);
 
   const groupedMessages = useMemo(() => {
     const grouped = new Map<string, GroupedMessage>();
@@ -72,7 +135,7 @@ export function MessageList({
           existing.latestMessage = message;
         }
       } else {
-        const conversation = conversations.find(c => c.id === message.conversationId);
+        const conversation = conversations?.find(c => c.id === message.conversationId);
         grouped.set(message.conversationId, {
           conversationId: message.conversationId,
           latestMessage: message,

@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('[SPACES API] Success, spaces count:', data.spaces?.length || 0);
+    console.log('[SPACES API] Success - Suggested:', data.suggestedSpaces?.length || 0, '- Accepted:', data.acceptedSpaces?.length || 0);
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
