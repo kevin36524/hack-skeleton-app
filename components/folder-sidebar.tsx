@@ -227,9 +227,9 @@ export function FolderSidebar({
                           selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
                         )}
                       >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center space-x-2">
-                            <Icon className="h-4 w-4" />
+                        <div className="flex items-center justify-between w-full min-w-0">
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <Icon className="h-4 w-4 flex-shrink-0" />
                             <span className="truncate">{folder.name}</span>
                           </div>
                           <div className="flex items-center space-x-1 text-xs">
