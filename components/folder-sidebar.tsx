@@ -6,7 +6,7 @@ import { Folder } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FolderSidebarProps {
@@ -15,6 +15,8 @@ interface FolderSidebarProps {
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
   className?: string;
+  isCollapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 interface FolderGroup {
@@ -28,7 +30,9 @@ export function FolderSidebar({
   accountId,
   selectedFolderId,
   onFolderSelected,
-  className
+  className,
+  isCollapsed = false,
+  onCollapsedChange
 }: FolderSidebarProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,15 +199,41 @@ export function FolderSidebar({
   const folderGroups = groupFolders();
 
   return (
-    <ScrollArea className={cn('h-full', className)}>
-      <div className="space-y-4 p-4">
+    <div className={cn('h-full flex flex-col', className)}>
+      {/* Header with collapse button */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        {!isCollapsed && (
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Folders</h2>
+        )}
+        {onCollapsedChange && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onCollapsedChange(!isCollapsed)}
+            className="hidden md:flex ml-auto"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 p-4">
         {folderGroups.map((group) => (
           <div key={group.name}>
             <Collapsible
               open={!collapsedGroups.has(group.name)}
               onOpenChange={() => toggleGroup(group.name)}
             >
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+              <CollapsibleTrigger className={cn(
+                "flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md",
+                isCollapsed && "hidden"
+              )}>
                 <span>{group.name}</span>
                 <ChevronRight
                   className={cn(
@@ -216,6 +246,25 @@ export function FolderSidebar({
                 <nav className="space-y-1 mt-2">
                   {group.folders.map((folder) => {
                     const Icon = getFolderIcon(folder);
+
+                    if (isCollapsed) {
+                      return (
+                        <Button
+                          key={folder.id}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onFolderSelected?.(folder.id)}
+                          className={cn(
+                            'w-full justify-center px-2',
+                            selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                          )}
+                          title={folder.name}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Button>
+                      );
+                    }
+
                     return (
                       <Button
                         key={folder.id}
@@ -253,5 +302,6 @@ export function FolderSidebar({
         ))}
       </div>
     </ScrollArea>
+    </div>
   );
 }
