@@ -272,16 +272,16 @@ export function FolderSidebar({
                         size="sm"
                         onClick={() => onFolderSelected?.(folder.id)}
                         className={cn(
-                          'w-full justify-start text-left font-normal',
+                          'w-full justify-start text-left font-normal whitespace-normal h-auto py-2',
                           selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
                         )}
                       >
-                        <div className="flex items-center justify-between w-full min-w-0">
-                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <Icon className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{folder.name}</span>
+                        <div className="flex items-start justify-between w-full min-w-0 gap-2">
+                          <div className="flex items-start space-x-2 min-w-0 flex-1">
+                            <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                            <span className="break-all">{folder.name}</span>
                           </div>
-                          <div className="flex items-center space-x-1 text-xs">
+                          <div className="flex items-center space-x-1 text-xs flex-shrink-0">
                             {folder.unread > 0 && (
                               <span className="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
                                 {folder.unread}
