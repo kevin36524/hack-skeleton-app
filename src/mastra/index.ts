@@ -1,6 +1,7 @@
 import { PinoLogger } from '@mastra/loggers';
 import { Mastra } from '@mastra/core/mastra';
 import { phraseGenerator } from './agents/phrase-generator';
+import { feedbackPhraseGenerator } from './agents/feedback-phrase-generator';
 
 
 export const mastra = new Mastra({
@@ -9,6 +10,7 @@ export const mastra = new Mastra({
   },
   agents: {
     phraseGenerator,
+    feedbackPhraseGenerator,
   },
   logger: new PinoLogger({
     name: 'Mastra',

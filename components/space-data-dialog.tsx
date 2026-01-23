@@ -42,14 +42,14 @@ export function SpaceDataDialog({
   const [editedSpace, setEditedSpace] = useState<Space | null>(null);
   const [showRawJson, setShowRawJson] = useState(false);
   const [rawJsonText, setRawJsonText] = useState('');
-  const [embeddingExists, setEmbeddingExists] = useState(false);
-  const [embeddingLoading, setEmbeddingLoading] = useState(false);
-  const [embeddingStatus, setEmbeddingStatus] = useState('');
-  const [embeddingError, setEmbeddingError] = useState<string | null>(null);
   const [phrasesLoading, setPhrasesLoading] = useState(false);
   const [phrasesStatus, setPhrasesStatus] = useState('');
   const [phrasesError, setPhrasesError] = useState<string | null>(null);
-  const [generatedPhrases, setGeneratedPhrases] = useState<string[]>([]);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [similarEmailsLoading, setSimilarEmailsLoading] = useState(false);
+  const [similarEmailsStatus, setSimilarEmailsStatus] = useState('');
+  const [similarEmailsError, setSimilarEmailsError] = useState<string | null>(null);
   const [showMessageIds, setShowMessageIds] = useState(false);
 
   useEffect(() => {
@@ -68,78 +68,6 @@ export function SpaceDataDialog({
     }
   }, [space]);
 
-  // Check if embeddings exist when dialog opens
-  useEffect(() => {
-    const checkEmbeddings = async () => {
-      if (open && space && guid && accountId) {
-        try {
-          const result = await embeddingService.checkExists(guid, accountId, space.name);
-          setEmbeddingExists(result.exists);
-        } catch (error) {
-          console.error('Failed to check embeddings:', error);
-        }
-      }
-    };
-
-    checkEmbeddings();
-  }, [open, space, guid, accountId]);
-
-  const handleGenerateEmbeddings = async () => {
-    if (!editedSpace) return;
-
-    setEmbeddingLoading(true);
-    setEmbeddingError(null);
-    setEmbeddingStatus('Preparing...');
-
-    try {
-      // Get auth token from apiClient
-      const token = (apiClient as any).token;
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      setEmbeddingStatus('Fetching messages...');
-
-      const response = await fetch('/api/embeddings/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          mailboxId,
-          accountId,
-          guid,
-          space: editedSpace,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate embeddings');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setEmbeddingStatus(`✓ Complete! Generated ${result.embeddingCount} embeddings`);
-        setEmbeddingExists(true);
-        setTimeout(() => {
-          setEmbeddingLoading(false);
-          setEmbeddingStatus('');
-        }, 2000);
-      } else {
-        throw new Error(result.error || 'Failed to generate embeddings');
-      }
-    } catch (error) {
-      console.error('Error generating embeddings:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setEmbeddingError(errorMessage);
-      setEmbeddingLoading(false);
-      setEmbeddingStatus('');
-    }
-  };
-
   const handleGeneratePhrases = async () => {
     if (!editedSpace) return;
 
@@ -155,16 +83,14 @@ export function SpaceDataDialog({
       });
 
       if (result.success) {
-        setGeneratedPhrases(result.phrases);
-        setPhrasesStatus(`✓ Generated ${result.phrases.length} phrases, found ${result.totalMatches} matching messages`);
+        setPhrasesStatus(`✓ Generated ${result.phrases.length} phrases`);
 
-        // Update the space's extraData with filtered message IDs and phrases
+        // Update the space's extraData with phrases (no message IDs yet)
         const updatedSpace = {
           ...editedSpace,
           extraData: {
             ...editedSpace.extraData,
             allowlistedPhrases: result.phrases,
-            filteredMessageIds: result.filteredMessageIds,
           },
         };
         setEditedSpace(updatedSpace);
@@ -172,7 +98,7 @@ export function SpaceDataDialog({
         setTimeout(() => {
           setPhrasesLoading(false);
           setPhrasesStatus('');
-        }, 3000);
+        }, 2000);
       } else {
         throw new Error(result.error || 'Failed to generate phrases');
       }
@@ -182,6 +108,124 @@ export function SpaceDataDialog({
       setPhrasesError(errorMessage);
       setPhrasesLoading(false);
       setPhrasesStatus('');
+    }
+  };
+
+  const handleGenerateFeedbackPhrases = async (phraseType: 'allowlist' | 'blocklist') => {
+    if (!editedSpace || !feedbackInput.trim()) return;
+
+    setFeedbackLoading(true);
+    setPhrasesError(null);
+
+    try {
+      const result = await embeddingService.generateFeedbackPhrases({
+        guid,
+        accountId,
+        space: editedSpace,
+        userFeedback: feedbackInput,
+        phraseType,
+      });
+
+      if (result.success) {
+        // Add generated phrases to the appropriate list
+        const currentPhrases = phraseType === 'allowlist'
+          ? (editedSpace.extraData?.allowlistedPhrases || [])
+          : (editedSpace.extraData?.blocklistedPhrases || []);
+
+        const updatedPhrases = [...currentPhrases, ...result.phrases];
+
+        const updatedSpace = {
+          ...editedSpace,
+          extraData: {
+            ...editedSpace.extraData,
+            ...(phraseType === 'allowlist'
+              ? { allowlistedPhrases: updatedPhrases }
+              : { blocklistedPhrases: updatedPhrases }
+            ),
+          },
+        };
+        setEditedSpace(updatedSpace);
+        setFeedbackInput('');
+        setFeedbackLoading(false);
+      } else {
+        throw new Error(result.error || 'Failed to generate phrases');
+      }
+    } catch (error) {
+      console.error('Error generating feedback phrases:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setPhrasesError(errorMessage);
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleFindSimilarEmails = async () => {
+    if (!editedSpace) return;
+
+    // Check if phrases exist
+    const allowlistedPhrases = editedSpace.extraData?.allowlistedPhrases || [];
+    if (allowlistedPhrases.length === 0) {
+      setSimilarEmailsError('Please generate allowlisted phrases first');
+      return;
+    }
+
+    setSimilarEmailsLoading(true);
+    setSimilarEmailsError(null);
+    setSimilarEmailsStatus('Finding similar emails...');
+
+    try {
+      // Get auth token from apiClient
+      const token = (apiClient as any).token;
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch('/api/embeddings/find-similar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mailboxId,
+          accountId,
+          guid,
+          space: editedSpace,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to find similar emails');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSimilarEmailsStatus(`✓ Found ${result.totalMatches} matching messages`);
+
+        // Update the space's extraData with filtered message IDs
+        const updatedSpace = {
+          ...editedSpace,
+          extraData: {
+            ...editedSpace.extraData,
+            filteredMessageIds: result.filteredMessageIds,
+          },
+        };
+        setEditedSpace(updatedSpace);
+
+        setTimeout(() => {
+          setSimilarEmailsLoading(false);
+          setSimilarEmailsStatus('');
+        }, 2000);
+      } else {
+        throw new Error(result.error || 'Failed to find similar emails');
+      }
+    } catch (error) {
+      console.error('Error finding similar emails:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setSimilarEmailsError(errorMessage);
+      setSimilarEmailsLoading(false);
+      setSimilarEmailsStatus('');
     }
   };
 
@@ -469,181 +513,347 @@ export function SpaceDataDialog({
                 />
               </div>
 
-              {/* Vector Embeddings Section */}
+              {/* Allowlisted Phrases Section */}
               <div className="space-y-3 pt-4 border-t">
                 <div className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <Label className="text-base font-semibold">Vector Embeddings</Label>
+                  <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <Label className="text-base font-semibold">Allowlisted Phrases</Label>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Generate text embeddings for similarity search and semantic analysis.
-                  Embeddings are created from email subjects and snippets.
+                  AI-generate semantic phrases to identify relevant emails for this space.
                 </p>
 
                 <Button
-                  onClick={handleGenerateEmbeddings}
-                  disabled={embeddingLoading}
-                  variant={embeddingExists ? 'outline' : 'default'}
+                  onClick={handleGeneratePhrases}
+                  disabled={phrasesLoading}
+                  variant="default"
                   className="w-full"
                 >
-                  {embeddingLoading ? (
+                  {phrasesLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {embeddingStatus || 'Generating...'}
-                    </>
-                  ) : embeddingExists ? (
-                    <>
-                      <Database className="h-4 w-4 mr-2" />
-                      Recompute Embeddings
+                      {phrasesStatus || 'Generating...'}
                     </>
                   ) : (
                     <>
-                      <Database className="h-4 w-4 mr-2" />
-                      Generate Embeddings
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Allowlisted Phrases
                     </>
                   )}
                 </Button>
 
-                {embeddingError && (
+                {phrasesError && (
                   <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                    Error: {embeddingError}
+                    Error: {phrasesError}
                   </div>
                 )}
 
-                {embeddingExists && !embeddingLoading && !embeddingError && (
-                  <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md flex items-center gap-2">
-                    <Database className="h-4 w-4" />
-                    Embeddings file exists for this space
+                {phrasesStatus && (
+                  <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                    {phrasesStatus}
+                  </div>
+                )}
+
+                {/* Editable Allowlisted Phrases */}
+                {editedSpace.extraData?.allowlistedPhrases && editedSpace.extraData.allowlistedPhrases.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Phrases ({editedSpace.extraData.allowlistedPhrases.length})</Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const updatedSpace = {
+                            ...editedSpace,
+                            extraData: {
+                              ...editedSpace.extraData,
+                              allowlistedPhrases: [...(editedSpace.extraData?.allowlistedPhrases || []), '']
+                            }
+                          };
+                          setEditedSpace(updatedSpace);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto border rounded-md p-2 bg-gray-50 dark:bg-gray-800">
+                      {editedSpace.extraData.allowlistedPhrases.map((phrase, idx) => (
+                        <div key={idx} className="flex gap-2 items-center mb-2">
+                          <Input
+                            placeholder="Phrase"
+                            value={phrase}
+                            onChange={(e) => {
+                              const newPhrases = [...(editedSpace.extraData?.allowlistedPhrases || [])];
+                              newPhrases[idx] = e.target.value;
+                              setEditedSpace({
+                                ...editedSpace,
+                                extraData: {
+                                  ...editedSpace.extraData,
+                                  allowlistedPhrases: newPhrases
+                                }
+                              });
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newPhrases = [...(editedSpace.extraData?.allowlistedPhrases || [])];
+                              newPhrases.splice(idx, 1);
+                              setEditedSpace({
+                                ...editedSpace,
+                                extraData: {
+                                  ...editedSpace.extraData,
+                                  allowlistedPhrases: newPhrases
+                                }
+                              });
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Allowlisted Phrases Section */}
-              {embeddingExists && (
-                <div className="space-y-3 pt-4 border-t">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                    <Label className="text-base font-semibold">Allowlisted Phrases</Label>
+              {/* Blocklisted Phrases Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <Label className="text-base font-semibold">Blocklisted Phrases</Label>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Generate phrases to exclude certain types of emails from this space.
+                </p>
+
+                {/* Editable Blocklisted Phrases */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Phrases ({editedSpace.extraData?.blocklistedPhrases?.length || 0})</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const updatedSpace = {
+                          ...editedSpace,
+                          extraData: {
+                            ...editedSpace.extraData,
+                            blocklistedPhrases: [...(editedSpace.extraData?.blocklistedPhrases || []), '']
+                          }
+                        };
+                        setEditedSpace(updatedSpace);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    AI-generate semantic phrases to filter relevant emails using vector similarity.
-                    Matches will be saved to this space's filtered messages.
-                  </p>
-
-                  <Button
-                    onClick={handleGeneratePhrases}
-                    disabled={phrasesLoading || !embeddingExists}
-                    variant="default"
-                    className="w-full"
-                  >
-                    {phrasesLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {phrasesStatus || 'Generating...'}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Create Allowlisted Phrases
-                      </>
-                    )}
-                  </Button>
-
-                  {phrasesError && (
-                    <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                      Error: {phrasesError}
-                    </div>
-                  )}
-
-                  {generatedPhrases.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
-                        {phrasesStatus || `Generated ${generatedPhrases.length} phrases`}
-                      </div>
-                      <div className="max-h-40 overflow-y-auto border rounded-md p-3 bg-gray-50 dark:bg-gray-800">
-                        <ul className="space-y-1 text-sm">
-                          {generatedPhrases.map((phrase, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <span className="text-purple-600 dark:text-purple-400">•</span>
-                              <span>{phrase}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {editedSpace.extraData?.filteredMessageIds && (
-                        <div className="space-y-3">
-                          {/* Show Semantic Messages Toggle */}
-                          <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-                            <Checkbox
-                              id="show-semantic"
-                              checked={editedSpace.extraData?.showSemanticMessages === true}
-                              onCheckedChange={(checked) => {
-                                setEditedSpace({
-                                  ...editedSpace,
-                                  extraData: {
-                                    ...editedSpace.extraData,
-                                    showSemanticMessages: checked === true
-                                  }
-                                });
-                              }}
-                            />
-                            <div className="flex-1">
-                              <label
-                                htmlFor="show-semantic"
-                                className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer block"
-                              >
-                                Show semantic messages only
-                              </label>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                Display only the {editedSpace.extraData.filteredMessageIds.length} messages matching allowlisted phrases
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Collapsible Message IDs */}
-                          <Collapsible
-                            open={showMessageIds}
-                            onOpenChange={setShowMessageIds}
+                  {editedSpace.extraData?.blocklistedPhrases && editedSpace.extraData.blocklistedPhrases.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto border rounded-md p-2 bg-gray-50 dark:bg-gray-800">
+                      {editedSpace.extraData.blocklistedPhrases.map((phrase, idx) => (
+                        <div key={idx} className="flex gap-2 items-center mb-2">
+                          <Input
+                            placeholder="Phrase"
+                            value={phrase}
+                            onChange={(e) => {
+                              const newPhrases = [...(editedSpace.extraData?.blocklistedPhrases || [])];
+                              newPhrases[idx] = e.target.value;
+                              setEditedSpace({
+                                ...editedSpace,
+                                extraData: {
+                                  ...editedSpace.extraData,
+                                  blocklistedPhrases: newPhrases
+                                }
+                              });
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newPhrases = [...(editedSpace.extraData?.blocklistedPhrases || [])];
+                              newPhrases.splice(idx, 1);
+                              setEditedSpace({
+                                ...editedSpace,
+                                extraData: {
+                                  ...editedSpace.extraData,
+                                  blocklistedPhrases: newPhrases
+                                }
+                              });
+                            }}
                           >
-                            <CollapsibleTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full justify-between text-xs"
-                              >
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  {editedSpace.extraData.filteredMessageIds.length} messages matched
-                                </span>
-                                <ChevronDown
-                                  className={cn(
-                                    'h-4 w-4 transition-transform',
-                                    showMessageIds && 'rotate-180'
-                                  )}
-                                />
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="mt-2 max-h-60 overflow-y-auto border rounded-md p-3 bg-white dark:bg-gray-900">
-                                <div className="space-y-1">
-                                  {editedSpace.extraData.filteredMessageIds.map((mid, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="text-xs font-mono text-gray-700 dark:text-gray-300 py-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                    >
-                                      {idx + 1}. {mid}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+
+              {/* User Feedback Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Label className="text-base font-semibold">Add Phrases from Feedback</Label>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Describe what to include or exclude, and AI will generate relevant phrases.
+                </p>
+
+                <Textarea
+                  placeholder='e.g., "remove deals" or "add flight cancellation"'
+                  value={feedbackInput}
+                  onChange={(e) => setFeedbackInput(e.target.value)}
+                  rows={2}
+                />
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleGenerateFeedbackPhrases('allowlist')}
+                    disabled={feedbackLoading || !feedbackInput.trim()}
+                    variant="default"
+                    className="flex-1"
+                  >
+                    {feedbackLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Add to Allowlist
+                  </Button>
+                  <Button
+                    onClick={() => handleGenerateFeedbackPhrases('blocklist')}
+                    disabled={feedbackLoading || !feedbackInput.trim()}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    {feedbackLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4 mr-2" />
+                    )}
+                    Add to Blocklist
+                  </Button>
+                </div>
+              </div>
+
+              {/* Find Similar Emails Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <Label className="text-base font-semibold">Find Similar Emails</Label>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Generate embeddings in memory and find emails matching your phrases. Embeddings are not saved.
+                </p>
+
+                <Button
+                  onClick={handleFindSimilarEmails}
+                  disabled={similarEmailsLoading || !editedSpace.extraData?.allowlistedPhrases?.length}
+                  variant="default"
+                  className="w-full"
+                >
+                  {similarEmailsLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {similarEmailsStatus || 'Finding...'}
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      Find Similar Emails
+                    </>
+                  )}
+                </Button>
+
+                {similarEmailsError && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+                    Error: {similarEmailsError}
+                  </div>
+                )}
+
+                {similarEmailsStatus && (
+                  <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                    {similarEmailsStatus}
+                  </div>
+                )}
+
+                {editedSpace.extraData?.filteredMessageIds && editedSpace.extraData.filteredMessageIds.length > 0 && (
+                  <div className="space-y-3">
+                    {/* Show Semantic Messages Toggle */}
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                      <Checkbox
+                        id="show-semantic"
+                        checked={editedSpace.extraData?.showSemanticMessages === true}
+                        onCheckedChange={(checked) => {
+                          setEditedSpace({
+                            ...editedSpace,
+                            extraData: {
+                              ...editedSpace.extraData,
+                              showSemanticMessages: checked === true
+                            }
+                          });
+                        }}
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor="show-semantic"
+                          className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer block"
+                        >
+                          Show semantic messages only
+                        </label>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Display only the {editedSpace.extraData.filteredMessageIds.length} messages matching your phrases
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Collapsible Message IDs */}
+                    <Collapsible
+                      open={showMessageIds}
+                      onOpenChange={setShowMessageIds}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between text-xs"
+                        >
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {editedSpace.extraData.filteredMessageIds.length} messages matched
+                          </span>
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 transition-transform',
+                              showMessageIds && 'rotate-180'
+                            )}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 max-h-60 overflow-y-auto border rounded-md p-3 bg-white dark:bg-gray-900">
+                          <div className="space-y-1">
+                            {editedSpace.extraData.filteredMessageIds.map((mid, idx) => (
+                              <div
+                                key={idx}
+                                className="text-xs font-mono text-gray-700 dark:text-gray-300 py-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                              >
+                                {idx + 1}. {mid}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                )}
+              </div>
             </>
           )}
 

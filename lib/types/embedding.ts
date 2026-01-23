@@ -36,3 +36,31 @@ export interface GeneratePhrasesResponse {
   error?: string;
   details?: string;
 }
+
+export interface GenerateFeedbackPhrasesRequest {
+  guid: string;
+  accountId: string;
+  space: Space;
+  userFeedback: string;
+  phraseType: 'allowlist' | 'blocklist';
+}
+
+export interface GenerateFeedbackPhrasesResponse {
+  success: boolean;
+  phrases: string[];
+  error?: string;
+}
+
+export interface FindSimilarEmailsRequest {
+  mailboxId: string;
+  accountId: string;
+  guid: string;
+  space: Space;
+}
+
+export interface FindSimilarEmailsResponse {
+  success: boolean;
+  filteredMessageIds: string[];
+  totalMatches: number;
+  error?: string;
+}

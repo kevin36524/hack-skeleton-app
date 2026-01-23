@@ -4,6 +4,10 @@ import {
   EmbeddingCheckResponse,
   GeneratePhrasesRequest,
   GeneratePhrasesResponse,
+  GenerateFeedbackPhrasesRequest,
+  GenerateFeedbackPhrasesResponse,
+  FindSimilarEmailsRequest,
+  FindSimilarEmailsResponse,
 } from '@/lib/types/embedding';
 
 class EmbeddingService {
@@ -83,6 +87,60 @@ class EmbeddingService {
       return data;
     } catch (error) {
       console.error('Error generating allowlisted phrases:', error);
+      throw error;
+    }
+  }
+
+  async generateFeedbackPhrases(
+    request: GenerateFeedbackPhrasesRequest
+  ): Promise<GenerateFeedbackPhrasesResponse> {
+    try {
+      const response = await fetch('/api/embeddings/generate-feedback-phrases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to generate feedback phrases: ${response.statusText}`
+        );
+      }
+
+      const data: GenerateFeedbackPhrasesResponse = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error generating feedback phrases:', error);
+      throw error;
+    }
+  }
+
+  async findSimilarEmails(
+    request: FindSimilarEmailsRequest
+  ): Promise<FindSimilarEmailsResponse> {
+    try {
+      const response = await fetch('/api/embeddings/find-similar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to find similar emails: ${response.statusText}`
+        );
+      }
+
+      const data: FindSimilarEmailsResponse = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error finding similar emails:', error);
       throw error;
     }
   }
