@@ -294,7 +294,7 @@ export function MessageDetail({
                           <Paperclip className="h-4 w-4" />
                           <span className="text-sm font-medium">{(attachment.filename as string) || `Attachment ${index + 1}`}</span>
                           <Badge variant="outline" className="text-xs">
-                            {(attachment.size as string) || 'Unknown size'}
+                            {attachment.size ? String(attachment.size) : 'Unknown size'}
                           </Badge>
                         </div>
                         <Button
