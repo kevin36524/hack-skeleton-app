@@ -476,7 +476,7 @@ export function SpaceDataDialog({
                   <Label className="text-base font-semibold">Vector Embeddings</Label>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Generate OpenAI text embeddings for similarity search and semantic analysis.
+                  Generate text embeddings for similarity search and semantic analysis.
                   Embeddings are created from email subjects and snippets.
                 </p>
 

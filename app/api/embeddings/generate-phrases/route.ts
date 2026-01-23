@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import OpenAI from 'openai';
 import { IndexFlatL2 } from 'faiss-node';
 import { Space } from '@/lib/types/api';
 import { mastra } from '@/src/mastra';
+import { embeddingProvider } from '@/lib/utils/embedding-provider';
 
 interface GeneratePhrasesRequest {
   guid: string;
@@ -14,14 +14,8 @@ interface GeneratePhrasesRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate OpenAI API key for embeddings
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured in environment' },
-        { status: 500 }
-      );
-    }
+    // Log the embedding provider being used
+    console.log('[PHRASES] Provider:', embeddingProvider.getProvider());
 
     // Parse request body
     const body: GeneratePhrasesRequest = await request.json();
@@ -90,15 +84,11 @@ ${JSON.stringify(spaceContext, null, 2)}`;
     // Step 2: Generate embeddings for phrases
     console.log('[PHRASES] Step 2: Generating phrase embeddings...');
 
-    const openai = new OpenAI({ apiKey: openaiApiKey });
+    const embeddingResult = await embeddingProvider.generateEmbeddings(phrases);
+    const phraseVectors = embeddingResult.embeddings;
 
-    const phraseEmbeddings = await openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: phrases,
-      encoding_format: 'float',
-    });
-
-    const phraseVectors = phraseEmbeddings.data.map((d: any) => d.embedding);
+    console.log('[PHRASES] Generated', phraseVectors.length, 'phrase embeddings');
+    console.log('[PHRASES] Model:', embeddingResult.model);
 
     // Step 3: Load existing Faiss index and metadata
     console.log('[PHRASES] Step 3: Loading existing embeddings...');

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/services/api-client';
+import { getQueryClient } from '@/lib/react-query-provider';
 
 interface AuthContextType {
   token: string | null;
@@ -76,9 +77,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = () => {
-    console.log('[AUTH] Logging out, clearing localStorage');
+    console.log('[AUTH] Logging out, clearing localStorage and cache');
     // Clear token from localStorage
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    // Clear UI state from localStorage (sidebar, panels, etc.)
+    localStorage.removeItem('sidebar-collapsed');
+    localStorage.removeItem('panel-sizes');
+    // Clear all React Query cached data (mailboxes, folders, messages, etc.)
+    const queryClient = getQueryClient();
+    queryClient.clear();
+    console.log('[AUTH] React Query cache cleared');
     setToken(null);
     setIsAuthenticated(false);
     // Clear token from API client

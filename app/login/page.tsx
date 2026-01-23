@@ -164,12 +164,38 @@ function LoginForm() {
                 <h3 className="font-semibold text-sm text-purple-900 dark:text-purple-100 mb-2">
                   How to get your OAuth token:
                 </h3>
-                <ol className="text-xs text-purple-800 dark:text-purple-200 space-y-1 list-decimal list-inside">
-                  <li>Go to the Yahoo Developer Console</li>
-                  <li>Create an app or use an existing one</li>
-                  <li>Generate an OAuth 2.0 access token</li>
-                  <li>Copy and paste the token above</li>
-                </ol>
+                <div className="text-xs text-purple-800 dark:text-purple-200 space-y-2">
+                  <div>
+                    <a
+                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/url-builder.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
+                    >
+                      Get Token (URL Builder) →
+                    </a>
+                  </div>
+                  <div>
+                    <a
+                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/refresh.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
+                    >
+                      Refresh Token →
+                    </a>
+                  </div>
+                  <div>
+                    <a
+                      href="https://chromewebstore.google.com/detail/yahoo-oauth-token-helper/odhagnabplejhdpdonnogliflgblpimn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
+                    >
+                      Install Extension →
+                    </a>
+                  </div>
+                </div>
               </div>
 
               {testAccounts.length > 0 && (

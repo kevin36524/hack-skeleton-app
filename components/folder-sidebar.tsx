@@ -6,7 +6,7 @@ import { Folder, Space } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SpacesSection } from '@/components/spaces-section';
 
@@ -20,6 +20,8 @@ interface FolderSidebarProps {
   selectedSpaceId?: string;
   onSpaceDataUpdated?: (spaceId: string, updatedSpace: Space) => void;
   className?: string;
+  isCollapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 interface FolderGroup {
@@ -37,7 +39,9 @@ export function FolderSidebar({
   onSpaceSelected,
   selectedSpaceId,
   onSpaceDataUpdated,
-  className
+  className,
+  isCollapsed = false,
+  onCollapsedChange
 }: FolderSidebarProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,11 +208,34 @@ export function FolderSidebar({
   const folderGroups = groupFolders();
 
   return (
-    <ScrollArea className={cn('h-full', className)}>
-      <div className="space-y-4">
+    <div className={cn('h-full flex flex-col', className)}>
+      {/* Header with collapse button */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        {!isCollapsed && (
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Folders</h2>
+        )}
+        {onCollapsedChange && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onCollapsedChange(!isCollapsed)}
+            className="hidden md:flex ml-auto"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-4 p-4">
         {/* Spaces Section */}
         {accountId && guid && (
-          <div className="pt-4">
+          <div>
             <SpacesSection
               accountId={accountId}
               mailboxId={mailboxId}
@@ -221,14 +248,16 @@ export function FolderSidebar({
         )}
 
         {/* Folders Section */}
-        <div className="px-4">
           {folderGroups.map((group) => (
           <div key={group.name}>
             <Collapsible
               open={!collapsedGroups.has(group.name)}
               onOpenChange={() => toggleGroup(group.name)}
             >
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md">
+              <CollapsibleTrigger className={cn(
+                "flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md",
+                isCollapsed && "hidden"
+              )}>
                 <span>{group.name}</span>
                 <ChevronRight
                   className={cn(
@@ -241,6 +270,25 @@ export function FolderSidebar({
                 <nav className="space-y-1 mt-2">
                   {group.folders.map((folder) => {
                     const Icon = getFolderIcon(folder);
+
+                    if (isCollapsed) {
+                      return (
+                        <Button
+                          key={folder.id}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onFolderSelected?.(folder.id)}
+                          className={cn(
+                            'w-full justify-center px-2',
+                            selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                          )}
+                          title={folder.name}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Button>
+                      );
+                    }
+
                     return (
                       <Button
                         key={folder.id}
@@ -248,16 +296,16 @@ export function FolderSidebar({
                         size="sm"
                         onClick={() => onFolderSelected?.(folder.id)}
                         className={cn(
-                          'w-full justify-start text-left font-normal',
+                          'w-full justify-start text-left font-normal whitespace-normal h-auto py-2',
                           selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
                         )}
                       >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center space-x-2">
-                            <Icon className="h-4 w-4" />
-                            <span className="truncate">{folder.name}</span>
+                        <div className="flex items-start justify-between w-full min-w-0 gap-2">
+                          <div className="flex items-start space-x-2 min-w-0 flex-1">
+                            <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                            <span className="break-all">{folder.name}</span>
                           </div>
-                          <div className="flex items-center space-x-1 text-xs">
+                          <div className="flex items-center space-x-1 text-xs flex-shrink-0">
                             {folder.unread > 0 && (
                               <span className="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
                                 {folder.unread}
@@ -276,8 +324,8 @@ export function FolderSidebar({
             </Collapsible>
           </div>
           ))}
-        </div>
       </div>
     </ScrollArea>
+    </div>
   );
 }

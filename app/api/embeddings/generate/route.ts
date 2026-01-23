@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import OpenAI from 'openai';
 import { IndexFlatL2 } from 'faiss-node';
 import { Space } from '@/lib/types/api';
+import { embeddingProvider } from '@/lib/utils/embedding-provider';
 
 const YAHOO_API_BASE = 'https://apis.mail.yahoo.com/ws/v3';
 const APP_ID = 'YahooMailIosMobile';
@@ -22,17 +22,9 @@ interface GenerateRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate OpenAI API key
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    console.log('[EMBEDDINGS] API Key loaded:', openaiApiKey ? `${openaiApiKey.substring(0, 10)}...${openaiApiKey.substring(openaiApiKey.length - 4)}` : 'NOT FOUND');
-    console.log('[EMBEDDINGS] API Key length:', openaiApiKey?.length || 0);
-
-    if (!openaiApiKey) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured in environment' },
-        { status: 500 }
-      );
-    }
+    // Log the embedding provider being used
+    console.log('[EMBEDDINGS] Provider:', embeddingProvider.getProvider());
+    console.log('[EMBEDDINGS] Expected dimension:', embeddingProvider.getDimension());
 
     // Get authorization header
     const authHeader = request.headers.get('authorization');
@@ -139,37 +131,19 @@ export async function POST(request: NextRequest) {
       messageIds.push(msg.id);
     });
 
-    // Step 3: Generate embeddings using OpenAI
-    console.log('[EMBEDDINGS] Step 3: Generating embeddings with OpenAI...');
+    // Step 3: Generate embeddings using configured provider
+    console.log('[EMBEDDINGS] Step 3: Generating embeddings...');
 
-    const openai = new OpenAI({
-      apiKey: openaiApiKey,
-    });
-
-    // Batch processing for efficiency (OpenAI supports up to 2048 texts per request)
-    const batchSize = 100;
-    const allEmbeddings: number[][] = [];
-
-    for (let i = 0; i < texts.length; i += batchSize) {
-      const batch = texts.slice(i, Math.min(i + batchSize, texts.length));
-      console.log(`[EMBEDDINGS] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(texts.length / batchSize)}`);
-
-      const response = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: batch,
-        encoding_format: 'float',
-      });
-
-      const embeddings = response.data.map(d => d.embedding);
-      allEmbeddings.push(...embeddings);
-    }
+    const embeddingResult = await embeddingProvider.generateEmbeddings(texts);
+    const allEmbeddings = embeddingResult.embeddings;
+    const dimension = embeddingResult.dimension;
 
     console.log('[EMBEDDINGS] Generated', allEmbeddings.length, 'embeddings');
+    console.log('[EMBEDDINGS] Model:', embeddingResult.model);
 
     // Step 4: Create Faiss index
     console.log('[EMBEDDINGS] Step 4: Creating Faiss index...');
 
-    const dimension = 1536; // text-embedding-3-small dimension
     const index = new IndexFlatL2(dimension);
 
     // Flatten embeddings into a regular array

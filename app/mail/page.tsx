@@ -16,6 +16,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Message, Space } from '@/lib/types/api';
 import { spacesService } from '@/lib/services/spaces-service';
 import { mailboxService } from '@/lib/services/mailbox-service';
+import { ResizablePanels } from '@/components/ui/resizable-panels';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -31,6 +32,8 @@ function MailPageContent() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
   const [customSpaceData, setCustomSpaceData] = useState<Map<string, Space>>(new Map());
 
   // Initialize folderId from URL on mount
@@ -61,6 +64,42 @@ function MailPageContent() {
   useEffect(() => {
     console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId, 'guid:', guid);
   }, [mailboxId, accountId, folderId, guid]);
+
+  // Load desktop sidebar collapsed state and panel sizes from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sidebar-collapsed');
+      if (stored !== null) {
+        setDesktopSidebarCollapsed(JSON.parse(stored));
+      }
+
+      const storedSizes = localStorage.getItem('panel-sizes');
+      if (storedSizes !== null) {
+        setPanelSizes(JSON.parse(storedSizes));
+      }
+    } catch (error) {
+      console.error('Error loading sidebar state:', error);
+    }
+  }, []);
+
+  // Save desktop sidebar collapsed state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(desktopSidebarCollapsed));
+    } catch (error) {
+      console.error('Error saving sidebar collapsed state:', error);
+    }
+  }, [desktopSidebarCollapsed]);
+
+  // Save panel sizes to localStorage
+  const handlePanelResize = (sizes: number[]) => {
+    setPanelSizes(sizes);
+    try {
+      localStorage.setItem('panel-sizes', JSON.stringify(sizes));
+    } catch (error) {
+      console.error('Error saving panel sizes:', error);
+    }
+  };
 
   // Fetch space data when spaceId changes
   useEffect(() => {
@@ -210,23 +249,23 @@ function MailPageContent() {
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden relative">
-          <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative">
+          {/* Mobile Layout */}
+          <div className="md:hidden h-full flex overflow-hidden relative">
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
               <div
-                className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+                className="fixed inset-0 z-40 bg-black bg-opacity-50"
                 onClick={toggleSidebar}
               />
             )}
 
-            {/* Sidebar */}
+            {/* Mobile Sidebar */}
             <aside className={`
-              fixed md:relative inset-y-0 left-0 z-50
+              fixed inset-y-0 left-0 z-50
               w-64 bg-white dark:bg-gray-800 border-r flex flex-col
               transform transition-transform duration-200 ease-in-out
               ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-              md:translate-x-0
             `}>
               <div className="p-4 border-b flex justify-between items-center">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white">Folders</h2>
@@ -234,7 +273,6 @@ function MailPageContent() {
                   variant="ghost"
                   size="sm"
                   onClick={toggleSidebar}
-                  className="md:hidden"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -263,7 +301,7 @@ function MailPageContent() {
               </div>
             </aside>
 
-            {/* Main Content Area */}
+            {/* Mobile Main Content Area */}
             <div className="flex-1 flex">
 
               {/* Message List */}
@@ -328,6 +366,82 @@ function MailPageContent() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Desktop Layout with Resizable Panels */}
+          <div className="hidden md:block h-full w-full">
+            <ResizablePanels
+              defaultSizes={panelSizes}
+              minSizes={[15, 20, 30]}
+              onResize={handlePanelResize}
+            >
+              {/* Sidebar Panel */}
+              <aside className="h-full bg-white dark:bg-gray-800 border-r flex flex-col">
+                {isReady ? (
+                  <FolderSidebar
+                    mailboxId={mailboxId}
+                    accountId={accountId}
+                    guid={guid}
+                    selectedFolderId={folderId}
+                    selectedSpaceId={spaceId}
+                    onFolderSelected={handleFolderSelected}
+                    onSpaceSelected={handleSpaceSelected}
+                    onSpaceDataUpdated={handleSpaceDataUpdated}
+                    isCollapsed={desktopSidebarCollapsed}
+                    onCollapsedChange={setDesktopSidebarCollapsed}
+                  />
+                ) : (
+                  <div className="p-4 text-sm text-gray-500">Loading folders...</div>
+                )}
+              </aside>
+
+              {/* Message List Panel */}
+              <div className="h-full flex flex-col border-r bg-white dark:bg-gray-800">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Messages
+                  </h2>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {isReady ? (
+                    <MessageList
+                      mailboxId={mailboxId}
+                      accountId={accountId}
+                      folderId={folderId}
+                      spaceId={spaceId}
+                      spaceData={selectedSpace}
+                      onMessageSelected={handleMessageSelected}
+                      selectedMessageId={selectedMessage?.id}
+                    />
+                  ) : (
+                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Message Detail Panel */}
+              <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Message Details
+                  </h2>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <MessageDetail
+                    message={selectedMessage}
+                    mailboxId={mailboxId}
+                    rawJsonData={spaceId && selectedSpace ? selectedSpace : undefined}
+                    onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
+                    onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
+                    onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
+                    onReply={(message) => console.log('Reply to:', message.id)}
+                    onForward={(message) => console.log('Forward:', message.id)}
+                    onDelete={(messageId) => console.log('Delete:', messageId)}
+                    onArchive={(messageId) => console.log('Archive:', messageId)}
+                  />
+                </div>
+              </div>
+            </ResizablePanels>
           </div>
         </div>
       </div>
