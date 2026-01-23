@@ -1,7 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { IndexFlatL2 } from 'faiss-node';
 import { Space } from '@/lib/types/api';
 import { embeddingProvider } from '@/lib/utils/embedding-provider';
+
+// Helper function to calculate cosine similarity
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Helper function to find top-k similar vectors
+function findTopK(queryVector: number[], vectors: number[][], k: number): number[] {
+  const similarities = vectors.map((vec, idx) => ({
+    idx,
+    similarity: cosineSimilarity(queryVector, vec)
+  }));
+
+  // Sort by similarity (descending) and take top k
+  similarities.sort((a, b) => b.similarity - a.similarity);
+
+  return similarities.slice(0, k).map(s => s.idx);
+}
 
 const YAHOO_API_BASE = 'https://apis.mail.yahoo.com/ws/v3';
 const APP_ID = 'YahooMailIosMobile';
@@ -142,23 +169,9 @@ export async function POST(request: NextRequest) {
     console.log('[FIND-SIMILAR] Generated', allEmbeddings.length, 'embeddings');
     console.log('[FIND-SIMILAR] Model:', embeddingResult.model);
 
-    // Step 4: Create Faiss index IN MEMORY
-    console.log('[FIND-SIMILAR] Step 4: Creating Faiss index in memory...');
-
-    const index = new IndexFlatL2(dimension);
-
-    // Flatten embeddings into a regular array
-    const flatEmbeddings: number[] = [];
-    for (let i = 0; i < allEmbeddings.length; i++) {
-      flatEmbeddings.push(...allEmbeddings[i]);
-    }
-
-    console.log('[FIND-SIMILAR] Flattened array length:', flatEmbeddings.length, 'Expected:', allEmbeddings.length * dimension);
-
-    // Add all vectors to index at once
-    index.add(flatEmbeddings);
-
-    console.log('[FIND-SIMILAR] Added', allEmbeddings.length, 'vectors to index');
+    // Step 4: Store embeddings in memory (no index needed for small datasets)
+    console.log('[FIND-SIMILAR] Step 4: Embeddings ready for search...');
+    console.log('[FIND-SIMILAR]', allEmbeddings.length, 'vectors in memory');
 
     // Step 5: Generate embeddings for allowlisted phrases
     console.log('[FIND-SIMILAR] Step 5: Generating phrase embeddings...');
@@ -177,11 +190,11 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < allowPhraseVectors.length; i++) {
       const queryVector = allowPhraseVectors[i];
 
-      // Search index
-      const { labels } = index.search(queryVector, k);
+      // Find top-k similar vectors
+      const topIndices = findTopK(queryVector, allEmbeddings, k);
 
       // Add matching message IDs
-      for (const idx of labels) {
+      for (const idx of topIndices) {
         if (idx >= 0 && idx < messageIds.length) {
           allowlistedMessageIds.add(messageIds[idx]);
         }
@@ -207,11 +220,11 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < blockPhraseVectors.length; i++) {
         const queryVector = blockPhraseVectors[i];
 
-        // Search index
-        const { labels } = index.search(queryVector, k);
+        // Find top-k similar vectors
+        const topIndices = findTopK(queryVector, allEmbeddings, k);
 
         // Add matching message IDs
-        for (const idx of labels) {
+        for (const idx of topIndices) {
           if (idx >= 0 && idx < messageIds.length) {
             blocklistedMessageIds.add(messageIds[idx]);
           }

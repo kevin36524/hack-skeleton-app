@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { IndexFlatL2 } from 'faiss-node';
+import { LocalIndex } from 'vectra';
 import { Space } from '@/lib/types/api';
 import { embeddingProvider } from '@/lib/utils/embedding-provider';
 
@@ -141,42 +141,38 @@ export async function POST(request: NextRequest) {
     console.log('[EMBEDDINGS] Generated', allEmbeddings.length, 'embeddings');
     console.log('[EMBEDDINGS] Model:', embeddingResult.model);
 
-    // Step 4: Create Faiss index
-    console.log('[EMBEDDINGS] Step 4: Creating Faiss index...');
+    // Step 4: Create Vectra index
+    console.log('[EMBEDDINGS] Step 4: Creating Vectra index...');
 
-    const index = new IndexFlatL2(dimension);
+    const baseFilename = `${guid}_${accountId}_${sanitizeName(space.name)}`;
+    const indexDir = join(process.cwd(), 'data', 'embeddings', baseFilename);
 
-    // Flatten embeddings into a regular array
-    // faiss-node expects: regular Array of length (numVectors * dimension)
-    const flatEmbeddings: number[] = [];
+    // Ensure directory exists
+    mkdirSync(indexDir, { recursive: true });
+
+    const index = new LocalIndex(indexDir);
+    await index.createIndex();
+
+    // Add all vectors to index
     for (let i = 0; i < allEmbeddings.length; i++) {
-      flatEmbeddings.push(...allEmbeddings[i]);
+      await index.insertItem({
+        id: messageIds[i],
+        vector: allEmbeddings[i],
+        metadata: {
+          messageId: messageIds[i],
+          spaceName: space.name,
+          accountId,
+          guid
+        }
+      });
     }
-
-    console.log('[EMBEDDINGS] Flattened array length:', flatEmbeddings.length, 'Expected:', allEmbeddings.length * dimension);
-
-    // Add all vectors to index at once
-    index.add(flatEmbeddings);
 
     console.log('[EMBEDDINGS] Added', allEmbeddings.length, 'vectors to index');
 
-    // Step 5: Save to files
-    console.log('[EMBEDDINGS] Step 5: Saving to files...');
+    // Step 5: Save metadata
+    console.log('[EMBEDDINGS] Step 5: Saving metadata...');
 
-    const baseFilename = `${guid}_${accountId}_${sanitizeName(space.name)}`;
-    const faissFilename = `${baseFilename}.faiss`;
     const metadataFilename = `${baseFilename}.json`;
-    const dataDir = join(process.cwd(), 'data', 'embeddings');
-
-    // Ensure directory exists
-    mkdirSync(dataDir, { recursive: true });
-
-    // Save Faiss index
-    const faissFilepath = join(dataDir, faissFilename);
-    index.write(faissFilepath);
-    console.log('[EMBEDDINGS] Saved Faiss index to:', faissFilepath);
-
-    // Save message IDs metadata
     const metadata = {
       messageIds,
       spaceName: space.name,
@@ -186,13 +182,13 @@ export async function POST(request: NextRequest) {
       messageCount: messages.length,
       embeddingDimension: dimension,
     };
-    const metadataFilepath = join(dataDir, metadataFilename);
+    const metadataFilepath = join(process.cwd(), 'data', 'embeddings', metadataFilename);
     writeFileSync(metadataFilepath, JSON.stringify(metadata, null, 2));
     console.log('[EMBEDDINGS] Saved metadata to:', metadataFilepath);
 
     return NextResponse.json({
       success: true,
-      filename: faissFilename,
+      filename: baseFilename,
       metadataFilename,
       messageCount: messages.length,
       embeddingCount: allEmbeddings.length,

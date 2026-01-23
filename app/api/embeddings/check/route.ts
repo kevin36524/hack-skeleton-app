@@ -21,17 +21,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Construct filename
-    const filename = `${guid}_${accountId}_${sanitizeName(spaceName)}.faiss`;
+    // Construct directory name for vectra index
+    const indexName = `${guid}_${accountId}_${sanitizeName(spaceName)}`;
 
-    // Check if file exists
+    // Check if index directory exists
     const dataDir = join(process.cwd(), 'data', 'embeddings');
-    const filepath = join(dataDir, filename);
-    const exists = existsSync(filepath);
+    const indexPath = join(dataDir, indexName);
+    const exists = existsSync(indexPath);
 
     return NextResponse.json({
       exists,
-      filename,
+      filename: indexName,
     });
   } catch (error) {
     console.error('Error checking embedding file:', error);
