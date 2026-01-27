@@ -101,31 +101,14 @@ function MailPageContent() {
     }
   };
 
-  // Fetch space data when spaceId changes
+  // Update selected space when spaceId changes
   useEffect(() => {
-    const fetchSpace = async () => {
-      if (spaceId && accountId) {
-        try {
-          // Check if we have custom data for this space
-          if (customSpaceData.has(spaceId)) {
-            setSelectedSpace(customSpaceData.get(spaceId)!);
-          } else {
-            const spacesResponse = await spacesService.getSpaces(accountId);
-            const allSpaces = [...spacesResponse.suggestedSpaces, ...spacesResponse.acceptedSpaces];
-            const space = allSpaces.find(s => s.id === spaceId);
-            setSelectedSpace(space || null);
-          }
-        } catch (error) {
-          console.error('Failed to fetch space:', error);
-          setSelectedSpace(null);
-        }
-      } else {
-        setSelectedSpace(null);
-      }
-    };
-
-    fetchSpace();
-  }, [spaceId, accountId, customSpaceData]);
+    if (spaceId && customSpaceData.has(spaceId)) {
+      setSelectedSpace(customSpaceData.get(spaceId)!);
+    } else {
+      setSelectedSpace(null);
+    }
+  }, [spaceId, customSpaceData]);
 
   const handleMailboxSelected = (id: string) => {
     console.log('MailPage: Mailbox selected:', id);

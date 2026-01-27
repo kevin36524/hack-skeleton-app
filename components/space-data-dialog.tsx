@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { X, Plus, Save, Loader2, Database, Sparkles, ChevronDown } from 'lucide-react';
 import { embeddingService } from '@/lib/services/embedding-service';
 import { apiClient } from '@/lib/services/api-client';
+import { spacesService } from '@/lib/services/spaces-service';
 import { cn } from '@/lib/utils';
 
 interface SpaceDataDialogProps {
@@ -51,6 +52,9 @@ export function SpaceDataDialog({
   const [similarEmailsStatus, setSimilarEmailsStatus] = useState('');
   const [similarEmailsError, setSimilarEmailsError] = useState<string | null>(null);
   const [showMessageIds, setShowMessageIds] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (space) {
@@ -65,6 +69,11 @@ export function SpaceDataDialog({
       };
       setEditedSpace(spaceWithDefaults);
       setRawJsonText(JSON.stringify(spaceWithDefaults, null, 2));
+
+      // Reset save status when dialog opens
+      setSaveLoading(false);
+      setSaveStatus('');
+      setSaveError(null);
     }
   }, [space]);
 
@@ -282,19 +291,76 @@ export function SpaceDataDialog({
     });
   };
 
-  const handleSave = () => {
-    if (showRawJson) {
-      try {
-        const parsed = JSON.parse(rawJsonText);
-        onSave(parsed);
-      } catch (error) {
-        alert('Invalid JSON format');
-        return;
+  const handleSave = async () => {
+    setSaveLoading(true);
+    setSaveError(null);
+    setSaveStatus('Saving changes to space...');
+
+    try {
+      let spaceToSave = editedSpace;
+
+      if (showRawJson) {
+        try {
+          spaceToSave = JSON.parse(rawJsonText);
+        } catch (error) {
+          setSaveError('Invalid JSON format');
+          setSaveLoading(false);
+          setSaveStatus('');
+          return;
+        }
       }
-    } else {
-      onSave(editedSpace);
+
+      // Prepare the update object with the fields that can be updated
+      const updateObj: any = {
+        emailSenders: spaceToSave.emailSenders,
+        keywords: spaceToSave.keywords,
+        name: spaceToSave.name,
+        shortName: spaceToSave.shortName,
+      };
+
+      // Include extraData if it exists
+      if (spaceToSave.extraData) {
+        updateObj.extraData = {
+          ...spaceToSave.extraData,
+          // Ensure these fields are included
+          allowlistedPhrases: spaceToSave.extraData.allowlistedPhrases || [],
+          blocklistedPhrases: spaceToSave.extraData.blocklistedPhrases || [],
+          showSemanticMessages: spaceToSave.extraData.showSemanticMessages || false,
+          filteredMessageIds: spaceToSave.extraData.filteredMessageIds || [],
+          includeKeywords: spaceToSave.extraData.includeKeywords !== false,
+          messageCount: spaceToSave.extraData.messageCount || 50,
+        };
+      }
+
+      // Call the edit space API
+      const response = await spacesService.editSpace(
+        accountId,
+        spaceToSave.id,
+        updateObj
+      );
+
+      if (response.success) {
+        setSaveStatus('✓ Changes saved successfully!');
+
+        // Update local state
+        onSave(spaceToSave);
+
+        // Close dialog after a short delay
+        setTimeout(() => {
+          setSaveLoading(false);
+          setSaveStatus('');
+          onOpenChange(false);
+        }, 1500);
+      } else {
+        throw new Error(response.message || 'Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Error saving space:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setSaveError(errorMessage);
+      setSaveLoading(false);
+      setSaveStatus('');
     }
-    onOpenChange(false);
   };
 
   const handleRawJsonChange = (value: string) => {
@@ -857,14 +923,45 @@ export function SpaceDataDialog({
             </>
           )}
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
+          <div className="space-y-3 pt-4">
+            {/* Save Status Messages */}
+            {saveError && (
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+                Error: {saveError}
+              </div>
+            )}
+
+            {saveStatus && !saveError && (
+              <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+                {saveStatus}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={saveLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saveLoading}
+              >
+                {saveLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes to Space
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

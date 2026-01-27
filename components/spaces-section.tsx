@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { spacesService } from '@/lib/services/spaces-service';
 import { Space } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
@@ -37,15 +37,9 @@ export function SpacesSection({
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    console.log('SpacesSection: accountId:', accountId);
-    if (accountId) {
-      console.log('SpacesSection: Loading spaces...');
-      loadSpaces();
-    }
-  }, [accountId]);
+  const loadSpaces = useCallback(async () => {
+    if (!accountId) return;
 
-  const loadSpaces = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -62,7 +56,15 @@ export function SpacesSection({
     } finally {
       setLoading(false);
     }
-  };
+  }, [accountId]);
+
+  useEffect(() => {
+    console.log('SpacesSection: accountId:', accountId);
+    if (accountId) {
+      console.log('SpacesSection: Loading spaces...');
+      loadSpaces();
+    }
+  }, [accountId, loadSpaces]);
 
   const toggleSuggestedCollapsed = () => {
     setSuggestedCollapsed(!suggestedCollapsed);
@@ -170,7 +172,10 @@ export function SpacesSection({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onSpaceSelected?.(space.id)}
+                  onClick={() => {
+                    onSpaceSelected?.(space.id);
+                    onSpaceDataUpdated?.(space.id, space);
+                  }}
                   className={cn(
                     'w-full justify-start text-left font-normal h-auto py-2',
                     selectedSpaceId === space.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'

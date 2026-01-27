@@ -466,3 +466,26 @@ export interface GetSpacesApiResponse {
   performance: Performance;
   storage: Storage;
 }
+
+// Edit Space API Types
+export interface EditSpaceUpdateObj {
+  emailSenders?: EmailSender[];
+  keywords?: string[];
+  subjects?: string[];
+  name?: string;
+  shortName?: string;
+  extraData?: ExtraData;
+  [key: string]: unknown;
+}
+
+export interface EditSpaceRequest {
+  accountId: string;
+  spaceId: string;
+  updateObj: EditSpaceUpdateObj;
+}
+
+export interface EditSpaceApiResponse {
+  success: boolean;
+  space?: Space;
+  message?: string;
+}

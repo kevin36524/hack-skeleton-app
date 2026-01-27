@@ -6,7 +6,13 @@
  */
 
 import { apiClient } from './api-client';
-import { Space, GetSpacesApiResponse } from '@/lib/types/api';
+import {
+  Space,
+  GetSpacesApiResponse,
+  EditSpaceRequest,
+  EditSpaceApiResponse,
+  EditSpaceUpdateObj
+} from '@/lib/types/api';
 
 /**
  * Spaces Service Class
@@ -15,6 +21,8 @@ import { Space, GetSpacesApiResponse } from '@/lib/types/api';
  * Routes requests through Next.js API to avoid CORS issues
  */
 class SpacesService {
+  // Cache to prevent duplicate simultaneous requests
+  private pendingRequests: Map<string, Promise<GetSpacesApiResponse>> = new Map();
   /**
    * Gets all spaces for a given account
    *
@@ -41,6 +49,36 @@ class SpacesService {
     acctId: string,
     retryCount: number = 0,
     genAI: boolean = true
+  ): Promise<GetSpacesApiResponse> {
+    // Create a cache key based on the request parameters
+    const cacheKey = `${acctId}-${retryCount}-${genAI}`;
+
+    // If there's already a pending request for these params, return it
+    const pendingRequest = this.pendingRequests.get(cacheKey);
+    if (pendingRequest) {
+      console.log('[SpacesService] Reusing pending request for:', cacheKey);
+      return pendingRequest;
+    }
+
+    // Create a new request
+    const request = this.fetchSpaces(acctId, retryCount, genAI);
+
+    // Store it in the pending requests map
+    this.pendingRequests.set(cacheKey, request);
+
+    try {
+      const result = await request;
+      return result;
+    } finally {
+      // Clean up the pending request after it completes
+      this.pendingRequests.delete(cacheKey);
+    }
+  }
+
+  private async fetchSpaces(
+    acctId: string,
+    retryCount: number,
+    genAI: boolean
   ): Promise<GetSpacesApiResponse> {
     try {
       // Build query parameters for our Next.js API route
@@ -98,6 +136,118 @@ class SpacesService {
    */
   async getSpacesDefault(acctId: string): Promise<GetSpacesApiResponse> {
     return this.getSpaces(acctId, 0, true);
+  }
+
+  /**
+   * Edits an existing space
+   *
+   * This function updates a space's configuration (e.g., email senders, keywords, name).
+   *
+   * Note: This calls the Next.js API route (/api/spaces/edit) which then makes the
+   * server-side request to Yahoo Mail Autopilot API to avoid CORS issues.
+   *
+   * @param accountId - The account identifier
+   * @param spaceId - The space identifier to edit
+   * @param updateObj - Object containing the fields to update
+   * @param retryCount - Number of retry attempts (default: 0)
+   * @param genAI - Whether to use generative AI features (default: true)
+   * @returns Promise resolving to the edit space response
+   *
+   * @throws {Error} If the API request fails or returns non-2xx status
+   *
+   * @example
+   * ```typescript
+   * const response = await spacesService.editSpace(
+   *   'account-123',
+   *   'space-456',
+   *   {
+   *     emailSenders: [
+   *       { email: 'user@example.com', name: 'User Name' }
+   *     ]
+   *   }
+   * );
+   * ```
+   */
+  async editSpace(
+    accountId: string,
+    spaceId: string,
+    updateObj: EditSpaceUpdateObj,
+    retryCount: number = 0,
+    genAI: boolean = true
+  ): Promise<EditSpaceApiResponse> {
+    try {
+      // Build query parameters for our Next.js API route
+      const params = new URLSearchParams({
+        retryCount: retryCount.toString(),
+        genAI: genAI.toString()
+      });
+
+      // Call our Next.js API route (server-side) to avoid CORS issues
+      const url = `/api/spaces/edit?${params.toString()}`;
+
+      // Get the current token for authorization
+      const token = (apiClient as any).token;
+      if (!token) {
+        throw new Error('No authorization token available');
+      }
+
+      // Prepare the request body
+      const requestBody: EditSpaceRequest = {
+        accountId,
+        spaceId,
+        updateObj
+      };
+
+      // Make the request with proper authorization headers
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to edit space (${response.status}): ${errorText || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Failed to edit space:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Edits a space with default parameters
+   *
+   * Convenience method that uses sensible defaults for most common use case.
+   *
+   * @param accountId - The account identifier
+   * @param spaceId - The space identifier to edit
+   * @param updateObj - Object containing the fields to update
+   * @returns Promise resolving to the edit space response
+   *
+   * @example
+   * ```typescript
+   * const response = await spacesService.editSpaceDefault(
+   *   'account-123',
+   *   'space-456',
+   *   { emailSenders: [{ email: 'user@example.com', name: 'User' }] }
+   * );
+   * ```
+   */
+  async editSpaceDefault(
+    accountId: string,
+    spaceId: string,
+    updateObj: EditSpaceUpdateObj
+  ): Promise<EditSpaceApiResponse> {
+    return this.editSpace(accountId, spaceId, updateObj, 0, true);
   }
 }
 
