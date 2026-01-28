@@ -44,7 +44,8 @@ export function SpacesSection({
       setLoading(true);
       setError(null);
       console.log('SpacesSection: Calling spacesService.getSpaces for accountId:', accountId);
-      const spacesResponse = await spacesService.getSpaces(accountId);
+      console.log('SpacesSection: mailboxId:', mailboxId, 'guid:', guid);
+      const spacesResponse = await spacesService.getSpaces(accountId, 0, true, mailboxId, guid);
       console.log('SpacesSection: Got suggested spaces:', spacesResponse.suggestedSpaces?.length || 0);
       console.log('SpacesSection: Got accepted spaces:', spacesResponse.acceptedSpaces?.length || 0);
       setSuggestedSpaces(spacesResponse.suggestedSpaces || []);
@@ -56,7 +57,7 @@ export function SpacesSection({
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, mailboxId, guid]);
 
   useEffect(() => {
     console.log('SpacesSection: accountId:', accountId);

@@ -32,9 +32,14 @@ class SpacesService {
    * Note: This calls the Next.js API route (/api/spaces) which then makes the server-side
    * request to Yahoo Mail Autopilot API to avoid CORS issues.
    *
+   * Auto-Processing: If mailboxId and guid are provided, accepted spaces will be automatically
+   * processed to generate allowlisted phrases and find semantically similar emails.
+   *
    * @param acctId - The account identifier (mailbox ID or account ID)
    * @param retryCount - Number of retry attempts (default: 0)
    * @param genAI - Whether to use generative AI features (default: true)
+   * @param mailboxId - Optional mailbox ID for auto-processing
+   * @param guid - Optional user GUID for auto-processing
    * @returns Promise resolving to the spaces response
    *
    * @throws {Error} If the API request fails or returns non-2xx status
@@ -44,14 +49,28 @@ class SpacesService {
    * const spacesResponse = await spacesService.getSpaces('account-123');
    * console.log(`Found ${spacesResponse.spaces.length} spaces`);
    * ```
+   *
+   * @example
+   * ```typescript
+   * // With auto-processing
+   * const spacesResponse = await spacesService.getSpaces(
+   *   'account-123',
+   *   0,
+   *   true,
+   *   'mailbox-456',
+   *   'guid-789'
+   * );
+   * ```
    */
   async getSpaces(
     acctId: string,
     retryCount: number = 0,
-    genAI: boolean = true
+    genAI: boolean = true,
+    mailboxId?: string,
+    guid?: string
   ): Promise<GetSpacesApiResponse> {
     // Create a cache key based on the request parameters
-    const cacheKey = `${acctId}-${retryCount}-${genAI}`;
+    const cacheKey = `${acctId}-${retryCount}-${genAI}-${mailboxId || ''}-${guid || ''}`;
 
     // If there's already a pending request for these params, return it
     const pendingRequest = this.pendingRequests.get(cacheKey);
@@ -61,7 +80,7 @@ class SpacesService {
     }
 
     // Create a new request
-    const request = this.fetchSpaces(acctId, retryCount, genAI);
+    const request = this.fetchSpaces(acctId, retryCount, genAI, mailboxId, guid);
 
     // Store it in the pending requests map
     this.pendingRequests.set(cacheKey, request);
@@ -78,7 +97,9 @@ class SpacesService {
   private async fetchSpaces(
     acctId: string,
     retryCount: number,
-    genAI: boolean
+    genAI: boolean,
+    mailboxId?: string,
+    guid?: string
   ): Promise<GetSpacesApiResponse> {
     try {
       // Build query parameters for our Next.js API route
@@ -87,6 +108,14 @@ class SpacesService {
         retryCount: retryCount.toString(),
         genAI: genAI.toString()
       });
+
+      // Add optional parameters if provided
+      if (mailboxId) {
+        params.append('mailboxId', mailboxId);
+      }
+      if (guid) {
+        params.append('guid', guid);
+      }
 
       // Call our Next.js API route (server-side) to avoid CORS issues
       const url = `/api/spaces?${params.toString()}`;
@@ -127,15 +156,31 @@ class SpacesService {
    * Convenience method that uses sensible defaults for most common use case.
    *
    * @param acctId - The account identifier
+   * @param mailboxId - Optional mailbox ID for auto-processing
+   * @param guid - Optional user GUID for auto-processing
    * @returns Promise resolving to the spaces response
    *
    * @example
    * ```typescript
    * const spaces = await spacesService.getSpacesDefault('account-123');
    * ```
+   *
+   * @example
+   * ```typescript
+   * // With auto-processing
+   * const spaces = await spacesService.getSpacesDefault(
+   *   'account-123',
+   *   'mailbox-456',
+   *   'guid-789'
+   * );
+   * ```
    */
-  async getSpacesDefault(acctId: string): Promise<GetSpacesApiResponse> {
-    return this.getSpaces(acctId, 0, true);
+  async getSpacesDefault(
+    acctId: string,
+    mailboxId?: string,
+    guid?: string
+  ): Promise<GetSpacesApiResponse> {
+    return this.getSpaces(acctId, 0, true, mailboxId, guid);
   }
 
   /**

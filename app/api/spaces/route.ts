@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Space, GetSpacesApiResponse } from '@/lib/types/api';
 
 const SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
+
+// Helper to check if filteredMessageIds need updating (older than 7 days)
+function needsUpdate(space: Space): boolean {
+  const mids = space.extraData?.filteredMessageIds;
+  const updatedAt = space.extraData?.filteredMessageIdsUpdatedAt;
+
+  // If no mids exist, needs update
+  if (!mids || mids.length === 0) {
+    return true;
+  }
+
+  // If no timestamp, needs update
+  if (!updatedAt) {
+    return true;
+  }
+
+  // Check if older than 7 days
+  const lastUpdate = new Date(updatedAt);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  return lastUpdate < sevenDaysAgo;
+}
 
 /**
  * GET /api/spaces
@@ -10,6 +34,8 @@ const SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
  *
  * Query Parameters:
  * - acctId (required): The account identifier
+ * - mailboxId (optional): The mailbox identifier (needed for auto-processing)
+ * - guid (optional): The user GUID (needed for auto-processing)
  * - retryCount (optional): Number of retry attempts (default: 0)
  * - genAI (optional): Whether to use generative AI features (default: true)
  *
@@ -20,14 +46,24 @@ const SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
  * - appid: YahooMailIosMobile (fixed)
  * - appVer: 7.78.0_74539 (fixed)
  *
+ * Auto-Processing:
+ * - If mailboxId and guid are provided, accepted spaces will be automatically processed
+ * - For each accepted space, if filteredMessageIds are missing or older than 7 days:
+ *   - Generates allowlisted phrases using Gemini
+ *   - Finds semantically similar emails using embeddings
+ *   - Updates the space with new mids and phrases
+ *
  * Example:
  * GET /api/spaces?acctId=account-123
+ * GET /api/spaces?acctId=account-123&mailboxId=mb-456&guid=user-guid-789
  * GET /api/spaces?acctId=account-123&retryCount=1&genAI=false
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
     const acctId = searchParams.get('acctId');
+    const mailboxId = searchParams.get('mailboxId');
+    const guid = searchParams.get('guid');
     const retryCount = searchParams.get('retryCount');
     const genAI = searchParams.get('genAI');
 
@@ -97,8 +133,134 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
+    const data: GetSpacesApiResponse = await response.json();
     console.log('[SPACES API] Success - Suggested:', data.suggestedSpaces?.length || 0, '- Accepted:', data.acceptedSpaces?.length || 0);
+
+    // Auto-process accepted spaces if mailboxId and guid are provided
+    if (mailboxId && guid && data.acceptedSpaces && data.acceptedSpaces.length > 0) {
+      console.log('[SPACES API] Auto-processing accepted spaces...');
+
+      const processedSpaces: Space[] = [];
+
+      for (const space of data.acceptedSpaces) {
+        try {
+          if (needsUpdate(space)) {
+            console.log(`[SPACES API] Processing space: ${space.name} (${space.id})`);
+
+            // Step 1: Generate allowlisted phrases using Gemini
+            console.log('[SPACES API] Step 1: Generating allowlisted phrases...');
+            const phrasesResponse = await fetch(`${request.nextUrl.origin}/api/embeddings/generate-phrases`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                guid,
+                accountId: acctId,
+                space
+              }),
+            });
+
+            if (!phrasesResponse.ok) {
+              console.error(`[SPACES API] Failed to generate phrases for space ${space.id}`);
+              processedSpaces.push(space); // Keep original space
+              continue;
+            }
+
+            const phrasesData = await phrasesResponse.json();
+            const allowlistedPhrases = phrasesData.phrases || [];
+            console.log(`[SPACES API] Generated ${allowlistedPhrases.length} phrases`);
+
+            // Step 2: Find semantically similar emails
+            console.log('[SPACES API] Step 2: Finding similar emails...');
+
+            // Create updated space with new phrases for the find-similar API
+            const spaceWithPhrases = {
+              ...space,
+              extraData: {
+                ...space.extraData,
+                allowlistedPhrases
+              }
+            };
+
+            const similarResponse = await fetch(`${request.nextUrl.origin}/api/embeddings/find-similar`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                mailboxId,
+                accountId: acctId,
+                guid,
+                space: spaceWithPhrases
+              }),
+            });
+
+            if (!similarResponse.ok) {
+              console.error(`[SPACES API] Failed to find similar emails for space ${space.id}`);
+              processedSpaces.push(space); // Keep original space
+              continue;
+            }
+
+            const similarData = await similarResponse.json();
+            const filteredMessageIds = similarData.filteredMessageIds || [];
+            console.log(`[SPACES API] Found ${filteredMessageIds.length} similar emails`);
+
+            // Step 3: Update the space with new data
+            console.log('[SPACES API] Step 3: Updating space...');
+            const updateObj = {
+              extraData: {
+                ...space.extraData,
+                allowlistedPhrases,
+                filteredMessageIds,
+                filteredMessageIdsUpdatedAt: new Date().toISOString()
+              }
+            };
+
+            const editResponse = await fetch(`${request.nextUrl.origin}/api/spaces/edit`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                accountId: acctId,
+                spaceId: space.id,
+                updateObj
+              }),
+            });
+
+            if (!editResponse.ok) {
+              console.error(`[SPACES API] Failed to update space ${space.id}`);
+              processedSpaces.push(space); // Keep original space
+              continue;
+            }
+
+            const editData = await editResponse.json();
+            console.log(`[SPACES API] Successfully updated space: ${space.name}`);
+
+            // Use the updated space from edit response if available
+            const updatedSpace = editData.space || {
+              ...space,
+              extraData: updateObj.extraData
+            };
+            processedSpaces.push(updatedSpace);
+          } else {
+            console.log(`[SPACES API] Space ${space.name} is up to date (mids age < 7 days)`);
+            processedSpaces.push(space);
+          }
+        } catch (error) {
+          console.error(`[SPACES API] Error processing space ${space.id}:`, error);
+          processedSpaces.push(space); // Keep original space on error
+        }
+      }
+
+      // Replace accepted spaces with processed ones
+      data.acceptedSpaces = processedSpaces;
+      console.log('[SPACES API] Auto-processing complete');
+    }
 
     return NextResponse.json(data, { status: 200 });
   } catch (error) {

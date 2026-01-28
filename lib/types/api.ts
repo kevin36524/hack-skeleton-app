@@ -424,6 +424,7 @@ export interface ExtraData {
   allowlistedPhrases?: string[];
   blocklistedPhrases?: string[];
   filteredMessageIds?: string[];
+  filteredMessageIdsUpdatedAt?: string; // ISO timestamp of when filteredMessageIds were last updated
   showSemanticMessages?: boolean;
   [key: string]: unknown;
 }
