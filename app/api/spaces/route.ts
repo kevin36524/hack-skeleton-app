@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Space, GetSpacesApiResponse } from '@/lib/types/api';
+import { generateAllowlistedPhrases, findSimilarEmails } from '@/lib/services/spaces-processing';
 
 const SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
+const EDIT_SPACES_BASE_URL = 'https://stg-mobile.mail.yahoo.com/yai/autopilot';
 
 // Helper to check if filteredMessageIds need updating (older than 7 days)
 function needsUpdate(space: Space): boolean {
@@ -147,35 +149,15 @@ export async function GET(request: NextRequest) {
           if (needsUpdate(space)) {
             console.log(`[SPACES API] Processing space: ${space.name} (${space.id})`);
 
-            // Step 1: Generate allowlisted phrases using Gemini
+            // Step 1: Generate allowlisted phrases using Gemini (direct function call)
             console.log('[SPACES API] Step 1: Generating allowlisted phrases...');
-            const phrasesResponse = await fetch(`${request.nextUrl.origin}/api/embeddings/generate-phrases`, {
-              method: 'POST',
-              headers: {
-                'Authorization': authHeader,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                guid,
-                accountId: acctId,
-                space
-              }),
-            });
-
-            if (!phrasesResponse.ok) {
-              console.error(`[SPACES API] Failed to generate phrases for space ${space.id}`);
-              processedSpaces.push(space); // Keep original space
-              continue;
-            }
-
-            const phrasesData = await phrasesResponse.json();
-            const allowlistedPhrases = phrasesData.phrases || [];
+            const allowlistedPhrases = await generateAllowlistedPhrases(space, guid, acctId);
             console.log(`[SPACES API] Generated ${allowlistedPhrases.length} phrases`);
 
-            // Step 2: Find semantically similar emails
+            // Step 2: Find semantically similar emails (direct function call)
             console.log('[SPACES API] Step 2: Finding similar emails...');
 
-            // Create updated space with new phrases for the find-similar API
+            // Create updated space with new phrases
             const spaceWithPhrases = {
               ...space,
               extraData: {
@@ -184,31 +166,15 @@ export async function GET(request: NextRequest) {
               }
             };
 
-            const similarResponse = await fetch(`${request.nextUrl.origin}/api/embeddings/find-similar`, {
-              method: 'POST',
-              headers: {
-                'Authorization': authHeader,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                mailboxId,
-                accountId: acctId,
-                guid,
-                space: spaceWithPhrases
-              }),
-            });
-
-            if (!similarResponse.ok) {
-              console.error(`[SPACES API] Failed to find similar emails for space ${space.id}`);
-              processedSpaces.push(space); // Keep original space
-              continue;
-            }
-
-            const similarData = await similarResponse.json();
-            const filteredMessageIds = similarData.filteredMessageIds || [];
+            const filteredMessageIds = await findSimilarEmails(
+              spaceWithPhrases,
+              mailboxId,
+              acctId,
+              authHeader
+            );
             console.log(`[SPACES API] Found ${filteredMessageIds.length} similar emails`);
 
-            // Step 3: Update the space with new data
+            // Step 3: Update the space with new data (direct Yahoo API call)
             console.log('[SPACES API] Step 3: Updating space...');
             const updateObj = {
               extraData: {
@@ -219,11 +185,26 @@ export async function GET(request: NextRequest) {
               }
             };
 
-            const editResponse = await fetch(`${request.nextUrl.origin}/api/spaces/edit`, {
+            // Build query parameters for Yahoo API
+            const editParams = new URLSearchParams({
+              appid: 'YahooMailIosMobile',
+              appVer: '7.84.0_75832Dogfood-AdHoc',
+              ymreqid: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+              name: 'EditSpace',
+              retryCount: '0',
+              isGCP: 'false',
+              mailboxLocation: 'ONPREM',
+              genAI: 'true'
+            });
+
+            const editUrl = `${EDIT_SPACES_BASE_URL}/editSpace?${editParams.toString()}`;
+
+            const editResponse = await fetch(editUrl, {
               method: 'POST',
               headers: {
                 'Authorization': authHeader,
                 'Content-Type': 'application/json',
+                'Accept': '*/*',
               },
               body: JSON.stringify({
                 accountId: acctId,
@@ -233,7 +214,8 @@ export async function GET(request: NextRequest) {
             });
 
             if (!editResponse.ok) {
-              console.error(`[SPACES API] Failed to update space ${space.id}`);
+              const errorText = await editResponse.text();
+              console.error(`[SPACES API] Failed to update space ${space.id}:`, errorText);
               processedSpaces.push(space); // Keep original space
               continue;
             }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Space } from '@/lib/types/api';
-import { mastra } from '@/src/mastra';
+import { generateAllowlistedPhrases } from '@/lib/services/spaces-processing';
 
 interface GeneratePhrasesRequest {
   guid: string;
@@ -23,56 +23,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[PHRASES] Generating allowlisted phrases for space:', space.name);
 
-    // Generate phrases using Mastra agent
-    console.log('[PHRASES] Generating phrases with Mastra agent...');
-
-    const phraseGeneratorAgent = mastra.getAgent('phraseGenerator');
-
-    // Prepare space context for the agent
-    const spaceContext = {
-      name: space.name,
-      justification: space.justification,
-      keywords: space.keywords,
-      emailSenders: space.emailSenders.map(s => ({
-        name: s.name,
-        email: s.email,
-      })),
-    };
-
-    const agentPrompt = `Generate email search phrases for this space:
-
-${JSON.stringify(spaceContext, null, 2)}`;
-
-    const agentResponse = await phraseGeneratorAgent.generate(agentPrompt);
-
-    let responseText = agentResponse.text || '{}';
-
-    // Strip markdown code blocks if present
-    responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-    let parsedResponse;
-
-    try {
-      parsedResponse = JSON.parse(responseText);
-    } catch (error) {
-      console.error('[PHRASES] Failed to parse agent response:', responseText);
-      return NextResponse.json(
-        { error: 'Failed to parse AI response' },
-        { status: 500 }
-      );
-    }
-
-    // Extract phrases from response
-    const phrases: string[] = parsedResponse.phrases || [];
-
-    if (!Array.isArray(phrases) || phrases.length === 0) {
-      return NextResponse.json(
-        { error: 'No phrases generated' },
-        { status: 500 }
-      );
-    }
-
-    console.log('[PHRASES] Generated', phrases.length, 'phrases');
+    // Generate phrases using extracted function
+    const phrases = await generateAllowlistedPhrases(space, guid, accountId);
 
     return NextResponse.json({
       success: true,

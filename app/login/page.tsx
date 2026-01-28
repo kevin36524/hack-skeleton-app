@@ -167,22 +167,12 @@ function LoginForm() {
                 <div className="text-xs text-purple-800 dark:text-purple-200 space-y-2">
                   <div>
                     <a
-                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/url-builder.html"
+                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/simpleLogin.html"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
                     >
-                      Get Token (URL Builder) →
-                    </a>
-                  </div>
-                  <div>
-                    <a
-                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/refresh.html"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
-                    >
-                      Refresh Token →
+                      Get Access Token →
                     </a>
                   </div>
                   <div>

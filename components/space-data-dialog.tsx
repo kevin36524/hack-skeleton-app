@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { X, Plus, Save, Loader2, Database, Sparkles, ChevronDown } from 'lucide-react';
+import { X, Plus, Save, Loader2, Database, Sparkles, ChevronDown, Trash2 } from 'lucide-react';
 import { embeddingService } from '@/lib/services/embedding-service';
 import { apiClient } from '@/lib/services/api-client';
 import { spacesService } from '@/lib/services/spaces-service';
@@ -384,6 +384,30 @@ export function SpaceDataDialog({
     setShowRawJson(!showRawJson);
   };
 
+  const handleClearGeneratedData = () => {
+    if (!confirm('Are you sure you want to clear all allowlisted phrases, blocklisted phrases, and filtered message IDs? This cannot be undone.')) {
+      return;
+    }
+
+    const updatedSpace = {
+      ...editedSpace,
+      extraData: {
+        ...editedSpace.extraData,
+        allowlistedPhrases: [],
+        blocklistedPhrases: [],
+        filteredMessageIds: [],
+        filteredMessageIdsUpdatedAt: undefined,
+      }
+    };
+    setEditedSpace(updatedSpace);
+
+    // Clear any status messages
+    setPhrasesStatus('');
+    setPhrasesError(null);
+    setSimilarEmailsStatus('');
+    setSimilarEmailsError(null);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -395,7 +419,20 @@ export function SpaceDataDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-between gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleClearGeneratedData}
+              disabled={
+                !editedSpace.extraData?.allowlistedPhrases?.length &&
+                !editedSpace.extraData?.blocklistedPhrases?.length &&
+                !editedSpace.extraData?.filteredMessageIds?.length
+              }
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All Generated Data
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -581,9 +618,32 @@ export function SpaceDataDialog({
 
               {/* Allowlisted Phrases Section */}
               <div className="space-y-3 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <Label className="text-base font-semibold">Allowlisted Phrases</Label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <Label className="text-base font-semibold">Allowlisted Phrases</Label>
+                  </div>
+                  {editedSpace.extraData?.allowlistedPhrases && editedSpace.extraData.allowlistedPhrases.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Clear all allowlisted phrases?')) {
+                          setEditedSpace({
+                            ...editedSpace,
+                            extraData: {
+                              ...editedSpace.extraData,
+                              allowlistedPhrases: []
+                            }
+                          });
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   AI-generate semantic phrases to identify relevant emails for this space.
@@ -688,9 +748,32 @@ export function SpaceDataDialog({
 
               {/* Blocklisted Phrases Section */}
               <div className="space-y-3 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <X className="h-5 w-5 text-red-600 dark:text-red-400" />
-                  <Label className="text-base font-semibold">Blocklisted Phrases</Label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    <Label className="text-base font-semibold">Blocklisted Phrases</Label>
+                  </div>
+                  {editedSpace.extraData?.blocklistedPhrases && editedSpace.extraData.blocklistedPhrases.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Clear all blocklisted phrases?')) {
+                          setEditedSpace({
+                            ...editedSpace,
+                            extraData: {
+                              ...editedSpace.extraData,
+                              blocklistedPhrases: []
+                            }
+                          });
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Generate phrases to exclude certain types of emails from this space.
@@ -811,9 +894,33 @@ export function SpaceDataDialog({
 
               {/* Find Similar Emails Section */}
               <div className="space-y-3 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  <Label className="text-base font-semibold">Find Similar Emails</Label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <Label className="text-base font-semibold">Find Similar Emails</Label>
+                  </div>
+                  {editedSpace.extraData?.filteredMessageIds && editedSpace.extraData.filteredMessageIds.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm('Clear all filtered message IDs?')) {
+                          setEditedSpace({
+                            ...editedSpace,
+                            extraData: {
+                              ...editedSpace.extraData,
+                              filteredMessageIds: [],
+                              filteredMessageIdsUpdatedAt: undefined
+                            }
+                          });
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Generate embeddings in memory and find emails matching your phrases. Embeddings are not saved.

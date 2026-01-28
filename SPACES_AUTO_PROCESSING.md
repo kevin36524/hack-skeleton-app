@@ -74,6 +74,34 @@ The `SpacesSection` component has been updated to automatically pass `mailboxId`
 4. **Backwards Compatible**: Works without mailboxId/guid (just skips auto-processing)
 5. **Error Resilient**: If processing fails for a space, it keeps the original data
 
+## Implementation Details
+
+### Architecture
+
+To avoid network issues on Cloud Run and improve performance, the auto-processing feature uses **direct function calls** instead of HTTP requests between internal API routes.
+
+**Key Components:**
+
+1. **`lib/services/spaces-processing.ts`**: Contains the core processing logic
+   - `generateAllowlistedPhrases()` - Generates phrases using Mastra AI
+   - `findSimilarEmails()` - Finds similar emails using embeddings
+
+2. **`app/api/spaces/route.ts`**: GET endpoint that orchestrates the processing
+   - Calls the processing functions directly
+   - Only makes external HTTP calls to Yahoo Mail API
+
+3. **API Routes**: Thin wrappers around the processing functions
+   - `/api/embeddings/generate-phrases` - Wraps `generateAllowlistedPhrases()`
+   - `/api/embeddings/find-similar` - Wraps `findSimilarEmails()`
+
+### Benefits of Direct Function Calls
+
+✅ **No Network Overhead**: Functions are called directly in the same process
+✅ **Works on Cloud Run**: Avoids issues with services calling themselves via HTTP
+✅ **Better Performance**: No serialization/deserialization of HTTP requests
+✅ **Better Error Handling**: Stack traces are preserved across function calls
+✅ **Simpler Debugging**: Can step through the entire flow in one process
+
 ## Technical Details
 
 ### needsUpdate() Function
