@@ -11,7 +11,9 @@ import {
   GetSpacesApiResponse,
   EditSpaceRequest,
   EditSpaceApiResponse,
-  EditSpaceUpdateObj
+  EditSpaceUpdateObj,
+  CreateSpaceRequest,
+  CreateSpaceApiResponse
 } from '@/lib/types/api';
 
 /**
@@ -29,7 +31,7 @@ class SpacesService {
    * This function retrieves the list of AI-powered spaces configured for the user's account.
    * Spaces help organize emails into intelligent categories.
    *
-   * Note: This calls the Next.js API route (/api/spaces) which then makes the server-side
+   * Note: This calls the Next.js API route (/yai/autopilot/getSpaces) which then makes the server-side
    * request to Yahoo Mail Autopilot API to avoid CORS issues.
    *
    * Auto-Processing: If mailboxId and guid are provided, accepted spaces will be automatically
@@ -118,7 +120,7 @@ class SpacesService {
       }
 
       // Call our Next.js API route (server-side) to avoid CORS issues
-      const url = `/api/spaces?${params.toString()}`;
+      const url = `/yai/autopilot/getSpaces?${params.toString()}`;
 
       // Get the current token for authorization
       const token = (apiClient as any).token;
@@ -188,7 +190,7 @@ class SpacesService {
    *
    * This function updates a space's configuration (e.g., email senders, keywords, name).
    *
-   * Note: This calls the Next.js API route (/api/spaces/edit) which then makes the
+   * Note: This calls the Next.js API route (/yai/autopilot/editSpace) which then makes the
    * server-side request to Yahoo Mail Autopilot API to avoid CORS issues.
    *
    * @param accountId - The account identifier
@@ -228,7 +230,7 @@ class SpacesService {
       });
 
       // Call our Next.js API route (server-side) to avoid CORS issues
-      const url = `/api/spaces/edit?${params.toString()}`;
+      const url = `/yai/autopilot/editSpace?${params.toString()}`;
 
       // Get the current token for authorization
       const token = (apiClient as any).token;
@@ -293,6 +295,107 @@ class SpacesService {
     updateObj: EditSpaceUpdateObj
   ): Promise<EditSpaceApiResponse> {
     return this.editSpace(accountId, spaceId, updateObj, 0, true);
+  }
+
+  /**
+   * Creates a new space
+   *
+   * This function creates a new space based on user instruction.
+   *
+   * Note: This calls the Next.js API route (/yai/autopilot/createSpace) which then makes the
+   * server-side request to Yahoo Mail Autopilot API to avoid CORS issues.
+   *
+   * @param accountId - The account identifier
+   * @param userInstruction - User's instruction for creating the space
+   * @param retryCount - Number of retry attempts (default: 0)
+   * @param genAI - Whether to use generative AI features (default: true)
+   * @returns Promise resolving to the create space response
+   *
+   * @throws {Error} If the API request fails or returns non-2xx status
+   *
+   * @example
+   * ```typescript
+   * const response = await spacesService.createSpace(
+   *   'account-123',
+   *   'Create a space for my traffic tickets'
+   * );
+   * ```
+   */
+  async createSpace(
+    accountId: string,
+    userInstruction: string,
+    retryCount: number = 0,
+    genAI: boolean = true
+  ): Promise<CreateSpaceApiResponse> {
+    try {
+      // Build query parameters for our Next.js API route
+      const params = new URLSearchParams({
+        retryCount: retryCount.toString(),
+        genAI: genAI.toString()
+      });
+
+      // Call our Next.js API route (server-side) to avoid CORS issues
+      const url = `/yai/autopilot/createSpace?${params.toString()}`;
+
+      // Get the current token for authorization
+      const token = (apiClient as any).token;
+      if (!token) {
+        throw new Error('No authorization token available');
+      }
+
+      // Prepare the request body
+      const requestBody: CreateSpaceRequest = {
+        accountId,
+        userInstruction
+      };
+
+      // Make the request with proper authorization headers
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to create space (${response.status}): ${errorText || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Failed to create space:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a space with default parameters
+   *
+   * Convenience method that uses sensible defaults for most common use case.
+   *
+   * @param accountId - The account identifier
+   * @param userInstruction - User's instruction for creating the space
+   * @returns Promise resolving to the create space response
+   *
+   * @example
+   * ```typescript
+   * const response = await spacesService.createSpaceDefault(
+   *   'account-123',
+   *   'Create a space for my traffic tickets'
+   * );
+   * ```
+   */
+  async createSpaceDefault(
+    accountId: string,
+    userInstruction: string
+  ): Promise<CreateSpaceApiResponse> {
+    return this.createSpace(accountId, userInstruction, 0, true);
   }
 }
 

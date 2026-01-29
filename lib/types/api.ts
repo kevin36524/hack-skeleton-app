@@ -490,3 +490,15 @@ export interface EditSpaceApiResponse {
   space?: Space;
   message?: string;
 }
+
+// Create Space API Types
+export interface CreateSpaceRequest {
+  accountId: string;
+  userInstruction: string;
+}
+
+export interface CreateSpaceApiResponse {
+  success: boolean;
+  space?: Space;
+  message?: string;
+}
