@@ -171,7 +171,11 @@ export async function findSimilarEmails(
   console.log('[SPACES-PROCESSING] Fetched', messages.length, 'messages');
 
   if (messages.length === 0) {
-    return [];
+    return {
+      filteredMessageIds: [],
+      allowlistedMessageIds: [],
+      blocklistedMessageIds: []
+    };
   }
 
   // Step 2: Prepare texts and message IDs for embedding
