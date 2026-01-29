@@ -99,14 +99,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build query parameters for Yahoo API
-    const yahooParams = new URLSearchParams({
-      acctId,
-      appid: appidStr,
-      retryCount: retryCountNum.toString(),
-      genAI: genAIBool.toString(),
-      appVer: appVerStr
-    });
+    // Build query parameters for Yahoo API - forward all incoming params
+    const yahooParams = new URLSearchParams(searchParams);
+
+    // Ensure defaults for required parameters if not provided
+    if (!yahooParams.has('appid')) {
+      yahooParams.set('appid', appidStr);
+    }
+    if (!yahooParams.has('retryCount')) {
+      yahooParams.set('retryCount', retryCountNum.toString());
+    }
+    if (!yahooParams.has('genAI')) {
+      yahooParams.set('genAI', genAIBool.toString());
+    }
+    if (!yahooParams.has('appVer')) {
+      yahooParams.set('appVer', appVerStr);
+    }
 
     // Construct the Yahoo API URL
     const yahooUrl = `${SPACES_BASE_URL}/getSpaces?${yahooParams.toString()}`;
@@ -167,13 +175,13 @@ export async function GET(request: NextRequest) {
               }
             };
 
-            const filteredMessageIds = await findSimilarEmails(
+            const result = await findSimilarEmails(
               spaceWithPhrases,
               mailboxId,
               acctId,
               authHeader
             );
-            console.log(`[SPACES API] Found ${filteredMessageIds.length} similar emails`);
+            console.log(`[SPACES API] Found ${result.filteredMessageIds.length} similar emails (${result.allowlistedMessageIds.length} allowlisted, ${result.blocklistedMessageIds.length} blocklisted)`);
 
             // Step 3: Update the space with new data (direct Yahoo API call)
             console.log('[SPACES API] Step 3: Updating space...');
@@ -181,22 +189,33 @@ export async function GET(request: NextRequest) {
               extraData: {
                 ...space.extraData,
                 allowlistedPhrases,
-                filteredMessageIds,
+                filteredMessageIds: result.filteredMessageIds,
+                allowlistedMessageIds: result.allowlistedMessageIds,
+                blocklistedMessageIds: result.blocklistedMessageIds,
                 filteredMessageIdsUpdatedAt: new Date().toISOString()
               }
             };
 
-            // Build query parameters for Yahoo API
-            const editParams = new URLSearchParams({
-              appid: 'YahooMailIosMobile',
-              appVer: '7.84.0_75832Dogfood-AdHoc',
-              ymreqid: `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
-              name: 'EditSpace',
-              retryCount: '0',
-              isGCP: 'false',
-              mailboxLocation: 'ONPREM',
-              genAI: 'true'
-            });
+            // Build query parameters for Yahoo API - forward all incoming params
+            const editParams = new URLSearchParams(searchParams);
+
+            // Override/add specific parameters for editSpace
+            editParams.set('ymreqid', `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`);
+            editParams.set('name', 'EditSpace');
+
+            // Ensure defaults for required parameters if not provided
+            if (!editParams.has('appid')) {
+              editParams.set('appid', 'YahooMailIosMobile');
+            }
+            if (!editParams.has('appVer')) {
+              editParams.set('appVer', '7.84.0_75832Dogfood-AdHoc');
+            }
+            if (!editParams.has('retryCount')) {
+              editParams.set('retryCount', '0');
+            }
+            if (!editParams.has('genAI')) {
+              editParams.set('genAI', 'true');
+            }
 
             const editUrl = `${EDIT_SPACES_BASE_URL}/editSpace?${editParams.toString()}`;
 

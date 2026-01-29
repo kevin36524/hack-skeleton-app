@@ -100,7 +100,11 @@ export async function findSimilarEmails(
   mailboxId: string,
   accountId: string,
   authHeader: string
-): Promise<string[]> {
+): Promise<{
+  filteredMessageIds: string[];
+  allowlistedMessageIds: string[];
+  blocklistedMessageIds: string[];
+}> {
   console.log('[SPACES-PROCESSING] Finding similar emails for space:', space.name);
 
   // Check if phrases exist
@@ -224,6 +228,7 @@ export async function findSimilarEmails(
 
   // Step 6: Handle blocklisted phrases (if any)
   const blocklistedPhrases = space.extraData?.blocklistedPhrases || [];
+  const blocklistedMessageIdsSet = new Set<string>();
   let finalMessageIds = Array.from(allowlistedMessageIds);
 
   if (blocklistedPhrases.length > 0) {
@@ -234,8 +239,6 @@ export async function findSimilarEmails(
 
     console.log('[SPACES-PROCESSING] Generated', blockPhraseVectors.length, 'blocklist phrase embeddings');
 
-    const blocklistedMessageIds = new Set<string>();
-
     for (let i = 0; i < blockPhraseVectors.length; i++) {
       const queryVector = blockPhraseVectors[i];
 
@@ -245,20 +248,24 @@ export async function findSimilarEmails(
       // Add matching message IDs
       for (const idx of topIndices) {
         if (idx >= 0 && idx < messageIds.length) {
-          blocklistedMessageIds.add(messageIds[idx]);
+          blocklistedMessageIdsSet.add(messageIds[idx]);
         }
       }
     }
 
-    console.log('[SPACES-PROCESSING] Found', blocklistedMessageIds.size, 'blocklisted messages');
+    console.log('[SPACES-PROCESSING] Found', blocklistedMessageIdsSet.size, 'blocklisted messages');
 
     // Remove blocklisted messages from allowlisted
-    finalMessageIds = finalMessageIds.filter(mid => !blocklistedMessageIds.has(mid));
+    finalMessageIds = finalMessageIds.filter(mid => !blocklistedMessageIdsSet.has(mid));
 
     console.log('[SPACES-PROCESSING] After filtering:', finalMessageIds.length, 'messages remain');
   }
 
   console.log('[SPACES-PROCESSING] Final result:', finalMessageIds.length, 'matching messages');
 
-  return finalMessageIds;
+  return {
+    filteredMessageIds: finalMessageIds,
+    allowlistedMessageIds: Array.from(allowlistedMessageIds),
+    blocklistedMessageIds: Array.from(blocklistedMessageIdsSet),
+  };
 }

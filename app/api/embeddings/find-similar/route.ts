@@ -43,12 +43,16 @@ export async function POST(request: NextRequest) {
     console.log('[FIND-SIMILAR] Finding similar emails for space:', space.name);
 
     // Use extracted function
-    const filteredMessageIds = await findSimilarEmails(space, mailboxId, accountId, authHeader);
+    const result = await findSimilarEmails(space, mailboxId, accountId, authHeader);
 
     return NextResponse.json({
       success: true,
-      filteredMessageIds,
-      totalMatches: filteredMessageIds.length,
+      filteredMessageIds: result.filteredMessageIds,
+      allowlistedMessageIds: result.allowlistedMessageIds,
+      blocklistedMessageIds: result.blocklistedMessageIds,
+      totalMatches: result.filteredMessageIds.length,
+      allowlistedCount: result.allowlistedMessageIds.length,
+      blocklistedCount: result.blocklistedMessageIds.length,
     });
   } catch (error) {
     console.error('[FIND-SIMILAR] Error:', error);
@@ -61,7 +65,11 @@ export async function POST(request: NextRequest) {
         error: 'Failed to find similar emails',
         details: errorMessage,
         filteredMessageIds: [],
+        allowlistedMessageIds: [],
+        blocklistedMessageIds: [],
         totalMatches: 0,
+        allowlistedCount: 0,
+        blocklistedCount: 0,
       },
       { status: 500 }
     );

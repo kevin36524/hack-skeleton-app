@@ -166,13 +166,13 @@ export async function GET(request: NextRequest) {
               }
             };
 
-            const filteredMessageIds = await findSimilarEmails(
+            const result = await findSimilarEmails(
               spaceWithPhrases,
               mailboxId,
               acctId,
               authHeader
             );
-            console.log(`[SPACES API] Found ${filteredMessageIds.length} similar emails`);
+            console.log(`[SPACES API] Found ${result.filteredMessageIds.length} similar emails (${result.allowlistedMessageIds.length} allowlisted, ${result.blocklistedMessageIds.length} blocklisted)`);
 
             // Step 3: Update the space with new data (direct Yahoo API call)
             console.log('[SPACES API] Step 3: Updating space...');
@@ -180,7 +180,9 @@ export async function GET(request: NextRequest) {
               extraData: {
                 ...space.extraData,
                 allowlistedPhrases,
-                filteredMessageIds,
+                filteredMessageIds: result.filteredMessageIds,
+                allowlistedMessageIds: result.allowlistedMessageIds,
+                blocklistedMessageIds: result.blocklistedMessageIds,
                 filteredMessageIdsUpdatedAt: new Date().toISOString()
               }
             };

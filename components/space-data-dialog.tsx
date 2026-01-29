@@ -210,14 +210,16 @@ export function SpaceDataDialog({
       const result = await response.json();
 
       if (result.success) {
-        setSimilarEmailsStatus(`✓ Found ${result.totalMatches} matching messages`);
+        setSimilarEmailsStatus(`✓ Found ${result.totalMatches} matching messages (${result.allowlistedCount} allowlisted, ${result.blocklistedCount} blocklisted)`);
 
-        // Update the space's extraData with filtered message IDs
+        // Update the space's extraData with all message ID sets
         const updatedSpace = {
           ...editedSpace,
           extraData: {
             ...editedSpace.extraData,
             filteredMessageIds: result.filteredMessageIds,
+            allowlistedMessageIds: result.allowlistedMessageIds,
+            blocklistedMessageIds: result.blocklistedMessageIds,
           },
         };
         setEditedSpace(updatedSpace);
@@ -327,6 +329,8 @@ export function SpaceDataDialog({
           blocklistedPhrases: spaceToSave.extraData.blocklistedPhrases || [],
           showSemanticMessages: spaceToSave.extraData.showSemanticMessages || false,
           filteredMessageIds: spaceToSave.extraData.filteredMessageIds || [],
+          allowlistedMessageIds: spaceToSave.extraData.allowlistedMessageIds || [],
+          blocklistedMessageIds: spaceToSave.extraData.blocklistedMessageIds || [],
           includeKeywords: spaceToSave.extraData.includeKeywords !== false,
           messageCount: spaceToSave.extraData.messageCount || 50,
         };
@@ -384,10 +388,14 @@ export function SpaceDataDialog({
     setShowRawJson(!showRawJson);
   };
 
-  const handleClearGeneratedData = () => {
+  const handleClearGeneratedData = async () => {
     if (!confirm('Are you sure you want to clear all allowlisted phrases, blocklisted phrases, and filtered message IDs? This cannot be undone.')) {
       return;
     }
+
+    setSaveLoading(true);
+    setSaveError(null);
+    setSaveStatus('Clearing generated data...');
 
     const updatedSpace = {
       ...editedSpace,
@@ -396,16 +404,66 @@ export function SpaceDataDialog({
         allowlistedPhrases: [],
         blocklistedPhrases: [],
         filteredMessageIds: [],
+        allowlistedMessageIds: [],
+        blocklistedMessageIds: [],
         filteredMessageIdsUpdatedAt: undefined,
       }
     };
-    setEditedSpace(updatedSpace);
 
-    // Clear any status messages
-    setPhrasesStatus('');
-    setPhrasesError(null);
-    setSimilarEmailsStatus('');
-    setSimilarEmailsError(null);
+    try {
+      // Prepare the update object
+      const updateObj: any = {
+        emailSenders: updatedSpace.emailSenders,
+        keywords: updatedSpace.keywords,
+        name: updatedSpace.name,
+        shortName: updatedSpace.shortName,
+        extraData: {
+          ...updatedSpace.extraData,
+          allowlistedPhrases: [],
+          blocklistedPhrases: [],
+          showSemanticMessages: updatedSpace.extraData?.showSemanticMessages || false,
+          filteredMessageIds: [],
+          allowlistedMessageIds: [],
+          blocklistedMessageIds: [],
+          includeKeywords: updatedSpace.extraData?.includeKeywords !== false,
+          messageCount: updatedSpace.extraData?.messageCount || 50,
+        }
+      };
+
+      // Call the edit space API
+      const response = await spacesService.editSpace(
+        accountId,
+        updatedSpace.id,
+        updateObj
+      );
+
+      if (response.success) {
+        setSaveStatus('✓ Generated data cleared successfully!');
+
+        // Update local state
+        setEditedSpace(updatedSpace);
+        onSave(updatedSpace);
+
+        // Clear any status messages
+        setPhrasesStatus('');
+        setPhrasesError(null);
+        setSimilarEmailsStatus('');
+        setSimilarEmailsError(null);
+
+        setTimeout(() => {
+          setSaveLoading(false);
+          setSaveStatus('');
+        }, 1500);
+      } else {
+        throw new Error(response.message || 'Failed to clear generated data');
+      }
+    } catch (error) {
+      console.error('Error clearing generated data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setSaveError(errorMessage);
+      setSaveLoading(false);
+      setSaveStatus('');
+    }
   };
 
   return (
@@ -910,6 +968,8 @@ export function SpaceDataDialog({
                             extraData: {
                               ...editedSpace.extraData,
                               filteredMessageIds: [],
+                              allowlistedMessageIds: [],
+                              blocklistedMessageIds: [],
                               filteredMessageIdsUpdatedAt: undefined
                             }
                           });
@@ -987,7 +1047,7 @@ export function SpaceDataDialog({
                       </div>
                     </div>
 
-                    {/* Collapsible Message IDs */}
+                    {/* Collapsible Message IDs - Filtered (Final) */}
                     <Collapsible
                       open={showMessageIds}
                       onOpenChange={setShowMessageIds}
@@ -999,7 +1059,7 @@ export function SpaceDataDialog({
                           className="w-full justify-between text-xs"
                         >
                           <span className="text-gray-600 dark:text-gray-400">
-                            {editedSpace.extraData.filteredMessageIds.length} messages matched
+                            <span className="font-semibold">Filtered (Final):</span> {editedSpace.extraData.filteredMessageIds.length} messages
                           </span>
                           <ChevronDown
                             className={cn(
@@ -1024,6 +1084,70 @@ export function SpaceDataDialog({
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
+
+                    {/* Collapsible Message IDs - Allowlisted */}
+                    {editedSpace.extraData?.allowlistedMessageIds && editedSpace.extraData.allowlistedMessageIds.length > 0 && (
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-between text-xs"
+                          >
+                            <span className="text-green-600 dark:text-green-400">
+                              <span className="font-semibold">Allowlisted:</span> {editedSpace.extraData.allowlistedMessageIds.length} messages
+                            </span>
+                            <ChevronDown className="h-4 w-4 transition-transform" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 max-h-60 overflow-y-auto border border-green-200 dark:border-green-800 rounded-md p-3 bg-green-50 dark:bg-green-900/10">
+                            <div className="space-y-1">
+                              {editedSpace.extraData.allowlistedMessageIds.map((mid, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs font-mono text-gray-700 dark:text-gray-300 py-1 px-2 hover:bg-green-100 dark:hover:bg-green-800/20 rounded"
+                                >
+                                  {idx + 1}. {mid}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Collapsible Message IDs - Blocklisted */}
+                    {editedSpace.extraData?.blocklistedMessageIds && editedSpace.extraData.blocklistedMessageIds.length > 0 && (
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-between text-xs"
+                          >
+                            <span className="text-red-600 dark:text-red-400">
+                              <span className="font-semibold">Blocklisted:</span> {editedSpace.extraData.blocklistedMessageIds.length} messages
+                            </span>
+                            <ChevronDown className="h-4 w-4 transition-transform" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="mt-2 max-h-60 overflow-y-auto border border-red-200 dark:border-red-800 rounded-md p-3 bg-red-50 dark:bg-red-900/10">
+                            <div className="space-y-1">
+                              {editedSpace.extraData.blocklistedMessageIds.map((mid, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs font-mono text-gray-700 dark:text-gray-300 py-1 px-2 hover:bg-red-100 dark:hover:bg-red-800/20 rounded"
+                                >
+                                  {idx + 1}. {mid}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </div>
                 )}
               </div>

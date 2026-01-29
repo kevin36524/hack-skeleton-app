@@ -61,6 +61,10 @@ export interface FindSimilarEmailsRequest {
 export interface FindSimilarEmailsResponse {
   success: boolean;
   filteredMessageIds: string[];
+  allowlistedMessageIds: string[];
+  blocklistedMessageIds: string[];
   totalMatches: number;
+  allowlistedCount: number;
+  blocklistedCount: number;
   error?: string;
 }
