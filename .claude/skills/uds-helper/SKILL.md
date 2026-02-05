@@ -127,6 +127,59 @@ npm run dev
 
 **Styles not applying** → Check: CSS imported? Wrapper class added? Config path correct? Dev server restarted?
 
+## Common Component Pitfalls
+
+### Button vs IconButton Event Handlers
+
+UDS components use different prop names for click handlers:
+
+| Component | Event Prop | Example |
+|-----------|------------|---------|
+| `Button` | `onClick` | `<Button onClick={handleClick}>` |
+| `IconButton` | `onClick` | `<IconButton onClick={handleClick}>` |
+
+⚠️ **Important:** Both `Button` and `IconButton` use `onClick`, NOT `onPress`. Using `onPress` will silently fail.
+
+```typescript
+// ✅ Correct
+<Button onClick={() => console.log('clicked')}>Click me</Button>
+<IconButton name={UDSIcons.Archive} onClick={() => console.log('clicked')} />
+
+// ❌ Wrong - won't trigger
+<Button onPress={() => console.log('clicked')}>Click me</Button>
+```
+
+### Button Component API
+
+The `Button` component accepts standard HTML button props plus UDS-specific props:
+
+```typescript
+import { Button } from '@yahoo/uds';
+import { Check } from '@yahoo/uds-icons';
+
+// Basic usage
+<Button onClick={handleClick}>Save</Button>
+
+// With variant and icon
+<Button variant="primary" startIcon={Check} onClick={handleClick}>
+  Save
+</Button>
+
+// Loading state
+<Button isLoading isDisabled onClick={handleClick}>
+  Loading...
+</Button>
+```
+
+**Common Button Props:**
+- `variant`: `'primary' | 'secondary' | 'tertiary' | 'ghost'`
+- `size`: `'sm' | 'md' | 'lg'`
+- `startIcon`: Icon component from `@yahoo/uds-icons`
+- `endIcon`: Icon component from `@yahoo/uds-icons`
+- `isLoading`: Shows loading spinner
+- `isDisabled`: Disables the button
+- `onClick`: Click event handler (standard React onClick)
+
 ## Detailed Resources
 
 For detailed information, see:

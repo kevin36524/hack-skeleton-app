@@ -35,6 +35,7 @@ import {
   Error,
   Warning,
   LogOut,
+  TwoSparkles,
 } from '@yahoo/uds-icons';
 
 export const UDSIcons = {
@@ -74,6 +75,7 @@ export const UDSIcons = {
   Forward: RightCurveArrow,
   AlertCircle: Error,
   LogOut,
+  Sparkles: TwoSparkles,
 } as const;
 
 export type UDSIconName = keyof typeof UDSIcons;

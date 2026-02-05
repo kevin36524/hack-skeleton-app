@@ -4,10 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { Message, Attachment } from '@/lib/types/api';
 import { format } from 'date-fns';
 import { Box, VStack, HStack, Text, Icon, Divider, Button, IconButton, Badge, AvatarText } from '@yahoo/uds';
-import { PaperPlane } from '@yahoo/uds-icons';
+import { PaperPlane, TwoSparkles } from '@yahoo/uds-icons';
 import { HoverableListItem } from '@/components/uds-utils';
 import { UDSIcons } from '@/lib/uds-icons-map';
 import { messageService } from '@/lib/services/message-service';
+
+interface EmailSummary {
+  summary: string;
+  actionItems: string[];
+  keyDetails: string[];
+  urgency: 'high' | 'medium' | 'low';
+}
 
 interface MessageDetailProps {
   message: Message | null;
@@ -36,6 +43,9 @@ export function MessageDetail({
   const [loadingBody, setLoadingBody] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [summary, setSummary] = useState<EmailSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside for dropdown
@@ -62,6 +72,8 @@ export function MessageDetail({
         setLoadingBody(true);
         setBodyError(null);
         setFullBody(null);
+        setSummary(null);
+        setSummaryError(null);
 
         try {
           const response = await messageService.getFullMessageBody(mailboxId, message.id);
@@ -78,8 +90,78 @@ export function MessageDetail({
     } else {
       setFullBody(null);
       setBodyError(null);
+      setSummary(null);
+      setSummaryError(null);
     }
   }, [message?.id, mailboxId]);
+
+  // Summarize email using AI
+  const handleSummarize = async () => {
+    console.log('[Summarize] Button clicked');
+    console.log('[Summarize] Message:', message);
+    console.log('[Summarize] FullBody:', fullBody);
+
+    if (!message || !fullBody) {
+      console.log('[Summarize] Early return - missing message or fullBody');
+      return;
+    }
+
+    console.log('[Summarize] Starting API call...');
+    setLoadingSummary(true);
+    setSummaryError(null);
+
+    const requestBody = {
+      subject: message.headers.subject || '(No subject)',
+      from: message.headers.from?.map(f => f.email).join(', ') || 'Unknown',
+      to: message.headers.to?.map(t => t.email).join(', '),
+      body: fullBody.text || fullBody.html || message.snippet,
+      date: message.headers.internalDate 
+        ? new Date(parseInt(message.headers.internalDate) * 1000).toISOString()
+        : undefined,
+    };
+    console.log('[Summarize] Request body:', requestBody);
+
+    try {
+      console.log('[Summarize] Fetching /api/summarize-email...');
+      const response = await fetch('/api/summarize-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('[Summarize] Response status:', response.status);
+      console.log('[Summarize] Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('[Summarize] Error response:', errorText);
+        throw new Error(`Failed to summarize email: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('[Summarize] Response data:', data);
+
+      if (data.success) {
+        console.log('[Summarize] Setting summary:', data);
+        setSummary({
+          summary: data.summary,
+          actionItems: data.actionItems,
+          keyDetails: data.keyDetails,
+          urgency: data.urgency,
+        });
+      } else {
+        throw new Error(data.error || 'Failed to summarize email');
+      }
+    } catch (error) {
+      console.error('[Summarize] Error:', error);
+      setSummaryError('Failed to generate summary');
+    } finally {
+      console.log('[Summarize] Finished, setting loading to false');
+      setLoadingSummary(false);
+    }
+  };
 
   if (!message) {
     return (
@@ -119,6 +201,19 @@ export function MessageDetail({
     <VStack gap="0" alignItems="stretch" justifyContent="flex-start" className="h-full" backgroundColor="primary">
       {/* Message Header - Action Buttons */}
       <HStack gap="2" alignItems="center" justifyContent="flex-end" spacing="4">
+        <Button
+          variant="secondary"
+          size="sm"
+          startIcon={TwoSparkles}
+          onClick={() => {
+            console.log('[Summarize] Button onClick triggered');
+            handleSummarize();
+          }}
+          isLoading={loadingSummary}
+          isDisabled={loadingSummary || !fullBody}
+        >
+          Summarize
+        </Button>
         <IconButton
           name={UDSIcons.Archive}
           variant="tertiary"
@@ -203,6 +298,70 @@ export function MessageDetail({
       </Box>
 
       <Divider variant="secondary" />
+
+      {/* AI Summary */}
+      {(summary || loadingSummary || summaryError) && (
+        <Box
+          backgroundColor="secondary"
+          borderRadius="md"
+          spacing="4"
+          className="p-4"
+        >
+          <HStack gap="2" alignItems="center" spacing="2">
+            <Icon name={UDSIcons.Sparkles} size="sm" color="brand" />
+            <Text variant="label2" color="primary">AI Summary</Text>
+            {summary && (
+              <Badge
+                variant={summary.urgency === 'high' ? 'alert' : summary.urgency === 'medium' ? 'warning' : 'success'}
+                size="sm"
+              >
+                {summary.urgency} priority
+              </Badge>
+            )}
+          </HStack>
+          
+          {loadingSummary ? (
+            <HStack gap="2" alignItems="center" spacing="2">
+              <Icon name={UDSIcons.Loader2} size="sm" className="animate-spin" color="secondary" />
+              <Text variant="body2" color="secondary">Generating summary...</Text>
+            </HStack>
+          ) : summaryError ? (
+            <Text variant="body2" color="alert">{summaryError}</Text>
+          ) : summary ? (
+            <VStack gap="3" alignItems="flex-start">
+              <Text variant="body2" color="primary">{summary.summary}</Text>
+              
+              {summary.actionItems.length > 0 && (
+                <Box>
+                  <Text variant="label3" color="secondary" spacing="1">Action Items:</Text>
+                  <VStack gap="1" alignItems="flex-start">
+                    {summary.actionItems.map((item, index) => (
+                      <HStack key={index} gap="2" alignItems="flex-start">
+                        <Text variant="body2" color="brand">•</Text>
+                        <Text variant="body2" color="primary">{item}</Text>
+                      </HStack>
+                    ))}
+                  </VStack>
+                </Box>
+              )}
+              
+              {summary.keyDetails.length > 0 && (
+                <Box>
+                  <Text variant="label3" color="secondary" spacing="1">Key Details:</Text>
+                  <VStack gap="1" alignItems="flex-start">
+                    {summary.keyDetails.map((detail, index) => (
+                      <HStack key={index} gap="2" alignItems="flex-start">
+                        <Text variant="body2" color="brand">•</Text>
+                        <Text variant="body2" color="primary">{detail}</Text>
+                      </HStack>
+                    ))}
+                  </VStack>
+                </Box>
+              )}
+            </VStack>
+          ) : null}
+        </Box>
+      )}
 
       {/* Message Body */}
       <Box display="flex" flexDirection="column" spacing="4" rowGap="4" className="flex-1 overflow-auto">
@@ -290,14 +449,14 @@ export function MessageDetail({
           variant="primary"
           size="md"
           startIcon={PaperPlane}
-          onPress={() => onReply?.(message)}
+          onClick={() => onReply?.(message)}
         >
           Reply
         </Button>
         <Button
           variant="secondary"
           size="md"
-          onPress={() => onForward?.(message)}
+          onClick={() => onForward?.(message)}
         >
           Forward
         </Button>
