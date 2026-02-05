@@ -75,6 +75,7 @@ export interface Account {
   provider?: string;
   replyToAddress?: string;
   lastVerifiedTime?: number;
+  folderPrefix?: string;
 }
 
 export interface GetAccountsApiResponse {

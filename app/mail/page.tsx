@@ -1,20 +1,24 @@
 'use client';
 
+import '../email.css';
 import { Suspense, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import ProtectedRoute from '@/components/protected-route';
-import { Button } from '@/components/ui/button';
+import { Box, HStack, VStack, Text, Icon, IconButton, Button, DARK_COLOR_MODE_CLASSNAME, LIGHT_COLOR_MODE_CLASSNAME } from '@yahoo/uds';
+import { Sun, CrescentMoon, Cog, MagnifyingGlass, Refresh as RefreshIcon, Add, LogOut } from '@yahoo/uds-icons';
+import { AvatarText } from '@yahoo/uds';
 import { MailboxSelector } from '@/components/mailbox-selector';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Message } from '@/lib/types/api';
+import { Message, Account } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
+import { accountService } from '@/lib/services/account-service';
+import { Badge } from '@yahoo/uds';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -22,13 +26,16 @@ function MailPageContent() {
   const router = useRouter();
 
   const [mailboxId, setMailboxId] = useState<string>('');
-  const [accountId, setAccountId] = useState<string>('');
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -39,8 +46,23 @@ function MailPageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId);
-  }, [mailboxId, accountId, folderId]);
+    console.log('MailPage: mailboxId:', mailboxId, 'accountId:', selectedAccount?.id, 'folderId:', folderId);
+  }, [mailboxId, selectedAccount, folderId]);
+
+  // Load accounts when mailboxId is available
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (mailboxId) {
+        try {
+          const enabledAccounts = await accountService.getEnabledAccounts(mailboxId);
+          setAccounts(enabledAccounts);
+        } catch (err) {
+          console.error('Error loading accounts:', err);
+        }
+      }
+    };
+    loadAccounts();
+  }, [mailboxId]);
 
   // Load desktop sidebar collapsed state and panel sizes from localStorage
   useEffect(() => {
@@ -83,9 +105,9 @@ function MailPageContent() {
     setMailboxId(id);
   };
 
-  const handleAccountSelected = (account: { id: string }) => {
+  const handleAccountSelected = (account: Account) => {
     console.log('MailPage: Account selected:', account.id);
-    setAccountId(account.id);
+    setSelectedAccount(account);
   };
 
   const handleFolderSelected = (id: string) => {
@@ -120,61 +142,171 @@ function MailPageContent() {
     window.location.reload();
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'YM';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const isReady = mailboxId;
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-
+      <Box
+        display="flex"
+        flexDirection="column"
+        backgroundColor="primary"
+        className={`uds-email h-screen w-full ${isDarkMode ? DARK_COLOR_MODE_CLASSNAME : LIGHT_COLOR_MODE_CLASSNAME}`}
+      >
         {/* Mobile Header */}
-        <MobileHeader
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          onMailboxSelected={handleMailboxSelected}
-          onAccountSelected={handleAccountSelected}
-          mailboxId={mailboxId}
-          onLogout={handleLogout}
-          onRefresh={refreshData}
-        />
+        <div className="md:hidden">
+          <MobileHeader
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={toggleSidebar}
+            onMailboxSelected={handleMailboxSelected}
+            onAccountSelected={handleAccountSelected}
+            mailboxId={mailboxId}
+            onLogout={handleLogout}
+            onRefresh={refreshData}
+          />
+        </div>
+
+        {/* Hidden components for functionality */}
+        <div className="hidden">
+          <MailboxSelector onMailboxSelected={handleMailboxSelected} />
+          <AccountSwitcher
+            mailboxId={mailboxId}
+            onAccountSelected={handleAccountSelected}
+          />
+        </div>
 
         {/* Desktop Header */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm border-b hidden md:block">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <Mail className="h-8 w-8 text-purple-600" />
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Yahoo Mail</h1>
-                <MailboxSelector onMailboxSelected={handleMailboxSelected} />
-              </div>
+        <Box
+          display="flex"
+          flexDirection="row"
+          spacingHorizontal="4"
+          spacingVertical="2"
+          borderBottomWidth="thin"
+          borderColor="secondary"
+          alignItems="center"
+          justifyContent="space-between"
+          className="hidden md:flex"
+        >
+          <HStack gap="4" alignItems="center" justifyContent="flex-start">
+            <Text variant="title3" color="brand">
+              Yahoo Mail
+            </Text>
+          </HStack>
 
-              <div className="flex items-center space-x-4">
-                <AccountSwitcher
-                  mailboxId={mailboxId}
-                  onAccountSelected={handleAccountSelected}
+          <HStack gap="2" alignItems="center" justifyContent="flex-end" className="flex-1 max-w-md">
+            <Box
+              display="flex"
+              flexDirection="row"
+              columnGap="2"
+              spacing="2"
+              backgroundColor="secondary"
+              borderRadius="md"
+              alignItems="center"
+              className="flex-1"
+            >
+              <Icon name={MagnifyingGlass} size="sm" color="secondary" />
+              <Text variant="label2" color="tertiary">
+                Search mail
+              </Text>
+            </Box>
+          </HStack>
+
+          <HStack gap="2" alignItems="center" justifyContent="flex-end">
+            <IconButton
+              key={isDarkMode ? 'dark' : 'light'}
+              name={isDarkMode ? CrescentMoon : Sun}
+              variant="tertiary"
+              size="sm"
+              aria-label="Toggle theme"
+              onClick={toggleTheme}
+            />
+            <IconButton
+              name={Cog}
+              variant="tertiary"
+              size="sm"
+              aria-label="Settings"
+            />
+            <Box position="relative">
+              <button
+                onClick={() => setShowAccountSwitcher(!showAccountSwitcher)}
+                className="cursor-pointer"
+              >
+                <AvatarText
+                  initials={getInitials(selectedAccount?.sendingName || selectedAccount?.email)}
+                  size="sm"
                 />
-                <ThemeToggle />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={refreshData}
-                  className="flex items-center space-x-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="flex items-center space-x-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
+              </button>
+              {showAccountSwitcher && accounts.length > 0 && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowAccountSwitcher(false)}
+                  />
+                  <Box
+                    position="absolute"
+                    backgroundColor="primary"
+                    borderWidth="thin"
+                    borderColor="secondary"
+                    borderRadius="md"
+                    spacing="2"
+                    className="right-0 top-full mt-2 min-w-[280px] z-50 shadow-lg"
+                  >
+                    <VStack gap="0" alignItems="stretch">
+                      {accounts.map((account) => (
+                        <Box
+                          key={account.id}
+                          spacing="3"
+                          className="cursor-pointer transition-colors hover:bg-[var(--color-bg-secondary)]"
+                          onClick={() => {
+                            handleAccountSelected(account);
+                            setShowAccountSwitcher(false);
+                          }}
+                          backgroundColor={account.id === selectedAccount?.id ? "brand-secondary" : undefined}
+                        >
+                          <HStack gap="2" alignItems="center" justifyContent="space-between">
+                            <VStack gap="0" className="flex-1 min-w-0">
+                              <Text variant="label2" color="primary" className="truncate">
+                                {account.email}
+                              </Text>
+                              {account.sendingName && (
+                                <Text variant="caption2" color="secondary" className="truncate">
+                                  {account.sendingName}
+                                </Text>
+                              )}
+                            </VStack>
+                            {account.isPrimary && (
+                              <Badge variant="brand" size="sm">Primary</Badge>
+                            )}
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                </>
+              )}
+            </Box>
+            <IconButton
+              name={LogOut}
+              variant="tertiary"
+              size="sm"
+              aria-label="Logout"
+              onClick={handleLogout}
+            />
+          </HStack>
+        </Box>
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden relative">
@@ -191,25 +323,28 @@ function MailPageContent() {
             {/* Mobile Sidebar */}
             <aside className={`
               fixed inset-y-0 left-0 z-50
-              w-64 bg-white dark:bg-gray-800 border-r flex flex-col
+              w-64 border-r flex flex-col
               transform transition-transform duration-200 ease-in-out
               ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            `}>
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Folders</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
+            `} style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+              <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: 'var(--color-border-secondary)' }}>
+                <h2 className="text-lg font-medium" style={{ color: 'var(--color-text-primary)' }}>Folders</h2>
+                <button
                   onClick={toggleSidebar}
+                  className="p-2 rounded"
+                  style={{ backgroundColor: 'transparent' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  <span className="sr-only">Close</span>
+                  <span style={{ color: 'var(--color-text-primary)' }}>×</span>
+                </button>
               </div>
               <div className="flex-1">
                 {isReady ? (
                   <FolderSidebar
                     mailboxId={mailboxId}
-                    accountId={accountId}
+                    account={selectedAccount}
                     selectedFolderId={folderId}
                     onFolderSelected={(id) => {
                       handleFolderSelected(id);
@@ -217,24 +352,18 @@ function MailPageContent() {
                     }}
                   />
                 ) : (
-                  <div className="p-4 text-sm text-gray-500">Loading folders...</div>
+                  <div className="p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading folders...</div>
                 )}
               </div>
             </aside>
 
             {/* Mobile Main Content Area */}
             <div className="flex-1 flex">
-
               {/* Message List */}
               <div className={`
                 w-full md:w-96 border-r flex flex-col
                 ${mobileView === 'list' ? 'block' : 'hidden md:block'}
               `}>
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
-                </div>
                 <div className="flex-1 overflow-hidden">
                   {isReady ? (
                     <MessageList
@@ -244,7 +373,7 @@ function MailPageContent() {
                       selectedMessageId={selectedMessage?.id}
                     />
                   ) : (
-                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                    <div className="p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Select a folder to view messages</div>
                   )}
                 </div>
               </div>
@@ -255,18 +384,19 @@ function MailPageContent() {
                 ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
                 ${!selectedMessage && 'md:block'}
               `}>
-                <div className="p-4 border-b flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Message Details
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                <div className="p-4 border-b flex justify-end items-center md:hidden" style={{ borderColor: 'var(--color-border-secondary)' }}>
+                  <button
                     onClick={handleBackToList}
-                    className="md:hidden"
+                    className="px-4 py-2 rounded"
+                    style={{
+                      backgroundColor: 'var(--color-bg-secondary)',
+                      color: 'var(--color-text-primary)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-tertiary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)'}
                   >
                     Back to list
-                  </Button>
+                  </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <MessageDetail
@@ -293,28 +423,23 @@ function MailPageContent() {
               onResize={handlePanelResize}
             >
               {/* Sidebar Panel */}
-              <aside className="h-full bg-white dark:bg-gray-800 border-r flex flex-col">
+              <aside className="h-full border-r flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
                 {isReady ? (
                   <FolderSidebar
                     mailboxId={mailboxId}
-                    accountId={accountId}
+                    account={selectedAccount}
                     selectedFolderId={folderId}
                     onFolderSelected={handleFolderSelected}
                     isCollapsed={desktopSidebarCollapsed}
                     onCollapsedChange={setDesktopSidebarCollapsed}
                   />
                 ) : (
-                  <div className="p-4 text-sm text-gray-500">Loading folders...</div>
+                  <div className="p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading folders...</div>
                 )}
               </aside>
 
               {/* Message List Panel */}
-              <div className="h-full flex flex-col border-r bg-white dark:bg-gray-800">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
-                </div>
+              <div className="h-full flex flex-col border-r" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
                 <div className="flex-1 overflow-hidden">
                   {isReady ? (
                     <MessageList
@@ -324,18 +449,13 @@ function MailPageContent() {
                       selectedMessageId={selectedMessage?.id}
                     />
                   ) : (
-                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                    <div className="p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Select a folder to view messages</div>
                   )}
                 </div>
               </div>
 
               {/* Message Detail Panel */}
-              <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Message Details
-                  </h2>
-                </div>
+              <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-hidden">
                   <MessageDetail
                     message={selectedMessage}
@@ -353,7 +473,7 @@ function MailPageContent() {
             </ResizablePanels>
           </div>
         </div>
-      </div>
+      </Box>
     </ProtectedRoute>
   );
 }

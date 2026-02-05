@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { accountService } from '@/lib/services/account-service';
 import { Account } from '@/lib/types/api';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ChevronDown, User } from 'lucide-react';
+import { Box, HStack, VStack, Text, Icon, Badge, Button } from '@yahoo/uds';
+import { UDSIcons } from '@/lib/uds-icons-map';
+import { HoverableListItem, CardBox } from '@/components/uds-utils';
 
 interface AccountSwitcherProps {
   mailboxId: string;
@@ -13,15 +13,17 @@ interface AccountSwitcherProps {
   onAccountSelected?: (account: Account) => void;
 }
 
-export function AccountSwitcher({ 
-  mailboxId, 
-  selectedAccountId, 
-  onAccountSelected 
+export function AccountSwitcher({
+  mailboxId,
+  selectedAccountId,
+  onAccountSelected
 }: AccountSwitcherProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     console.log('AccountSwitcher: mailboxId:', mailboxId);
@@ -30,6 +32,19 @@ export function AccountSwitcher({
       loadAccounts();
     }
   }, [mailboxId]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   const loadAccounts = async () => {
     try {
@@ -58,6 +73,7 @@ export function AccountSwitcher({
 
   const handleAccountSelect = (account: Account) => {
     setSelectedAccount(account);
+    setIsOpen(false);
     if (onAccountSelected) {
       onAccountSelected(account);
     }
@@ -65,67 +81,77 @@ export function AccountSwitcher({
 
   if (loading) {
     return (
-      <div className="h-10 w-48 bg-gray-200 animate-pulse rounded-md" />
+      <Box className="h-10 w-48 bg-[var(--color-bg-secondary)] animate-pulse rounded-md" />
     );
   }
 
   if (error) {
     return (
-      <div className="text-sm text-red-600">
+      <Text variant="caption1" color="alert">
         {error}
-      </div>
+      </Text>
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="text-sm text-gray-500">
+      <Text variant="caption1" color="secondary">
         No accounts available
-      </div>
+      </Text>
     );
   }
 
   if (accounts.length === 1) {
     return (
-      <div className="flex items-center space-x-2 text-sm">
-        <User className="h-4 w-4" />
-        <span>{selectedAccount?.email || accounts[0].email}</span>
-      </div>
+      <HStack gap="2" alignItems="center">
+        <Text variant="label2" color="primary">
+          {selectedAccount?.email || accounts[0].email}
+        </Text>
+      </HStack>
     );
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="flex items-center space-x-2">
-          <User className="h-4 w-4" />
-          <span className="max-w-[200px] truncate">
-            {selectedAccount?.email || 'Select account'}
-          </span>
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[250px]">
-        {accounts.map((account) => (
-          <DropdownMenuItem
-            key={account.id}
-            onClick={() => handleAccountSelect(account)}
-            className="flex items-center justify-between"
-          >
-            <div className="flex flex-col">
-              <span className="font-medium">{account.email}</span>
-              {account.description && (
-                <span className="text-xs text-gray-500">{account.description}</span>
-              )}
-            </div>
-            {account.isPrimary && (
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                Primary
-              </span>
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Box position="relative" ref={dropdownRef}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        endIcon={isOpen ? UDSIcons.ChevronUp : UDSIcons.ChevronDown}
+        className="w-full justify-between"
+      >
+        <Text variant="label2" className="max-w-[200px] truncate">
+          {selectedAccount?.email || 'Select account'}
+        </Text>
+      </Button>
+
+      {isOpen && (
+        <Box position="absolute" className="top-full left-0 right-0 mt-1 z-50">
+          <CardBox>
+            <VStack gap="1" spacing="1">
+              {accounts.map((account) => (
+                <HoverableListItem
+                  key={account.id}
+                  isActive={account.id === selectedAccount?.id}
+                  onClick={() => handleAccountSelect(account)}
+                >
+                  <HStack gap="2" alignItems="center" justifyContent="space-between" spacing="2" className="w-full">
+                    <VStack gap="0">
+                      <Text variant="label2" color="primary">{account.email}</Text>
+                      {account.description && (
+                        <Text variant="caption2" color="secondary">{account.description}</Text>
+                      )}
+                    </VStack>
+                    {account.isPrimary && (
+                      <Badge variant="brand" size="sm">Primary</Badge>
+                    )}
+                  </HStack>
+                </HoverableListItem>
+              ))}
+            </VStack>
+          </CardBox>
+        </Box>
+      )}
+    </Box>
   );
 }

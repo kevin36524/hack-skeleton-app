@@ -1,16 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { messageService } from '@/lib/services/message-service';
 import { Message, Conversation } from '@/lib/types/api';
 import { formatDistanceToNow } from 'date-fns';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
+import { Box, HStack, VStack, Text, Icon, Badge, IconButton, Divider, AvatarText } from '@yahoo/uds';
+import { Refresh, MoreVertical, Check, Envelope, Priority, Paperclip, Star } from '@yahoo/uds-icons';
 import { cn } from '@/lib/utils';
-import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
+import { UDSIcons } from '@/lib/uds-icons-map';
 
 interface MessageListProps {
   mailboxId: string;
@@ -26,17 +23,16 @@ interface GroupedMessage {
   conversation: Conversation | undefined;
 }
 
-export function MessageList({ 
-  mailboxId, 
-  folderId, 
-  onMessageSelected, 
-  selectedMessageId 
+export function MessageList({
+  mailboxId,
+  folderId,
+  onMessageSelected,
+  selectedMessageId
 }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
 
   const loadMessages = useCallback(async () => {
     try {
@@ -89,24 +85,9 @@ export function MessageList({
     });
   }, [messages, conversations]);
 
-  const toggleMessageSelection = (messageId: string) => {
-    const newSelection = new Set(selectedMessages);
-    if (newSelection.has(messageId)) {
-      newSelection.delete(messageId);
-    } else {
-      newSelection.add(messageId);
-    }
-    setSelectedMessages(newSelection);
-  };
-
   const getSenderName = (message: Message) => {
     const from = message.headers.from[0];
     return from?.name || from?.email || 'Unknown';
-  };
-
-  const getSenderEmail = (message: Message) => {
-    const from = message.headers.from[0];
-    return from?.email || '';
   };
 
   const getInitials = (name: string) => {
@@ -120,132 +101,172 @@ export function MessageList({
 
   if (loading) {
     return (
-      <div className="space-y-2">
+      <VStack gap="2">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="flex items-center space-x-3 p-3 border rounded-lg animate-pulse">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-full" />
-            </div>
-            <div className="space-y-1">
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-3 w-8" />
-            </div>
-          </div>
+          <Box
+            key={i}
+            className="flex items-center space-x-3 p-3 border rounded-lg"
+          >
+            <Box className="h-10 w-10 rounded-full bg-[var(--color-bg-secondary)] animate-pulse" />
+            <Box className="flex-1 space-y-2">
+              <Box className="h-4 w-3/4 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+              <Box className="h-3 w-1/2 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+              <Box className="h-3 w-full bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+            </Box>
+            <Box className="space-y-1">
+              <Box className="h-3 w-16 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+              <Box className="h-3 w-8 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+            </Box>
+          </Box>
         ))}
-      </div>
+      </VStack>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <div className="text-center max-w-sm">
-          <AlertCircle className="h-12 w-12 text-red-500 mb-4 mx-auto" />
-          <h3 className="text-lg font-semibold mb-2">Failed to load messages</h3>
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
-          <Button 
-            variant="outline" 
+      <VStack className="items-center justify-center py-8">
+        <Box className="text-center max-w-sm">
+          <Icon
+            name={UDSIcons.AlertCircle}
+            className="h-12 w-12 text-red-500 mb-4 mx-auto"
+          />
+          <Text className="text-lg font-semibold mb-2">Failed to load messages</Text>
+          <Text className="text-sm text-gray-600 mb-4">{error}</Text>
+          <IconButton
+            name={UDSIcons.Refresh}
             onClick={loadMessages}
             className="mt-2"
           >
             Try Again
-          </Button>
-        </div>
-      </div>
+          </IconButton>
+        </Box>
+      </VStack>
     );
   }
 
   if (groupedMessages.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">No messages in this folder</p>
-      </div>
+      <Box className="text-center py-8">
+        <Text className="text-gray-500">No messages in this folder</Text>
+      </Box>
     );
   }
 
+  const formatTime = (internalDate: string | undefined) => {
+    if (!internalDate) return 'Unknown';
+    const date = new Date(parseInt(internalDate) * 1000);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } else if (diffInHours < 168) { // Less than a week
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+
+  const unreadCount = messages.filter(m => !m.flags.read).length;
+
   return (
-    <div className="space-y-1">
-      {groupedMessages.map((group) => {
-        const message = group.latestMessage;
-        const isSelected = selectedMessages.has(message.id);
-        const isUnread = !message.flags.read;
-        
-        return (
-          <div
-            key={message.id}
-            className={cn(
-              'flex items-start space-x-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800/80 rounded-lg cursor-pointer transition-colors duration-150 border border-transparent',
-              isSelected && 'bg-purple-50 dark:bg-purple-900/20 border-l-4 border-l-purple-500 border-purple-200 dark:border-purple-800',
-              selectedMessageId === message.id && 'bg-purple-100 dark:bg-purple-900/40 border-l-4 border-l-purple-600 border-purple-300 dark:border-purple-700'
-            )}
-            onClick={() => onMessageSelected?.(message)}
-          >
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => toggleMessageSelection(message.id)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            
-            <Avatar className="h-8 w-8 flex-shrink-0 mt-0.5">
-              <AvatarFallback className={cn(
-                "text-xs font-medium flex items-center justify-center",
-                isUnread ? "bg-purple-500 text-white" : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-              )}>
-                {getInitials(getSenderName(message))}
-              </AvatarFallback>
-            </Avatar>
+    <Box
+      display="flex"
+      flexDirection="column"
+      rowGap="0"
+      className="h-full overflow-hidden"
+    >
+      {/* Filter Bar */}
+      <Box
+        display="flex"
+        flexDirection="row"
+        columnGap="2"
+        spacingHorizontal="3"
+        spacingVertical="2"
+        borderBottomWidth="thin"
+        borderColor="secondary"
+        alignItems="center"
+      >
+        <HStack gap="2" alignItems="center" justifyContent="flex-start">
+          <Icon name={Check} size="xs" color="secondary" />
+          <Text variant="caption1" color="secondary">All</Text>
+        </HStack>
+        <Divider vertical className="h-4" />
+        <HStack gap="2" alignItems="center" justifyContent="flex-start">
+          <Icon name={Envelope} size="xs" color="secondary" />
+          <Text variant="caption1" color="secondary">Unread</Text>
+        </HStack>
+        <Divider vertical className="h-4" />
+        <HStack gap="2" alignItems="center" justifyContent="flex-start">
+          <Icon name={Priority} size="xs" color="secondary" />
+          <Text variant="caption1" color="secondary">Priority</Text>
+        </HStack>
+      </Box>
 
-            <div className="flex-1 min-w-0 overflow-hidden">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className={cn(
-                    "text-sm font-medium truncate max-w-full",
-                    isUnread ? "font-bold text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
-                  )}>
-                    {getSenderName(message)}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-full overflow-hidden">
-                    {getSenderEmail(message)}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                  <span className="whitespace-nowrap">
-                    {message.headers.internalDate ? formatDistanceToNow(new Date(parseInt(message.headers.internalDate) * 1000), { addSuffix: true }) : 'Unknown time'}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    {message.flags.flagged && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-                    {message.attachments.length > 0 && <Paperclip className="h-3 w-3 text-gray-400" />}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-1">
-                <p className={cn(
-                  "text-sm text-gray-700 dark:text-gray-300 line-clamp-2 break-words overflow-hidden",
-                  isUnread ? "font-medium text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-400"
-                )}>
-                  {message.headers.subject || '(No subject)'}
-                </p>
-                <p className={cn(
-                  "text-sm line-clamp-1 mt-1 break-words overflow-hidden",
-                  isUnread ? "text-gray-700 dark:text-gray-300" : "text-gray-500 dark:text-gray-500"
-                )}>
-                  {message.snippet}
-                </p>
-              </div>
+      {/* Email List */}
+      <VStack gap="0" alignItems="stretch" justifyContent="flex-start" className="flex-1 overflow-auto">
+        {groupedMessages.map((group) => {
+          const message = group.latestMessage;
+          const isSelected = selectedMessageId === message.id;
+          const isRead = message.flags.read;
 
-              {group.messages.length > 1 && (
-                <Badge variant="secondary" className="mt-2">
-                  {group.messages.length} messages
-                </Badge>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          return (
+            <React.Fragment key={message.id}>
+              <Box
+                display="flex"
+                flexDirection="column"
+                spacing="3"
+                backgroundColor={isSelected ? "brand-secondary" : undefined}
+                className={`cursor-pointer transition-colors ${!isSelected ? "hover:bg-[var(--color-bg-secondary)]" : ""}`}
+                onClick={() => onMessageSelected?.(message)}
+              >
+                <HStack gap="3" alignItems="flex-start" justifyContent="flex-start">
+                  <AvatarText initials={getInitials(getSenderName(message))} size="sm" />
+                  <VStack gap="1" alignItems="flex-start" justifyContent="flex-start" className="flex-1 min-w-0">
+                    <HStack gap="2" alignItems="center" justifyContent="space-between" className="w-full">
+                      <Text
+                        variant={isRead ? "label2" : "headline1"}
+                        color="primary"
+                        className="truncate"
+                      >
+                        {getSenderName(message)}
+                      </Text>
+                      <HStack gap="1" alignItems="center" justifyContent="flex-end" className="shrink-0">
+                        {message.attachments.length > 0 && (
+                          <Icon name={Paperclip} size="xs" color="secondary" />
+                        )}
+                        <Text variant="caption2" color="secondary">
+                          {formatTime(message.headers.internalDate)}
+                        </Text>
+                      </HStack>
+                    </HStack>
+                    <Text
+                      variant={isRead ? "label3" : "label2"}
+                      color="primary"
+                      className="truncate w-full"
+                    >
+                      {message.headers.subject || '(No subject)'}
+                    </Text>
+                    <Text variant="caption1" color="secondary" className="truncate w-full">
+                      {message.snippet}
+                    </Text>
+                  </VStack>
+                  <Box display="flex" className="shrink-0">
+                    <Icon
+                      name={Star}
+                      size="sm"
+                      variant={message.flags.flagged ? "fill" : "outline"}
+                      color={message.flags.flagged ? "warning" : "tertiary"}
+                    />
+                  </Box>
+                </HStack>
+              </Box>
+              <Divider variant="muted" />
+            </React.Fragment>
+          );
+        })}
+      </VStack>
+    </Box>
   );
 }

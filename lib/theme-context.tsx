@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { DARK_COLOR_MODE_CLASSNAME, LIGHT_COLOR_MODE_CLASSNAME } from '@yahoo/uds';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -41,6 +42,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+    }
+
+    // Apply UDS color mode classes to wrapper
+    const udsWrapper = document.querySelector('.uds-email');
+    if (udsWrapper) {
+      udsWrapper.classList.remove(LIGHT_COLOR_MODE_CLASSNAME, DARK_COLOR_MODE_CLASSNAME);
+      udsWrapper.classList.add(
+        resolved === 'dark' ? DARK_COLOR_MODE_CLASSNAME : LIGHT_COLOR_MODE_CLASSNAME
+      );
     }
 
     // Save to localStorage

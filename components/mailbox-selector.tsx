@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useMailbox } from '@/lib/hooks/use-yahoo-mail';
-import { Badge } from '@/components/ui/badge';
-import { Mail } from 'lucide-react';
+import { Box, HStack, VStack, Text, Icon, Badge } from '@yahoo/uds';
+import { UDSIcons } from '@/lib/uds-icons-map';
 
 interface MailboxSelectorProps {
   onMailboxSelected?: (mailboxId: string) => void;
@@ -28,22 +28,24 @@ export function MailboxSelector({ onMailboxSelected }: MailboxSelectorProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center space-x-3 max-w-sm">
-        <div className="animate-pulse flex items-center space-x-2">
-          <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
-        </div>
-      </div>
+      <HStack gap="3" alignItems="center" className="max-w-sm">
+        <Box className="animate-pulse flex items-center space-x-2">
+          <Box className="h-4 w-4 bg-[var(--color-bg-secondary)] rounded" />
+          <Box className="h-4 bg-[var(--color-bg-secondary)] rounded w-16" />
+          <Box className="h-3 bg-[var(--color-bg-secondary)] rounded w-20" />
+        </Box>
+      </HStack>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center space-x-2 max-w-sm">
-        <Mail className="h-4 w-4 text-red-600" />
-        <p className="text-red-600 text-sm truncate">Failed to load mailbox</p>
-      </div>
+      <HStack gap="2" alignItems="center" className="max-w-sm">
+        <Icon name={UDSIcons.Mail} size="sm" color="alert" />
+        <Text variant="label2" color="alert" className="truncate">
+          Failed to load mailbox
+        </Text>
+      </HStack>
     );
   }
 
@@ -56,22 +58,22 @@ export function MailboxSelector({ onMailboxSelected }: MailboxSelectorProps) {
   );
 
   return (
-    <div className="flex items-center space-x-3 max-w-sm overflow-hidden">
+    <HStack gap="3" alignItems="center" className="max-w-sm overflow-hidden">
       {primaryMailbox && (
         <>
-          <div className="flex items-center space-x-2 flex-shrink-0">
-            <Mail className="h-4 w-4 text-purple-600" />
-            <Badge variant="default" className="text-xs px-2 py-1">Primary</Badge>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <HStack gap="2" alignItems="center" className="flex-shrink-0">
+            <Icon name={UDSIcons.Mail} size="sm" color="brand" />
+            <Badge variant="brand" size="sm">Primary</Badge>
+          </HStack>
+          <VStack gap="0" className="min-w-0 flex-1">
+            <Text variant="label2" color="primary" className="truncate">
               {primaryMailbox.email}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+            </Text>
+            <Text variant="caption2" color="secondary" className="truncate">
               Status: {primaryMailbox.state}
-            </p>
+            </Text>
             {mailboxData.cpAttributes.accountCreationTime && (
-              <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
+              <Text variant="caption2" color="tertiary" className="truncate">
                 Created: {(() => {
                   try {
                     return new Date(mailboxData.cpAttributes.accountCreationTime).toLocaleDateString();
@@ -79,11 +81,11 @@ export function MailboxSelector({ onMailboxSelected }: MailboxSelectorProps) {
                     return 'Unknown';
                   }
                 })()}
-              </p>
+              </Text>
             )}
-          </div>
+          </VStack>
         </>
       )}
-    </div>
+    </HStack>
   );
 }

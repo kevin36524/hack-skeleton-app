@@ -99,11 +99,11 @@ export function ResizablePanels({
                 onMouseDown={handleMouseDown(index)}
                 className={cn(
                   'w-1 cursor-col-resize flex-shrink-0',
-                  'bg-gray-200 dark:bg-gray-700',
-                  'hover:bg-purple-500 dark:hover:bg-purple-600',
-                  'active:bg-purple-600 dark:active:bg-purple-700',
+                  'bg-[var(--color-bg-secondary)]',
+                  'hover:bg-[var(--color-bg-brand)]',
+                  'active:bg-[var(--color-bg-brand-secondary)]',
                   'transition-colors',
-                  isDragging === index && 'bg-purple-600 dark:bg-purple-700'
+                  isDragging === index && 'bg-[var(--color-bg-brand)]'
                 )}
               />
             )}

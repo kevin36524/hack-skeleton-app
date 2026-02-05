@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { folderService } from '@/lib/services/folder-service';
-import { Folder } from '@/lib/types/api';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Folder, Account } from '@/lib/types/api';
+import { Box, VStack, HStack, Text, Icon, Badge, IconButton, Button, Divider } from '@yahoo/uds';
+import { Add } from '@yahoo/uds-icons';
+import { UDSIcons } from '@/lib/uds-icons-map';
+import { HoverableListItem } from '@/components/uds-utils';
+import { cn, getFolderDisplayName } from '@/lib/utils';
 
 interface FolderSidebarProps {
   mailboxId: string;
-  accountId?: string;
+  account?: Account | null;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
   className?: string;
@@ -19,15 +19,9 @@ interface FolderSidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-interface FolderGroup {
-  name: string;
-  folders: Folder[];
-  icon: React.ElementType;
-}
-
 export function FolderSidebar({
   mailboxId,
-  accountId,
+  account,
   selectedFolderId,
   onFolderSelected,
   className,
@@ -37,15 +31,14 @@ export function FolderSidebar({
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log('FolderSidebar: mailboxId:', mailboxId, 'accountId:', accountId);
+    console.log('FolderSidebar: mailboxId:', mailboxId, 'account:', account?.id);
     if (mailboxId) {
       console.log('FolderSidebar: Loading folders...');
       loadFolders();
     }
-  }, [mailboxId, accountId]);
+  }, [mailboxId, account]);
 
   const loadFolders = async () => {
     try {
@@ -55,11 +48,11 @@ export function FolderSidebar({
       console.log('FolderSidebar: Got folders:', foldersData.folders.length);
 
       // Filter folders by accountId if provided
-      const filteredFolders = accountId
-        ? foldersData.folders.filter(folder => folder.acctId === accountId)
+      const filteredFolders = account
+        ? foldersData.folders.filter(folder => folder.acctId === account.id)
         : foldersData.folders;
 
-      console.log('FolderSidebar: Filtered folders for accountId:', accountId, 'count:', filteredFolders.length);
+      console.log('FolderSidebar: Filtered folders for account:', account?.id, 'count:', filteredFolders.length);
       setFolders(filteredFolders);
 
       // Auto-select inbox if no folder is selected
@@ -86,222 +79,185 @@ export function FolderSidebar({
 
   const getFolderIcon = (folder: Folder) => {
     const type = folder.types[0]?.toUpperCase();
-    
+
     switch (type) {
       case 'INBOX':
-        return Inbox;
+        return UDSIcons.Inbox;
       case 'SENT':
-        return Send;
+        return UDSIcons.Sent;
       case 'TRASH':
-        return Trash2;
+        return UDSIcons.Trash;
       case 'ARCHIVE':
-        return Archive;
+        return UDSIcons.Archive;
       case 'DRAFT':
-        return FileText;
-      case 'SPAM':
-        return AlertCircle;
+        return UDSIcons.Drafts;
       case 'STARRED':
-        return Star;
+        return UDSIcons.Star;
       default:
-        return FileText;
+        return UDSIcons.Folder;
     }
-  };
-
-  const groupFolders = (): FolderGroup[] => {
-    const systemFolders = folders.filter(f => 
-      f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM'].includes(t.toUpperCase()))
-    );
-    
-    const customFolders = folders.filter(f => 
-      !f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM'].includes(t.toUpperCase()))
-    );
-
-    const groups: FolderGroup[] = [];
-
-    // System folders
-    if (systemFolders.length > 0) {
-      groups.push({
-        name: 'System Folders',
-        folders: systemFolders.sort((a, b) => {
-          const order = ['INBOX', 'SENT', 'DRAFT', 'ARCHIVE', 'SPAM', 'TRASH'];
-          const aIndex = order.indexOf(a.types[0]?.toUpperCase() || '');
-          const bIndex = order.indexOf(b.types[0]?.toUpperCase() || '');
-          return aIndex - bIndex;
-        }),
-        icon: Inbox
-      });
-    }
-
-    // Custom folders
-    if (customFolders.length > 0) {
-      groups.push({
-        name: 'Custom Folders',
-        folders: customFolders.sort((a, b) => a.name.localeCompare(b.name)),
-        icon: FileText
-      });
-    }
-
-    return groups;
-  };
-
-  const toggleGroup = (groupName: string) => {
-    const newCollapsed = new Set(collapsedGroups);
-    if (newCollapsed.has(groupName)) {
-      newCollapsed.delete(groupName);
-    } else {
-      newCollapsed.add(groupName);
-    }
-    setCollapsedGroups(newCollapsed);
   };
 
   if (loading) {
     return (
-      <div className={cn('space-y-4 p-4', className)}>
+      <Box className={cn('space-y-4 p-4', className)}>
         {[1, 2, 3].map((group) => (
-          <div key={group} className="space-y-2">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded w-24" />
-            <div className="space-y-1">
+          <VStack key={group} gap="2">
+            <Box className="h-4 bg-[var(--color-bg-secondary)] animate-pulse rounded w-24" />
+            <VStack gap="1">
               {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="flex items-center space-x-2 p-2 rounded">
-                  <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded flex-1" />
-                  <div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                </div>
+                <HStack key={item} gap="2" alignItems="center" spacing="2" className="rounded">
+                  <Box className="h-4 w-4 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+                  <Box className="h-4 bg-[var(--color-bg-secondary)] animate-pulse rounded flex-1" />
+                  <Box className="h-4 w-8 bg-[var(--color-bg-secondary)] animate-pulse rounded" />
+                </HStack>
               ))}
-            </div>
-          </div>
+            </VStack>
+          </VStack>
         ))}
-      </div>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className={cn('flex flex-col items-center justify-center p-4', className)}>
-        <div className="text-center max-w-sm">
-          <AlertCircle className="h-10 w-10 text-red-500 mb-3 mx-auto" />
-          <h3 className="text-sm font-semibold mb-2">Failed to load folders</h3>
-          <p className="text-xs text-gray-600 mb-3">{error}</p>
-          <Button 
-            variant="outline" 
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" spacing="4" className={className}>
+        <VStack gap="3" alignItems="center" className="text-center max-w-sm">
+          <Icon name={UDSIcons.Close} size="lg" color="alert" />
+          <Text variant="label1" color="primary">Failed to load folders</Text>
+          <Text variant="caption1" color="secondary">{error}</Text>
+          <Button
+            variant="secondary"
             size="sm"
             onClick={loadFolders}
-            className="text-xs"
+            startIcon={UDSIcons.Refresh}
           >
-            <RefreshCw className="h-3 w-3 mr-1" />
             Try Again
           </Button>
-        </div>
-      </div>
+        </VStack>
+      </Box>
     );
   }
 
-  const folderGroups = groupFolders();
+  const systemFolders = folders.filter(f =>
+    f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM', 'STARRED'].includes(t.toUpperCase()))
+  ).sort((a, b) => {
+    const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'ARCHIVE', 'SPAM', 'TRASH'];
+    const aIndex = order.indexOf(a.types[0]?.toUpperCase() || '');
+    const bIndex = order.indexOf(b.types[0]?.toUpperCase() || '');
+    return aIndex - bIndex;
+  });
+
+  const customFolders = folders.filter(f =>
+    !f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM', 'STARRED'].includes(t.toUpperCase()))
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className={cn('h-full flex flex-col', className)}>
-      {/* Header with collapse button */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        {!isCollapsed && (
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Folders</h2>
-        )}
-        {onCollapsedChange && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onCollapsedChange(!isCollapsed)}
-            className="hidden md:flex ml-auto"
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-        )}
-      </div>
+    <Box
+      display="flex"
+      flexDirection="column"
+      rowGap="1"
+      spacing="3"
+      className={cn('overflow-auto', className)}
+    >
+      <Button variant="brand" size="lg" startIcon={Add} className="mb-2 w-full">
+        Compose
+      </Button>
 
-      <ScrollArea className="flex-1">
-        <div className="space-y-4 p-4">
-        {folderGroups.map((group) => (
-          <div key={group.name}>
-            <Collapsible
-              open={!collapsedGroups.has(group.name)}
-              onOpenChange={() => toggleGroup(group.name)}
+      <VStack gap="1" alignItems="stretch" justifyContent="flex-start">
+        {systemFolders.map((folder) => {
+          const icon = getFolderIcon(folder);
+          const isActive = selectedFolderId === folder.id;
+          const displayName = getFolderDisplayName(folder, account || undefined);
+
+          return (
+            <HStack
+              key={folder.id}
+              gap="3"
+              alignItems="center"
+              justifyContent="space-between"
+              spacing="2"
+              spacingHorizontal="3"
+              borderRadius="md"
+              backgroundColor={isActive ? "brand-secondary" : undefined}
+              className="cursor-pointer hover:bg-[var(--color-bg-secondary)] transition-colors"
+              onClick={() => onFolderSelected?.(folder.id)}
             >
-              <CollapsibleTrigger className={cn(
-                "flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md",
-                isCollapsed && "hidden"
-              )}>
-                <span>{group.name}</span>
-                <ChevronRight
-                  className={cn(
-                    'h-4 w-4 transition-transform',
-                    !collapsedGroups.has(group.name) && 'rotate-90'
-                  )}
+              <HStack gap="3" alignItems="center" justifyContent="flex-start">
+                <Icon
+                  name={icon}
+                  size="sm"
+                  variant="outline"
+                  color={isActive ? "brand" : "secondary"}
                 />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <nav className="space-y-1 mt-2">
-                  {group.folders.map((folder) => {
-                    const Icon = getFolderIcon(folder);
+                <Text
+                  variant="label2"
+                  color={isActive ? "brand" : "primary"}
+                >
+                  {displayName}
+                </Text>
+              </HStack>
+              {folder.unread > 0 && (
+                <Badge variant={isActive ? "brand" : "secondary"} size="sm">
+                  {folder.unread > 99 ? '99+' : folder.unread}
+                </Badge>
+              )}
+            </HStack>
+          );
+        })}
+      </VStack>
 
-                    if (isCollapsed) {
-                      return (
-                        <Button
-                          key={folder.id}
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onFolderSelected?.(folder.id)}
-                          className={cn(
-                            'w-full justify-center px-2',
-                            selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
-                          )}
-                          title={folder.name}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </Button>
-                      );
-                    }
+      {customFolders.length > 0 && (
+        <>
+          <Divider variant="muted" />
 
-                    return (
-                      <Button
-                        key={folder.id}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onFolderSelected?.(folder.id)}
-                        className={cn(
-                          'w-full justify-start text-left font-normal whitespace-normal h-auto py-2',
-                          selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
-                        )}
-                      >
-                        <div className="flex items-start justify-between w-full min-w-0 gap-2">
-                          <div className="flex items-start space-x-2 min-w-0 flex-1">
-                            <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                            <span className="break-all">{folder.name}</span>
-                          </div>
-                          <div className="flex items-center space-x-1 text-xs flex-shrink-0">
-                            {folder.unread > 0 && (
-                              <span className="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
-                                {folder.unread}
-                              </span>
-                            )}
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {folder.total}
-                            </span>
-                          </div>
-                        </div>
-                      </Button>
-                    );
-                  })}
-                </nav>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
-    </div>
+          <Text variant="caption1" color="secondary" className="px-2">
+            Folders
+          </Text>
+          <VStack gap="1" alignItems="stretch" justifyContent="flex-start">
+            {customFolders.map((folder) => {
+              const icon = getFolderIcon(folder);
+              const isActive = selectedFolderId === folder.id;
+              const displayName = getFolderDisplayName(folder, account || undefined);
+
+              return (
+                <HStack
+                  key={folder.id}
+                  gap="3"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  spacing="2"
+                  spacingHorizontal="3"
+                  borderRadius="md"
+                  backgroundColor={isActive ? "brand-secondary" : undefined}
+                  className="cursor-pointer hover:bg-[var(--color-bg-secondary)] transition-colors"
+                  onClick={() => onFolderSelected?.(folder.id)}
+                >
+                  <HStack gap="3" alignItems="center" justifyContent="flex-start">
+                    <Icon
+                      name={icon}
+                      size="sm"
+                      variant="outline"
+                      color={isActive ? "brand" : "secondary"}
+                    />
+                    <Text
+                      variant="label2"
+                      color={isActive ? "brand" : "primary"}
+                    >
+                      {displayName}
+                    </Text>
+                  </HStack>
+                  {folder.unread > 0 && (
+                    <Badge variant={isActive ? "brand" : "secondary"} size="sm">
+                      {folder.unread > 99 ? '99+' : folder.unread}
+                    </Badge>
+                  )}
+                </HStack>
+              );
+            })}
+          </VStack>
+        </>
+      )}
+    </Box>
   );
 }

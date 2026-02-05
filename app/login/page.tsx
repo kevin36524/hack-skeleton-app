@@ -1,14 +1,12 @@
 'use client';
 
+import '../email.css';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Mail, User } from 'lucide-react';
+import { Box, VStack, HStack, Text, Button, Input, Icon, IconButton, Link, DARK_COLOR_MODE_CLASSNAME, LIGHT_COLOR_MODE_CLASSNAME } from '@yahoo/uds';
+import { Envelope, Eye, EyeShut, Sun, CrescentMoon } from '@yahoo/uds-icons';
+import { UDSIcons } from '@/lib/uds-icons-map';
 
 type TestAccount = {
   id: string;
@@ -18,26 +16,76 @@ type TestAccount = {
   is_active: boolean;
 };
 
-function LoginForm() {
+function HeaderSection() {
+  return (
+    <VStack gap="2" alignItems="center" justifyContent="center">
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        backgroundColor="brand"
+        borderRadius="full"
+        className="w-12 h-12"
+      >
+        <Icon name={Envelope} variant="fill" size="md" color="on-color" />
+      </Box>
+      <Text variant="title3" color="primary">
+        Yahoo Mail
+      </Text>
+    </VStack>
+  );
+}
+
+function HelpSection() {
+  return (
+    <VStack gap="1" alignItems="flex-start" justifyContent="flex-start">
+      <Text variant="caption1" color="secondary">
+        How to get your OAuth token:
+      </Text>
+      <Link
+        href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/simpleLogin.html"
+        target="_blank"
+        rel="noopener noreferrer"
+        textVariant="caption1"
+        variant="tertiary"
+      >
+        Get Access Token
+      </Link>
+      <Link
+        href="https://chromewebstore.google.com/detail/yahoo-oauth-token-helper/odhagnabplejhdpdonnogliflgblpimn"
+        target="_blank"
+        rel="noopener noreferrer"
+        textVariant="caption1"
+        variant="tertiary"
+      >
+        Install Extension
+      </Link>
+    </VStack>
+  );
+}
+
+function LoginFormContent() {
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [testAccounts, setTestAccounts] = useState<TestAccount[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false); // false = light mode by default
   const { login } = useAuth();
   const searchParams = useSearchParams();
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   // Handle URL query parameter for token
   useEffect(() => {
     const urlToken = searchParams.get('token');
     if (urlToken) {
-      // Sanitize the token input
       const sanitizedToken = urlToken.trim();
       setToken(sanitizedToken);
 
-      // Optionally auto-login if token is provided via URL
       if (sanitizedToken.length > 10) {
         handleLoginWithToken(sanitizedToken);
       }
@@ -47,7 +95,6 @@ function LoginForm() {
   // Fetch test accounts
   useEffect(() => {
     const fetchTestAccounts = async () => {
-      setLoadingAccounts(true);
       try {
         const response = await fetch('/api/test-accounts');
         if (response.ok) {
@@ -58,8 +105,6 @@ function LoginForm() {
         }
       } catch (err) {
         console.error('Failed to fetch test accounts:', err);
-      } finally {
-        setLoadingAccounts(false);
       }
     };
 
@@ -84,201 +129,217 @@ function LoginForm() {
     await handleLoginWithToken(token);
   };
 
-  const validateTokenFormat = (value: string) => {
-    const tokenPattern = /^[A-Za-z.0-9\-_]+$/;
-    return tokenPattern.test(value.trim());
-  };
-
   const handleTestAccountSelect = (account: TestAccount) => {
     setToken(account.oauth_token);
-    setShowTestAccounts(false);
-    setError('');
+    handleLoginWithToken(account.oauth_token);
+  };
+
+  const validateTokenFormat = (tokenValue: string) => {
+    if (!tokenValue || tokenValue.trim().length < 10) {
+      return false;
+    }
+    const tokenPattern = /^[A-Za-z.0-9\-_]+$/;
+    return tokenPattern.test(tokenValue.trim());
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-violet-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="w-full max-w-md px-4">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600 rounded-full mb-4">
-            <Mail className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Yahoo Mail
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Sign in to access your emails
-          </p>
-        </div>
+    <Box
+      display="flex"
+      flexDirection="column"
+      backgroundColor="secondary"
+      className={`uds-email min-h-screen ${isDarkMode ? DARK_COLOR_MODE_CLASSNAME : LIGHT_COLOR_MODE_CLASSNAME}`}
+    >
+      {/* Theme Toggle */}
+      <Box
+        display="flex"
+        flexDirection="row"
+        justifyContent="flex-end"
+        spacing="4"
+      >
+        <IconButton
+          key={isDarkMode ? 'dark' : 'light'}
+          name={isDarkMode ? CrescentMoon : Sun}
+          variant="tertiary"
+          size="sm"
+          aria-label="Toggle theme"
+          onClick={toggleTheme}
+        />
+      </Box>
 
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
-              Enter your Yahoo OAuth token to continue
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        rowGap="6"
+        spacing="6"
+        className="flex-1"
+      >
+        <HeaderSection />
 
-              <div className="space-y-2">
-                <Label htmlFor="token">OAuth Token</Label>
-                <div className="relative">
-                  <Input
-                    id="token"
-                    type={showToken ? 'text' : 'password'}
-                    placeholder="Enter your Yahoo OAuth token"
-                    value={token}
-                    onChange={(e) => {
-                      setToken(e.target.value);
-                      setError('');
-                    }}
-                    className="pr-10"
-                    required
-                    minLength={10}
-                    pattern="[A-Za-z.0-9\-_]+"
-                    title="Token should only contain letters, numbers, hyphens, and underscores"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        <Box
+          display="flex"
+          flexDirection="column"
+          rowGap="5"
+          backgroundColor="primary"
+          borderRadius="xl"
+          borderWidth="thin"
+          borderColor="secondary"
+          spacing="6"
+          className="w-full max-w-sm"
+        >
+          {/* Error Message */}
+          {error && (
+            <Box
+              backgroundColor="alert-secondary"
+              borderWidth="thin"
+              borderColor="alert"
+              borderRadius="md"
+              spacing="3"
+            >
+              <Text variant="caption1" color="alert">
+                {error}
+              </Text>
+            </Box>
+          )}
+
+          <form onSubmit={handleSubmit} className="w-full">
+            <VStack gap="5" alignItems="stretch">
+              {/* Token Input */}
+              <Box display="flex" flexDirection="column" rowGap="1" className="relative w-full">
+                <Input
+                  placeholder="Enter your Yahoo OAuth token"
+                  type={showToken ? 'text' : 'password'}
+                  value={token}
+                  onChange={(e) => {
+                    setToken(e.target.value);
+                    setError('');
+                  }}
+                  size="md"
+                  required
+                  minLength={10}
+                  pattern="[A-Za-z.0-9\-_]+"
+                  title="Token should only contain letters, numbers, hyphens, and underscores"
+                />
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  className="absolute right-2 bottom-1.5"
+                >
+                  <IconButton
+                    name={showToken ? EyeShut : Eye}
+                    variant="tertiary"
+                    size="xs"
+                    aria-label={showToken ? 'Hide token' : 'Show token'}
                     onClick={() => setShowToken(!showToken)}
-                  >
-                    {showToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Your token will be stored locally and persist across sessions.
-                </p>
-              </div>
+                  />
+                </Box>
+              </Box>
 
-              <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                <h3 className="font-semibold text-sm text-purple-900 dark:text-purple-100 mb-2">
-                  How to get your OAuth token:
-                </h3>
-                <div className="text-xs text-purple-800 dark:text-purple-200 space-y-2">
-                  <div>
-                    <a
-                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/url-builder.html"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
-                    >
-                      Get Token (URL Builder) →
-                    </a>
-                  </div>
-                  <div>
-                    <a
-                      href="chrome-extension://odhagnabplejhdpdonnogliflgblpimn/refresh.html"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
-                    >
-                      Refresh Token →
-                    </a>
-                  </div>
-                  <div>
-                    <a
-                      href="https://chromewebstore.google.com/detail/yahoo-oauth-token-helper/odhagnabplejhdpdonnogliflgblpimn"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-purple-900 dark:hover:text-purple-100 font-medium"
-                    >
-                      Install Extension →
-                    </a>
-                  </div>
-                </div>
-              </div>
+              <HelpSection />
 
+              {/* Test Accounts Section */}
               {testAccounts.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-semibold">Or use a test account</Label>
-                    <Button
+                <VStack gap="2" alignItems="stretch">
+                  <HStack justifyContent="space-between" alignItems="center" className="w-full">
+                    <Text variant="caption1" color="secondary">
+                      Or use a test account
+                    </Text>
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
                       onClick={() => setShowTestAccounts(!showTestAccounts)}
-                      className="text-xs"
+                      className="cursor-pointer"
                     >
-                      {showTestAccounts ? 'Hide' : 'Show'} ({testAccounts.length})
-                    </Button>
-                  </div>
+                      <Text variant="caption1" color="brand">
+                        {showTestAccounts ? 'Hide' : 'Show'} ({testAccounts.length})
+                      </Text>
+                    </button>
+                  </HStack>
 
                   {showTestAccounts && (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <VStack gap="1" className="max-h-48 overflow-y-auto">
                       {testAccounts.map((account) => (
-                        <button
+                        <Box
                           key={account.id}
-                          type="button"
+                          backgroundColor="secondary"
+                          borderRadius="md"
+                          spacing="2"
+                          className="cursor-pointer transition-colors hover:bg-[var(--color-bg-tertiary)]"
                           onClick={() => handleTestAccountSelect(account)}
-                          disabled={isLoading}
-                          className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-700"
                         >
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                            <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {account.email}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              Click to use this token
-                            </p>
-                          </div>
-                        </button>
+                          <HStack gap="2" alignItems="center">
+                            <Box
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              backgroundColor="brand-secondary"
+                              borderRadius="full"
+                              className="w-8 h-8 flex-shrink-0"
+                            >
+                              <Icon name={UDSIcons.User} size="sm" color="brand" />
+                            </Box>
+                            <VStack gap="0" className="flex-1 min-w-0">
+                              <Text variant="caption1" color="primary" className="truncate">
+                                {account.email}
+                              </Text>
+                            </VStack>
+                          </HStack>
+                        </Box>
                       ))}
-                    </div>
+                    </VStack>
                   )}
-                </div>
+                </VStack>
               )}
-            </CardContent>
-            <CardFooter>
+
               <Button
                 type="submit"
-                className="w-full"
+                variant="brand"
+                size="md"
+                width="full"
                 disabled={isLoading || !validateTokenFormat(token)}
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
-            </CardFooter>
+            </VStack>
           </form>
-        </Card>
+        </Box>
 
-        <div className="text-center mt-4">
-          <a
-            href="https://developer.yahoo.com/oauth2/guide/flows_authcode/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
-          >
-            Learn more about Yahoo OAuth
-          </a>
-        </div>
-      </div>
-    </div>
+        <Link
+          href="https://developer.yahoo.com/oauth2/guide/flows_authcode/"
+          target="_blank"
+          rel="noopener noreferrer"
+          textVariant="caption2"
+          variant="tertiary"
+        >
+          Learn more about Yahoo OAuth
+        </Link>
+      </Box>
+    </Box>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    }>
-      <LoginForm />
+    <Suspense
+      fallback={
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          backgroundColor="primary"
+          className="uds-email min-h-screen"
+        >
+          <VStack gap="4" alignItems="center">
+            <Icon name={UDSIcons.Loader2} size="lg" color="brand" className="animate-spin" />
+            <Text variant="body1" color="secondary">
+              Loading...
+            </Text>
+          </VStack>
+        </Box>
+      }
+    >
+      <LoginFormContent />
     </Suspense>
   );
 }
