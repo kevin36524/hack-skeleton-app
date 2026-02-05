@@ -91,12 +91,14 @@ export function MessageDetail({
     );
   }
 
-  const getSenderName = (from: Array<{name?: string; email: string}>) => {
+  const getSenderName = (from?: Array<{name?: string; email: string}>) => {
+    if (!from || from.length === 0) return 'Unknown';
     const sender = from[0];
     return sender?.name || sender?.email || 'Unknown';
   };
 
-  const getSenderEmail = (from: Array<{name?: string; email: string}>) => {
+  const getSenderEmail = (from?: Array<{name?: string; email: string}>) => {
+    if (!from || from.length === 0) return '';
     const sender = from[0];
     return sender?.email || '';
   };
@@ -110,7 +112,8 @@ export function MessageDetail({
       .slice(0, 2);
   };
 
-  const formatRecipients = (recipients: Array<{name?: string; email: string}>) => {
+  const formatRecipients = (recipients?: Array<{name?: string; email: string}>) => {
+    if (!recipients || recipients.length === 0) return '';
     return recipients
       .map(r => r.name ? `${r.name} <${r.email}>` : r.email)
       .join(', ');
