@@ -1,11 +1,15 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ResizablePanels } from '@/components/ui/resizable-panels';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -15,7 +19,13 @@ import {
   CheckCircle2,
   Clock,
   FileText,
-  Sparkles
+  Sparkles,
+  Send,
+  Bot,
+  User,
+  CheckSquare,
+  Pin,
+  MoreHorizontal
 } from 'lucide-react';
 
 // Mock data for the daily digest
@@ -26,62 +36,410 @@ const mockDigestData = {
     month: 'long', 
     day: 'numeric' 
   }),
-  summary: {
-    totalEmails: 24,
-    importantEmails: 5,
-    unreadEmails: 8,
-    starredEmails: 3,
-  },
-  categories: [
+  todayItems: [
     {
-      name: 'Important',
-      count: 5,
-      icon: AlertCircle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-50 dark:bg-red-950/30',
-      emails: [
-        { id: '1', subject: 'Project deadline reminder', sender: 'manager@company.com', preview: 'The project deadline is approaching...' },
-        { id: '2', subject: 'Meeting rescheduled', sender: 'admin@company.com', preview: 'Your 2pm meeting has been moved to 4pm...' },
-      ]
+      id: '1',
+      type: 'email',
+      priority: 'high',
+      subject: 'Project deadline reminder',
+      sender: 'manager@company.com',
+      preview: 'The project deadline is approaching and we need to review the final deliverables...',
+      time: '9:00 AM',
+      action: 'Respond by 2pm'
     },
     {
-      name: 'Starred',
-      count: 3,
-      icon: Star,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-50 dark:bg-yellow-950/30',
-      emails: [
-        { id: '3', subject: 'Quarterly report draft', sender: 'finance@company.com', preview: 'Please review the attached quarterly report...' },
-      ]
+      id: '2',
+      type: 'email',
+      priority: 'high',
+      subject: 'Meeting rescheduled',
+      sender: 'admin@company.com',
+      preview: 'Your 2pm meeting has been moved to 4pm today. Please confirm your availability.',
+      time: '10:30 AM',
+      action: 'Confirm attendance'
     },
     {
-      name: 'Unread',
-      count: 8,
-      icon: Mail,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-      emails: [
-        { id: '4', subject: 'Newsletter: Tech Updates', sender: 'newsletter@tech.com', preview: 'This week in tech: AI advancements...' },
-        { id: '5', subject: 'Invitation: Team Lunch', sender: 'hr@company.com', preview: 'You are invited to the monthly team lunch...' },
-      ]
+      id: '3',
+      type: 'task',
+      priority: 'medium',
+      title: 'Review quarterly report',
+      description: 'Go through the Q4 financial report and prepare notes for discussion',
+      time: 'Due by 5pm',
+      action: 'Start review'
     },
     {
-      name: 'Newsletters',
-      count: 6,
-      icon: FileText,
-      color: 'text-green-500',
-      bgColor: 'bg-green-50 dark:bg-green-950/30',
-      emails: [
-        { id: '6', subject: 'Weekly Digest', sender: 'digest@news.com', preview: 'Your personalized weekly digest is here...' },
-      ]
+      id: '4',
+      type: 'email',
+      priority: 'medium',
+      subject: 'Quarterly report draft',
+      sender: 'finance@company.com',
+      preview: 'Please review the attached quarterly report before our meeting tomorrow.',
+      time: '11:00 AM',
+      action: 'Review & comment'
     },
-  ],
-  aiInsights: [
-    'You have 3 emails that require a response today',
-    '2 meetings scheduled based on your calendar',
-    'Consider archiving 10+ old promotional emails',
+    {
+      id: '5',
+      type: 'task',
+      priority: 'low',
+      title: 'Archive old emails',
+      description: 'Clean up inbox by archiving emails older than 3 months',
+      time: 'Anytime today',
+      action: 'Start cleanup'
+    }
   ]
 };
+
+// Types for chat messages
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+// AI Assistant Chat Component
+function AIAssistantPanel() {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Good morning! I\'m your AI assistant. I can help you:\n\n• Summarize your emails\n• Draft responses\n• Prioritize your tasks\n• Answer questions about your inbox\n\nWhat would you like help with today?',
+      timestamp: new Date()
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    // Simulate AI response (replace with actual Mastra agent integration)
+    setTimeout(() => {
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: generateMockResponse(input),
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const generateMockResponse = (userInput: string): string => {
+    const lower = userInput.toLowerCase();
+    if (lower.includes('summarize') || lower.includes('summary')) {
+      return 'Based on your inbox today:\n\n**High Priority:**\n• Project deadline reminder from your manager (needs response by 2pm)\n• Meeting rescheduled to 4pm (confirmation needed)\n\n**Medium Priority:**\n• Quarterly report to review before tomorrow\'s meeting\n\n**Quick Wins:**\n• 3 newsletters you can batch-archive\n• 2 automated notifications requiring no action\n\nWould you like me to draft responses to any of these?';
+    }
+    if (lower.includes('draft') || lower.includes('write')) {
+      return 'I can help draft that response! Here\'s a suggestion:\n\n---\n\nHi [Name],\n\nThank you for the update. I\'ve noted the deadline and will have the deliverables ready for review by end of day. I\'ll send over the final documents by 5pm today.\n\nBest regards\n\n---\n\nWould you like me to adjust the tone or add anything specific?';
+    }
+    if (lower.includes('prioritize') || lower.includes('important')) {
+      return 'Here\'s what I recommend tackling first:\n\n1. **Respond to manager** (2pm deadline) - 15 mins\n2. **Confirm meeting attendance** - 2 mins\n3. **Review quarterly report** - 45 mins\n4. **Archive old emails** - 10 mins\n\nTotal: ~72 minutes of focused work. Want me to block time on your calendar?';
+    }
+    return 'I understand. I can help with that. Could you provide a bit more detail about what you\'d like me to do? For example, I can:\n\n• Summarize specific emails or threads\n• Draft professional responses\n• Help prioritize your workload\n• Search through your inbox for specific information';
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      {/* Chat Header */}
+      <div className="flex items-center space-x-3 px-4 py-3 border-b bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
+        <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+          <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-gray-900 dark:text-white">AI Assistant</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Ask me anything about your emails & tasks</p>
+        </div>
+      </div>
+
+      {/* Messages Area */}
+      <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef}>
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                <Avatar className={`h-8 w-8 ${message.role === 'assistant' ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                  <AvatarFallback>
+                    {message.role === 'assistant' ? <Bot className="h-4 w-4 text-purple-600" /> : <User className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={`rounded-2xl px-4 py-3 text-sm ${
+                    message.role === 'user'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className={`text-xs mt-1 ${message.role === 'user' ? 'text-purple-200' : 'text-gray-400'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex gap-3">
+                <Avatar className="h-8 w-8 bg-purple-100 dark:bg-purple-900/50">
+                  <AvatarFallback><Bot className="h-4 w-4 text-purple-600" /></AvatarFallback>
+                </Avatar>
+                <div className="rounded-2xl px-4 py-3 bg-gray-100 dark:bg-gray-800">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Input Area */}
+      <div className="p-4 border-t bg-white dark:bg-gray-900">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ask me to summarize emails, draft responses, or prioritize tasks..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1"
+          />
+          <Button 
+            onClick={handleSend} 
+            disabled={!input.trim() || isLoading}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button variant="ghost" size="sm" className="text-xs text-gray-500" onClick={() => setInput('Summarize my important emails')}>
+            Summarize emails
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs text-gray-500" onClick={() => setInput('Help me prioritize my day')}>
+            Prioritize tasks
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs text-gray-500" onClick={() => setInput('Draft a response to my manager')}>
+            Draft response
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Today's Important Items Panel
+function TodayItemsPanel() {
+  const router = useRouter();
+  const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+
+  const toggleComplete = (id: string) => {
+    setCompletedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const highPriorityItems = mockDigestData.todayItems.filter(item => item.priority === 'high');
+  const mediumPriorityItems = mockDigestData.todayItems.filter(item => item.priority === 'medium');
+  const lowPriorityItems = mockDigestData.todayItems.filter(item => item.priority === 'low');
+
+  const renderItem = (item: typeof mockDigestData.todayItems[0]) => {
+    const isCompleted = completedItems.has(item.id);
+    const isEmail = item.type === 'email';
+
+    return (
+      <Card 
+        key={item.id} 
+        className={`transition-all duration-200 ${isCompleted ? 'opacity-50' : ''} ${
+          item.priority === 'high' ? 'border-l-4 border-l-red-500' : 
+          item.priority === 'medium' ? 'border-l-4 border-l-yellow-500' : 
+          'border-l-4 border-l-green-500'
+        }`}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`p-1 h-auto ${isCompleted ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`}
+              onClick={() => toggleComplete(item.id)}
+            >
+              <CheckSquare className={`h-5 w-5 ${isCompleted ? 'fill-current' : ''}`} />
+            </Button>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {isEmail ? (
+                  <Mail className="h-4 w-4 text-blue-500" />
+                ) : (
+                  <CheckSquare className="h-4 w-4 text-purple-500" />
+                )}
+                <span className="text-xs text-gray-500">{item.time}</span>
+                {item.priority === 'high' && (
+                  <Badge variant="destructive" className="text-xs">High Priority</Badge>
+                )}
+              </div>
+              
+              <h3 className={`font-medium text-gray-900 dark:text-white ${isCompleted ? 'line-through' : ''}`}>
+                {isEmail ? item.subject : item.title}
+              </h3>
+              
+              {isEmail ? (
+                <>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{item.sender}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{item.preview}</p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.description}</p>
+              )}
+              
+              <div className="flex items-center gap-2 mt-3">
+                <Button size="sm" variant="outline" className="h-7 text-xs">
+                  {item.action}
+                </Button>
+                {isEmail && (
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => router.push('/mail')}>
+                    View in Mail
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-gray-800">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Pin className="h-5 w-5 text-red-500" />
+            Today&apos;s Focus
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{mockDigestData.date}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {completedItems.size}/{mockDigestData.todayItems.length} Done
+          </Badge>
+        </div>
+      </div>
+
+      {/* Items List */}
+      <ScrollArea className="flex-1 px-6 py-4">
+        <div className="space-y-4">
+          {/* High Priority Section */}
+          {highPriorityItems.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                High Priority
+              </h3>
+              <div className="space-y-3">
+                {highPriorityItems.map(renderItem)}
+              </div>
+            </div>
+          )}
+
+          {/* Medium Priority Section */}
+          {mediumPriorityItems.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-2 flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Medium Priority
+              </h3>
+              <div className="space-y-3">
+                {mediumPriorityItems.map(renderItem)}
+              </div>
+            </div>
+          )}
+
+          {/* Low Priority Section */}
+          {lowPriorityItems.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2 flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                When You Have Time
+              </h3>
+              <div className="space-y-3">
+                {lowPriorityItems.map(renderItem)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Stats */}
+        <Card className="mt-6 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-purple-200 dark:border-purple-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              Daily Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{completedItems.size}</p>
+                <p className="text-xs text-gray-500">Completed</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{mockDigestData.todayItems.length - completedItems.size}</p>
+                <p className="text-xs text-gray-500">Remaining</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {Math.round((completedItems.size / mockDigestData.todayItems.length) * 100)}%
+                </p>
+                <p className="text-xs text-gray-500">Progress</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </ScrollArea>
+    </div>
+  );
+}
 
 function DailyDigestContent() {
   const router = useRouter();
@@ -91,11 +449,11 @@ function DailyDigestContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b flex-shrink-0">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -118,184 +476,16 @@ function DailyDigestContent() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Date Header */}
-        <div className="flex items-center space-x-2 mb-6">
-          <Calendar className="h-5 w-5 text-gray-500" />
-          <span className="text-lg text-gray-600 dark:text-gray-400">
-            {mockDigestData.date}
-          </span>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Emails</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {mockDigestData.summary.totalEmails}
-                  </p>
-                </div>
-                <Mail className="h-8 w-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Important</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {mockDigestData.summary.importantEmails}
-                  </p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-red-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Unread</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {mockDigestData.summary.unreadEmails}
-                  </p>
-                </div>
-                <CheckCircle2 className="h-8 w-8 text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Starred</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {mockDigestData.summary.starredEmails}
-                  </p>
-                </div>
-                <Star className="h-8 w-8 text-yellow-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Email Categories */}
-          <div className="md:col-span-2 space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Email Categories
-            </h2>
-            
-            {mockDigestData.categories.map((category) => {
-              const Icon = category.icon;
-              return (
-                <Card key={category.name}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className={`p-2 rounded-lg ${category.bgColor}`}>
-                          <Icon className={`h-5 w-5 ${category.color}`} />
-                        </div>
-                        <CardTitle className="text-lg">{category.name}</CardTitle>
-                      </div>
-                      <Badge variant="secondary">{category.count}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {category.emails.map((email) => (
-                        <div
-                          key={email.id}
-                          className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 dark:text-white truncate">
-                                {email.subject}
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {email.sender}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
-                                {email.preview}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {category.count > category.emails.length && (
-                        <Button variant="ghost" size="sm" className="w-full text-gray-500">
-                          + {category.count - category.emails.length} more
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {/* AI Insights Sidebar */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              AI Insights
-            </h2>
-            
-            <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-purple-200 dark:border-purple-800">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  <CardTitle className="text-lg">Smart Summary</CardTitle>
-                </div>
-                <CardDescription>
-                  AI-powered insights about your inbox
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {mockDigestData.aiInsights.map((insight, index) => (
-                    <li key={index} className="flex items-start space-x-2">
-                      <Clock className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {insight}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Mark all newsletters as read
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <Star className="h-4 w-4 mr-2" />
-                    Review starred emails
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Archive old emails
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Two-Pane Layout */}
+      <main className="flex-1 overflow-hidden">
+        <ResizablePanels 
+          defaultSizes={[45, 55]} 
+          minSizes={[30, 30]}
+          className="h-full"
+        >
+          <AIAssistantPanel />
+          <TodayItemsPanel />
+        </ResizablePanels>
       </main>
     </div>
   );
