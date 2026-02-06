@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Sparkles } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -152,6 +152,15 @@ function MailPageContent() {
                   mailboxId={mailboxId}
                   onAccountSelected={handleAccountSelected}
                 />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push('/digest')}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/50 dark:hover:to-blue-900/50"
+                >
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  <span>Daily Digest</span>
+                </Button>
                 <ThemeToggle />
                 <Button
                   variant="ghost"

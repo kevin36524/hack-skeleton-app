@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, BarChart3, Bot } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Menu, Mail, LogOut, RefreshCw, X, Sparkles, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -15,8 +16,6 @@ interface MobileHeaderProps {
   mailboxId: string;
   onLogout: () => void;
   onRefresh: () => void;
-  activeTab?: 'mail' | 'digest' | 'autopilot';
-  onTabChange?: (tab: 'mail' | 'digest' | 'autopilot') => void;
 }
 
 export function MobileHeader({
@@ -27,9 +26,10 @@ export function MobileHeader({
   mailboxId,
   onLogout,
   onRefresh,
-  activeTab = 'mail',
-  onTabChange,
 }: MobileHeaderProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeTab = pathname === '/digest' ? 'digest' : pathname === '/autopilot' ? 'autopilot' : 'mail';
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b md:hidden">
@@ -81,7 +81,7 @@ export function MobileHeader({
           <Button
             variant={activeTab === 'mail' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onTabChange?.('mail')}
+            onClick={() => router.push('/mail')}
             className="flex-1 py-1 h-8 text-xs"
           >
             <Mail className="h-3 w-3 mr-1" />
@@ -90,16 +90,16 @@ export function MobileHeader({
           <Button
             variant={activeTab === 'digest' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onTabChange?.('digest')}
+            onClick={() => router.push('/digest')}
             className="flex-1 py-1 h-8 text-xs"
           >
-            <BarChart3 className="h-3 w-3 mr-1" />
+            <Sparkles className="h-3 w-3 mr-1" />
             Digest
           </Button>
           <Button
             variant={activeTab === 'autopilot' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onTabChange?.('autopilot')}
+            onClick={() => router.push('/autopilot')}
             className="flex-1 py-1 h-8 text-xs"
           >
             <Bot className="h-3 w-3 mr-1" />
