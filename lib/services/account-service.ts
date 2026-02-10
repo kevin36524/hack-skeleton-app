@@ -1,48 +1,28 @@
-import {
-  ApiResponse,
-  GetAccountsApiResponse,
-  Account
-} from '@/lib/types/api';
-import { apiClient } from './api-client';
+import { gmail } from './gmail-client';
 
 class AccountService {
-  async getAccounts(mailboxId: string): Promise<GetAccountsApiResponse> {
-    try {
-      const response = await apiClient.get<ApiResponse<GetAccountsApiResponse>>(
-        `/mailboxes/@.id==${mailboxId}/accounts`
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to fetch accounts:', error);
-      throw error;
-    }
+  async getAccounts() {
+    // Gmail only has one account - the authenticated user
+    const profile: any = await gmail.users.getProfile();
+
+    return {
+      accounts: [{
+        id: 'primary',
+        email: profile.emailAddress,
+        isPrimary: true,
+        status: 'ENABLED',
+      }],
+    };
   }
 
-  async getEnabledAccounts(mailboxId: string): Promise<Account[]> {
-    try {
-      const accountsData = await this.getAccounts(mailboxId);
-
-      // Filter for enabled accounts, prioritizing FREE accounts
-      return accountsData.accounts.filter(
-        account => account.status === 'ENABLED'
-      );
-    } catch (error) {
-      console.error('Failed to fetch enabled accounts:', error);
-      throw error;
-    }
+  async getEnabledAccounts() {
+    const accountsData = await this.getAccounts();
+    return accountsData.accounts;
   }
 
-  async getPrimaryAccount(mailboxId: string): Promise<Account | undefined> {
-    try {
-      const accountsData = await this.getAccounts(mailboxId);
-
-      return accountsData.accounts.find(
-        account => account.isPrimary && account.status === 'ENABLED'
-      );
-    } catch (error) {
-      console.error('Failed to fetch primary account:', error);
-      throw error;
-    }
+  async getPrimaryAccount() {
+    const accountsData = await this.getAccounts();
+    return accountsData.accounts[0];
   }
 }
 

@@ -1,0 +1,115 @@
+/**
+ * Gmail API Client for Browser
+ * Routes all calls through Next.js API proxy
+ */
+
+let accessToken: string | null = null;
+
+/**
+ * Set access token
+ */
+export function setAccessToken(token: string) {
+  accessToken = token;
+}
+
+/**
+ * Get access token
+ */
+export function getAccessToken(): string {
+  if (!accessToken) {
+    throw new Error('Gmail client not initialized. Please authenticate first.');
+  }
+  return accessToken;
+}
+
+/**
+ * Make authenticated request to our API proxy
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = getAccessToken();
+
+  const response = await fetch(endpoint, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    console.error('API Error:', response.status, error);
+    throw new Error(error.error || `API Error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Gmail API client methods (calls our Next.js API routes)
+ */
+export const gmail = {
+  users: {
+    getProfile: async () => {
+      return apiRequest('/api/gmail/profile');
+    },
+
+    labels: {
+      list: async () => {
+        return apiRequest<{ labels: any[] }>('/api/gmail/labels');
+      },
+    },
+
+    threads: {
+      list: async (params: { labelIds?: string[]; maxResults?: number }) => {
+        const { labelIds, maxResults } = params;
+        const queryParams = new URLSearchParams();
+        if (labelIds) queryParams.append('labelIds', labelIds.join(','));
+        if (maxResults) queryParams.append('maxResults', maxResults.toString());
+
+        return apiRequest(`/api/gmail/threads?${queryParams}`);
+      },
+
+      get: async (params: { id: string; format?: string }) => {
+        const { id, format = 'full' } = params;
+        return apiRequest(`/api/gmail/threads/${id}?format=${format}`);
+      },
+    },
+
+    messages: {
+      list: async (params: { labelIds?: string[]; maxResults?: number; q?: string }) => {
+        const { labelIds, maxResults, q } = params;
+        const queryParams = new URLSearchParams();
+        if (labelIds) queryParams.append('labelIds', labelIds.join(','));
+        if (maxResults) queryParams.append('maxResults', maxResults.toString());
+        if (q) queryParams.append('q', q);
+
+        return apiRequest(`/api/gmail/messages?${queryParams}`);
+      },
+
+      get: async (params: { id: string; format?: string }) => {
+        const { id, format = 'full' } = params;
+        return apiRequest(`/api/gmail/messages/${id}?format=${format}`);
+      },
+
+      modify: async (params: { id: string; addLabelIds?: string[]; removeLabelIds?: string[] }) => {
+        const { id, addLabelIds, removeLabelIds } = params;
+        return apiRequest(`/api/gmail/messages/${id}/modify`, {
+          method: 'POST',
+          body: JSON.stringify({ addLabelIds, removeLabelIds }),
+        });
+      },
+
+      trash: async (params: { id: string }) => {
+        const { id } = params;
+        return apiRequest(`/api/gmail/messages/${id}/trash`, {
+          method: 'POST',
+        });
+      },
+    },
+  },
+};

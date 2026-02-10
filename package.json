@@ -15,6 +15,7 @@
   "dependencies": {
     "@ai-sdk/google": "^2.0.44",
     "@anthropic-ai/claude-agent-sdk": "^0.1.55",
+    "@googleapis/gmail": "^16.1.1",
     "@libsql/client": "^0.15.15",
     "@mastra/core": "^0.24.6",
     "@mastra/evals": "^0.14.4",
@@ -37,6 +38,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "faiss-node": "^0.5.1",
+    "googleapis": "^171.4.0",
     "lucide-react": "^0.555.0",
     "next": "16.0.6",
     "openai": "^6.16.0",

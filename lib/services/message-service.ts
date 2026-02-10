@@ -1,412 +1,348 @@
-import {
-  ApiResponse,
-  ListConversationsApiResponse,
-  SearchMessagesApiResponse,
-  SaveMessageRequest,
-  SaveMessageResponse,
-  UpdateMessageRequest,
-  UpdateMessageResponse,
-  DeleteMessageResponse,
-  Message,
-  Conversation,
-  TriageRequest,
-  TriageResponse,
-  MoveMessagesRequest,
-  MoveMessagesResponse,
-  FullMessageBodyResponse
-} from '@/lib/types/api';
-import { apiClient } from './api-client';
+import { gmail } from './gmail-client';
 
 class MessageService {
-  async getMessages(
-    mailboxId: string,
-    folderId: string,
-    offset = 0,
-    count = 30,
-    decoId?: string
-  ): Promise<ListConversationsApiResponse> {
-    try {
-      let query = `folderId:${folderId}+groupBy:conversationId+offset:${offset}+count:${count}`;
-      if (decoId) {
-        query += `+decoId:${decoId}`;
-      }
+  /**
+   * Get messages in a folder (label)
+   */
+  async getMessages(folderId: string = 'INBOX', maxResults: number = 30) {
+    console.log('[MESSAGE SERVICE] Fetching threads for folder:', folderId);
 
-      const response = await apiClient.get<ApiResponse<ListConversationsApiResponse>>(
-        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${query}&responseTransform=btd_lm_ios`
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to fetch messages:', error);
-      throw error;
+    // Get list of threads
+    const threadsResponse: any = await gmail.users.threads.list({
+      labelIds: [folderId],
+      maxResults,
+    });
+
+    const threads = threadsResponse.threads || [];
+    console.log('[MESSAGE SERVICE] Found threads:', threads.length);
+
+    if (threads.length === 0) {
+      return {
+        threads: [],
+        messages: [],
+      };
     }
+
+    // Fetch full thread details
+    const fullThreads = await Promise.all(
+      threads.map(async (thread: any) => {
+        const response = await gmail.users.threads.get({
+          id: thread.id,
+          format: 'full',
+        });
+        return response;
+      })
+    );
+
+    // Extract all messages from threads
+    const allMessages = fullThreads.flatMap((thread: any) => thread.messages || []);
+
+    console.log('[MESSAGE SERVICE] Total messages:', allMessages.length);
+
+    return {
+      threads: fullThreads,
+      messages: allMessages,
+    };
   }
 
-  async getConversations(mailboxId: string, folderId: string): Promise<{
-    messages: Message[];
-    conversations: Conversation[];
-  }> {
-    try {
-      const data = await this.getMessages(mailboxId, folderId);
+  /**
+   * Get conversations (threads) and messages for a folder
+   * Transforms Gmail API data into the format expected by the MessageList component
+   */
+  async getConversationsForFolder(mailboxId: string, folderId: string, maxResults: number = 30) {
+    console.log('[MESSAGE SERVICE] Fetching conversations for folder:', folderId);
+
+    // Get threads from Gmail API
+    const { threads, messages } = await this.getMessages(folderId, maxResults);
+
+    // Transform messages into expected format
+    const transformedMessages = messages.map((msg: any) => {
+      const headers = msg.payload?.headers || [];
+
+      // Helper to get header value
+      const getHeader = (name: string) => {
+        const header = headers.find((h: any) => h.name?.toLowerCase() === name.toLowerCase());
+        return header?.value || '';
+      };
+
+      // Parse From header
+      const fromHeader = getHeader('from');
+      const fromMatch = fromHeader.match(/^(.+?)\s*<(.+?)>$/) || [];
+      const fromName = fromMatch[1]?.trim().replace(/^["']|["']$/g, '') || '';
+      const fromEmail = fromMatch[2]?.trim() || fromHeader.trim();
+
+      // Parse To header
+      const toHeader = getHeader('to');
+      const toEmails = toHeader.split(',').map((email: string) => {
+        const match = email.trim().match(/^(.+?)\s*<(.+?)>$/) || [];
+        return {
+          name: match[1]?.trim().replace(/^["']|["']$/g, '') || '',
+          email: match[2]?.trim() || email.trim(),
+        };
+      });
+
+      // Check if message is unread
+      const isUnread = (msg.labelIds || []).includes('UNREAD');
+      const isStarred = (msg.labelIds || []).includes('STARRED');
+
+      // Get attachments
+      const attachments: any[] = [];
+      const findAttachments = (part: any) => {
+        if (part.filename && part.body?.attachmentId) {
+          attachments.push({
+            id: part.body.attachmentId,
+            filename: part.filename,
+            mimeType: part.mimeType,
+            size: part.body.size || 0,
+          });
+        }
+        if (part.parts) {
+          part.parts.forEach(findAttachments);
+        }
+      };
+      if (msg.payload?.parts) {
+        msg.payload.parts.forEach(findAttachments);
+      }
 
       return {
-        messages: data.messages,
-        conversations: data.conversations
+        id: msg.id,
+        conversationId: msg.threadId,
+        headers: {
+          from: [{
+            name: fromName,
+            email: fromEmail,
+          }],
+          to: toEmails,
+          subject: getHeader('subject'),
+          internalDate: Math.floor(parseInt(msg.internalDate || '0') / 1000).toString(), // Convert to seconds
+        },
+        flags: {
+          read: !isUnread,
+          flagged: isStarred,
+        },
+        snippet: msg.snippet || '',
+        attachments,
       };
-    } catch (error) {
-      console.error('Failed to fetch conversations:', error);
-      throw error;
+    });
+
+    // Transform threads into conversations format
+    const conversations = threads.map((thread: any) => ({
+      id: thread.id,
+      snippet: thread.snippet || '',
+      historyId: thread.historyId,
+    }));
+
+    return {
+      messages: transformedMessages,
+      conversations,
+    };
+  }
+
+  /**
+   * Get a single message by ID
+   */
+  async getMessage(messageId: string, format: 'full' | 'metadata' | 'minimal' = 'full') {
+    return await gmail.users.messages.get({ id: messageId, format });
+  }
+
+  /**
+   * Get a thread by ID
+   */
+  async getThread(threadId: string) {
+    return await gmail.users.threads.get({ id: threadId, format: 'full' });
+  }
+
+  /**
+   * Mark messages as read/unread
+   */
+  async markAsRead(messageIds: string[], read: boolean = true) {
+    const results = await Promise.all(
+      messageIds.map(async (id) => {
+        try {
+          await gmail.users.messages.modify({
+            id,
+            [read ? 'removeLabelIds' : 'addLabelIds']: ['UNREAD'],
+          });
+          return { id, success: true };
+        } catch (error) {
+          console.error(`Failed to mark message ${id}:`, error);
+          return { id, success: false };
+        }
+      })
+    );
+
+    return results;
+  }
+
+  /**
+   * Star/unstar messages
+   */
+  async toggleStar(messageIds: string[], starred: boolean = true) {
+    const results = await Promise.all(
+      messageIds.map(async (id) => {
+        try {
+          await gmail.users.messages.modify({
+            id,
+            [starred ? 'addLabelIds' : 'removeLabelIds']: ['STARRED'],
+          });
+          return { id, success: true };
+        } catch (error) {
+          console.error(`Failed to toggle star on message ${id}:`, error);
+          return { id, success: false };
+        }
+      })
+    );
+
+    return results;
+  }
+
+  /**
+   * Move messages to a different folder (label)
+   */
+  async moveMessages(messageIds: string[], targetFolderId: string) {
+    const results = await Promise.all(
+      messageIds.map(async (id) => {
+        try {
+          // Get current message to see labels
+          const message: any = await gmail.users.messages.get({
+            id,
+            format: 'minimal',
+          });
+
+          // Remove folder-like labels (INBOX, etc.)
+          const labelsToRemove = (message.labelIds || []).filter((label: string) =>
+            ['INBOX', 'SENT', 'DRAFT'].includes(label)
+          );
+
+          await gmail.users.messages.modify({
+            id,
+            addLabelIds: [targetFolderId],
+            removeLabelIds: labelsToRemove,
+          });
+
+          return { id, success: true };
+        } catch (error) {
+          console.error(`Failed to move message ${id}:`, error);
+          return { id, success: false };
+        }
+      })
+    );
+
+    return results;
+  }
+
+  /**
+   * Delete messages (move to trash)
+   */
+  async deleteMessage(messageId: string) {
+    await gmail.users.messages.trash({ id: messageId });
+    return { success: true };
+  }
+
+  /**
+   * Search messages
+   */
+  async searchMessages(query: string, maxResults: number = 30) {
+    const response: any = await gmail.users.messages.list({
+      q: query,
+      maxResults,
+    });
+
+    const messageIds = response.messages || [];
+
+    if (messageIds.length === 0) {
+      return [];
     }
+
+    // Fetch full message details
+    const messages = await Promise.all(
+      messageIds.map(async (msg: any) => {
+        const response = await gmail.users.messages.get({
+          id: msg.id,
+          format: 'full',
+        });
+        return response;
+      })
+    );
+
+    return messages;
   }
 
-  async getConversationsForFolder(mailboxId: string, folderId: string): Promise<{
-    messages: Message[];
-    conversations: Conversation[];
-  }> {
-    return this.getConversations(mailboxId, folderId);
-  }
+  /**
+   * Extract message body (HTML or plain text)
+   */
+  getMessageBody(message: any): { html: string; text: string } {
+    const parts = message.payload?.parts || [message.payload];
+    let html = '';
+    let text = '';
 
-  async getMessagesBySearch(
-    mailboxId: string,
-    query: string,
-    offset = 0,
-    count = 30
-  ): Promise<SearchMessagesApiResponse> {
-    try {
-      const response = await apiClient.get<ApiResponse<SearchMessagesApiResponse>>(
-        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${query}+offset:${offset}+count:${count}`
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to search messages:', error);
-      throw error;
-    }
-  }
-
-  async getMessagesByConversation(
-    mailboxId: string,
-    folderId: string,
-    conversationId: string
-  ): Promise<Message[]> {
-    try {
-      const data = await this.getMessages(mailboxId, folderId);
-
-      const conversation = data.conversations.find(c => c.id === conversationId);
-      if (!conversation) {
-        return [];
+    const findBody = (part: any) => {
+      if (part.mimeType === 'text/html' && part.body?.data) {
+        html = this.decodeBase64(part.body.data);
+      } else if (part.mimeType === 'text/plain' && part.body?.data) {
+        text = this.decodeBase64(part.body.data);
       }
 
-      return data.messages.filter(message =>
-        conversation.messageIds.includes(message.id)
-      );
-    } catch (error) {
-      console.error('Failed to fetch messages by conversation:', error);
-      throw error;
-    }
+      if (part.parts) {
+        part.parts.forEach(findBody);
+      }
+    };
+
+    parts.forEach(findBody);
+
+    return { html, text };
   }
 
-  async markAsRead(
-    mailboxId: string,
-    messageIds: string[],
-    read = true
-  ): Promise<TriageResponse> {
+  /**
+   * Get header value from message
+   */
+  getHeader(message: any, headerName: string): string | undefined {
+    const headers = message.payload?.headers || [];
+    const header = headers.find((h: any) => h.name?.toLowerCase() === headerName.toLowerCase());
+    return header?.value;
+  }
+
+  /**
+   * Decode base64url string
+   */
+  private decodeBase64(data: string): string {
     try {
-      const request: TriageRequest = {
-        batch: messageIds.map((id, index) => ({
-          id: `mark-read-${index}`,
-          method: 'PUT',
-          uri: `/mailboxes/@.id==${mailboxId}/messages/@.id==${id}`,
-          entity: {
-            message: {
-              id,
-              flags: {
-                read: read ? 1 : 0
-              }
-            }
-          }
-        }))
-      };
-
-      const response = await apiClient.post<ApiResponse<TriageResponse>>(
-        '/batch',
-        request
-      );
-      return response.result;
+      // Convert base64url to base64
+      const base64 = data.replace(/-/g, '+').replace(/_/g, '/');
+      // Add padding if needed
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      return atob(padded);
     } catch (error) {
-      console.error('Failed to mark messages as read:', error);
-      throw error;
+      console.error('Failed to decode base64:', error);
+      return '';
     }
   }
 
-  async toggleStar(
-    mailboxId: string,
-    messageIds: string[],
-    starred = true
-  ): Promise<TriageResponse> {
-    try {
-      const request: TriageRequest = {
-        batch: messageIds.map((id, index) => ({
-          id: `toggle-star-${index}`,
-          method: 'PUT',
-          uri: `/mailboxes/@.id==${mailboxId}/messages/@.id==${id}`,
-          entity: {
-            message: {
-              id,
-              flags: {
-                flagged: starred ? 1 : 0
-              }
-            }
-          }
-        }))
-      };
-
-      const response = await apiClient.post<ApiResponse<TriageResponse>>(
-        '/batch',
-        request
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to toggle star on messages:', error);
-      throw error;
-    }
-  }
-
-  async moveMessages(
-    mailboxId: string,
-    messageIds: string[],
-    targetFolderId: string
-  ): Promise<MoveMessagesResponse> {
-    try {
-      const request: MoveMessagesRequest = {
-        responseType: "json",
-        requests: messageIds.map((id, index) => ({
-          id: `UnifiedUpdateMessage_${index}`,
-          exportResponse: false,
-          uri: `/ws/v3/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=id%3A(${id})`,
-          method: "POST",
-          requests: [],
-          filters: {},
-          payload: {
-            message: {
-              folder: {
-                id: targetFolderId
-              }
-            }
-          },
-          suppressResponse: false
-        }))
-      };
-
-      const response = await apiClient.post<ApiResponse<MoveMessagesResponse>>(
-        '/batch',
-        request
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to move messages:', error);
-      throw error;
-    }
-  }
-
-  async saveMessage(
-    mailboxId: string,
-    folderId: string,
-    options: {
-      html?: string;
-      text?: string;
-      subject?: string;
-      from?: { email: string; name?: string };
-      csid?: string;
-      to?: Array<{ email: string; name?: string }>;
-      schemaOrgPayload?: any;
-      flags?: {
-        spam?: string;
-        read?: string;
-      };
-      actions?: {
-        responseMessage?: boolean;
-        applyAntispam?: boolean;
-        applySaveFromAddressCheck?: boolean;
-        generateCardConversationId?: boolean;
-      };
-    } = {}
-  ): Promise<SaveMessageResponse> {
-    try {
-      const request: SaveMessageRequest = {
-        message: {
-          newMessage: true,
-          folder: {
-            id: folderId
-          },
-          csid: options.csid,
-          flags: {
-            spam: options.flags?.spam || "false",
-            read: options.flags?.read || "true"
-          },
-          headers: {
-            from: options.from ? [options.from] : [{ email: "spaces@iosmail.yahoo.com" }],
-            ...(options.to && { to: options.to }),
-            ...(options.subject && { subject: options.subject })
-          },
-          decos: [],
-          schemaOrg: options.schemaOrgPayload ? [
-            {
-              schema: options.schemaOrgPayload
-            }
-          ] : [],
-          attachments: []
-        },
-        actions: {
-          responseMessage: options.actions?.responseMessage ?? true,
-          applyAntispam: options.actions?.applyAntispam ?? false,
-          applySaveFromAddressCheck: options.actions?.applySaveFromAddressCheck ?? false,
-          generateCardConversationId: options.actions?.generateCardConversationId ?? true
-        },
-        simpleBody: {
-          text: ""
-        }
-      };
-
-      const response = await apiClient.post<ApiResponse<SaveMessageResponse>>(
-        `/mailboxes/@.id==${mailboxId}/messages`,
-        request
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to save message:', error);
-      throw error;
-    }
-  }
-
-  async updateMessage(
-    mailboxId: string,
-    messageId: string,
-    updates: {
-      folderId?: string;
-      html?: string;
-      text?: string;
-      subject?: string;
-      from?: { email: string; name?: string };
-      to?: Array<{ email: string; name?: string }>;
-      schemaOrgPayload?: any;
-      flags?: {
-        spam?: string;
-        read?: string;
-        flagged?: string;
-      };
-    } = {}
-  ): Promise<UpdateMessageResponse> {
-    try {
-      const request: UpdateMessageRequest = {
-        message: {
-          ...(updates.folderId && {
-            folder: { id: updates.folderId }
-          }),
-          ...(updates.schemaOrgPayload && {
-            schemaOrg: [
-              {
-                schema: updates.schemaOrgPayload
-              }
-            ]
-          }),
-          ...(updates.html || updates.text) && {
-            body: {
-              ...(updates.html && { html: updates.html }),
-              ...(updates.text && { text: updates.text })
-            }
-          }
-        }
-      };
-      console.log('[MESSAGE SERVICE] updateMessage request payload:', JSON.stringify(request, null, 2));
-
-      const encodedMessageId = encodeURIComponent(`id:(${messageId})`);
-      await apiClient.post(
-        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${encodedMessageId}&appid=YMailNorrin`,
-        request
-      );
-
-      // Return 204 status as specified
-      return { status: 204 };
-    } catch (error) {
-      console.error('Failed to update message:', error);
-      throw error;
-    }
-  }
-
-  async deleteMessage(
-    mailboxId: string,
-    messageId: string
-  ): Promise<DeleteMessageResponse> {
-    try {
-      const encodedMessageId = encodeURIComponent(`id:(${messageId})`);
-      await apiClient.delete(
-        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${encodedMessageId}&appid=YMailNorrin`
-      );
-
-      // Return 204 status as specified
-      return { status: 204 };
-    } catch (error) {
-      console.error('Failed to delete message:', error);
-      throw error;
-    }
-  }
-
-  async getFullMessageBody(
-    mailboxId: string,
-    messageId: string
-  ): Promise<FullMessageBodyResponse> {
-    try {
-      const response = await apiClient.get<ApiResponse<FullMessageBodyResponse>>(
-        `/mailboxes/@.id==${mailboxId}/messages/@.id==${messageId}/content/simplebody/full`
-      );
-      return response.result;
-    } catch (error) {
-      console.error('Failed to fetch full message body:', error);
-      throw error;
-    }
-  }
-
+  /**
+   * Format message date
+   */
   formatMessageDate(internalDate: string): string {
-    const date = new Date(parseInt(internalDate) * 1000);
+    const date = new Date(parseInt(internalDate));
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      // Today - show time
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
       });
     } else if (diffDays === 1) {
-      // Yesterday
       return 'Yesterday';
     } else if (diffDays < 7) {
-      // This week
       return date.toLocaleDateString('en-US', { weekday: 'short' });
     } else {
-      // Older
       return date.toLocaleDateString('en-US', {
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
       });
     }
-  }
-
-  getMessageParticipants(message: Message): string {
-    if (message.headers.from.length > 0) {
-      const from = message.headers.from[0];
-      return from.name || from.email;
-    }
-    return 'Unknown Sender';
-  }
-
-  isMessageRead(message: Message): boolean {
-    return message.flags.read === true;
-  }
-
-  isMessageStarred(message: Message): boolean {
-    return message.flags.flagged === true;
   }
 }
 

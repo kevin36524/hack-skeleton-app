@@ -1,48 +1,39 @@
-import {
-  ApiResponse,
-  GetMailBoxApiResponse
-} from '@/lib/types/api';
-import { apiClient } from './api-client';
+import { gmail } from './gmail-client';
 
 class MailboxService {
-  async getMailbox(): Promise<GetMailBoxApiResponse> {
-    try {
-      const response = await apiClient.get<ApiResponse<GetMailBoxApiResponse>>('/mailboxes');
-      return response.result;
-    } catch (error) {
-      console.error('Failed to fetch mailbox:', error);
-      throw error;
-    }
+  async getProfile() {
+    return gmail.users.getProfile();
   }
 
-  async getPrimaryMailbox(): Promise<GetMailBoxApiResponse> {
-    const mailboxData = await this.getMailbox();
+  async getMailbox() {
+    const profile: any = await this.getProfile();
 
-    // Find primary and selected mailbox
-    const primaryMailbox = mailboxData.mailboxes.find(
-      mailbox => mailbox.isPrimary && mailbox.isSelected
-    );
-
-    if (!primaryMailbox) {
-      throw new Error('No primary mailbox found');
-    }
-
+    // Return in expected format with all fields
     return {
-      ...mailboxData,
-      mailboxes: [primaryMailbox]
+      mailboxes: [{
+        id: 'primary',
+        email: profile.emailAddress,
+        isPrimary: true,
+        isSelected: true,
+        state: 'active',
+        type: 'FREE',
+        link: {
+          type: 'profile',
+          href: '/users/me/profile',
+        },
+      }],
+      guid: 'primary',
+      cpAttributes: {
+        consentEvents: {},
+        accountCreationTime: new Date().toISOString(),
+      },
+      state: 'active',
+      shardId: '0',
+      namespace: 'gmail',
+      oauth: {
+        scopes: ['gmail.readonly', 'gmail.modify'],
+      },
     };
-  }
-
-  getMailboxId(mailboxData: GetMailBoxApiResponse): string {
-    const primaryMailbox = mailboxData.mailboxes.find(
-      mailbox => mailbox.isPrimary && mailbox.isSelected
-    );
-
-    if (!primaryMailbox) {
-      throw new Error('No primary mailbox found');
-    }
-
-    return primaryMailbox.id;
   }
 }
 

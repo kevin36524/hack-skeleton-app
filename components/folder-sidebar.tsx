@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { folderService } from '@/lib/services/folder-service';
-import { Folder } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -10,7 +9,7 @@ import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText
 import { cn } from '@/lib/utils';
 
 interface FolderSidebarProps {
-  mailboxId: string;
+  mailboxId?: string;
   accountId?: string;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
@@ -21,7 +20,7 @@ interface FolderSidebarProps {
 
 interface FolderGroup {
   name: string;
-  folders: Folder[];
+  folders: any[];
   icon: React.ElementType;
 }
 
@@ -34,46 +33,35 @@ export function FolderSidebar({
   isCollapsed = false,
   onCollapsedChange
 }: FolderSidebarProps) {
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log('FolderSidebar: mailboxId:', mailboxId, 'accountId:', accountId);
-    if (mailboxId) {
-      console.log('FolderSidebar: Loading folders...');
-      loadFolders();
-    }
-  }, [mailboxId, accountId]);
+    console.log('FolderSidebar: Loading folders...');
+    loadFolders();
+  }, []);
 
   const loadFolders = async () => {
     try {
       setLoading(true);
-      console.log('FolderSidebar: Calling folderService.getFolders for mailboxId:', mailboxId);
-      const foldersData = await folderService.getFolders(mailboxId);
-      console.log('FolderSidebar: Got folders:', foldersData.folders.length);
+      console.log('FolderSidebar: Calling folderService.getFolders');
+      const labels = await folderService.getFolders();
+      console.log('FolderSidebar: Got labels:', labels.length);
 
-      // Filter folders by accountId if provided
-      const filteredFolders = accountId
-        ? foldersData.folders.filter(folder => folder.acctId === accountId)
-        : foldersData.folders;
-
-      console.log('FolderSidebar: Filtered folders for accountId:', accountId, 'count:', filteredFolders.length);
-      setFolders(filteredFolders);
+      setFolders(labels);
 
       // Auto-select inbox if no folder is selected
-      if (!selectedFolderId && filteredFolders.length > 0) {
-        const inbox = filteredFolders.find(folder =>
-          folder.types.includes('INBOX')
-        );
+      if (!selectedFolderId && labels.length > 0) {
+        const inbox = labels.find(label => label.id === 'INBOX');
         if (inbox) {
-          console.log('FolderSidebar: Auto-selecting inbox:', inbox.id);
-          onFolderSelected?.(inbox.id);
+          console.log('FolderSidebar: Auto-selecting inbox');
+          onFolderSelected?.('INBOX');
         } else {
           // Fallback to first folder
-          console.log('FolderSidebar: Auto-selecting first folder:', filteredFolders[0].id);
-          onFolderSelected?.(filteredFolders[0].id);
+          console.log('FolderSidebar: Auto-selecting first folder:', labels[0].id);
+          onFolderSelected?.(labels[0].id!);
         }
       }
     } catch (err) {
@@ -84,8 +72,8 @@ export function FolderSidebar({
     }
   };
 
-  const getFolderIcon = (folder: Folder) => {
-    const type = folder.types[0]?.toUpperCase();
+  const getFolderIcon = (folder: any) => {
+    const type = folder.id?.toUpperCase();
     
     switch (type) {
       case 'INBOX':
@@ -108,12 +96,14 @@ export function FolderSidebar({
   };
 
   const groupFolders = (): FolderGroup[] => {
-    const systemFolders = folders.filter(f => 
-      f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM'].includes(t.toUpperCase()))
+    const systemLabelIds = ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'STARRED', 'SPAM', 'IMPORTANT'];
+
+    const systemFolders = folders.filter(f =>
+      f.type === 'system' && systemLabelIds.includes(f.id)
     );
-    
-    const customFolders = folders.filter(f => 
-      !f.types.some(t => ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'ARCHIVE', 'SPAM'].includes(t.toUpperCase()))
+
+    const customFolders = folders.filter(f =>
+      f.type === 'user'
     );
 
     const groups: FolderGroup[] = [];
@@ -123,9 +113,9 @@ export function FolderSidebar({
       groups.push({
         name: 'System Folders',
         folders: systemFolders.sort((a, b) => {
-          const order = ['INBOX', 'SENT', 'DRAFT', 'ARCHIVE', 'SPAM', 'TRASH'];
-          const aIndex = order.indexOf(a.types[0]?.toUpperCase() || '');
-          const bIndex = order.indexOf(b.types[0]?.toUpperCase() || '');
+          const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH'];
+          const aIndex = order.indexOf(a.id);
+          const bIndex = order.indexOf(b.id);
           return aIndex - bIndex;
         }),
         icon: Inbox
@@ -136,7 +126,7 @@ export function FolderSidebar({
     if (customFolders.length > 0) {
       groups.push({
         name: 'Custom Folders',
-        folders: customFolders.sort((a, b) => a.name.localeCompare(b.name)),
+        folders: customFolders.sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         icon: FileText
       });
     }
