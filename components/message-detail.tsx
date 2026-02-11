@@ -85,6 +85,34 @@ export function MessageDetail({
     }
   }, [message?.id, mailboxId]);
 
+  // Handle iframe load and resize - MUST be before any conditional returns
+  const handleIframeLoad = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      try {
+        const doc = iframe.contentWindow.document;
+        const height = doc.body.scrollHeight;
+        setIframeHeight(`${height + 32}px`); // Add some padding
+      } catch {
+        // Fallback if cross-origin issues
+        setIframeHeight('100%');
+      }
+    }
+  }, []);
+
+  // Listen for messages from iframe - MUST be before any conditional returns
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'email-height') {
+        setIframeHeight(`${event.data.height + 32}px`);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Early return MUST come after all hooks are defined
   if (!message) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -125,21 +153,6 @@ export function MessageDetail({
     // This would typically involve creating a blob and downloading
     console.log('Downloading attachment:', attachment);
   };
-
-  // Handle iframe load and resize
-  const handleIframeLoad = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (iframe && iframe.contentWindow) {
-      try {
-        const doc = iframe.contentWindow.document;
-        const height = doc.body.scrollHeight;
-        setIframeHeight(`${height + 32}px`); // Add some padding
-      } catch {
-        // Fallback if cross-origin issues
-        setIframeHeight('100%');
-      }
-    }
-  }, []);
 
   // Prepare isolated HTML content for iframe
   const getIsolatedHtmlContent = (htmlContent: string) => {
@@ -207,18 +220,6 @@ export function MessageDetail({
 </html>
     `;
   };
-
-  // Listen for messages from iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'email-height') {
-        setIframeHeight(`${event.data.height + 32}px`);
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   return (
     <div className="flex flex-col h-full">
