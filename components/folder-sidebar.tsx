@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
+import { setAccessToken } from '@/lib/services/gmail-client';
 
 interface FolderSidebarProps {
   mailboxId?: string;
@@ -33,6 +35,7 @@ export function FolderSidebar({
   isCollapsed = false,
   onCollapsedChange
 }: FolderSidebarProps) {
+  const { getValidAccessToken } = useAuth();
   const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,18 @@ export function FolderSidebar({
   const loadFolders = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      // Update token in gmail client
+      setAccessToken(token);
+
       console.log('FolderSidebar: Calling folderService.getFolders');
       const labels = await folderService.getFolders();
       console.log('FolderSidebar: Got labels:', labels.length);
@@ -64,8 +79,9 @@ export function FolderSidebar({
           onFolderSelected?.(labels[0].id!);
         }
       }
-    } catch (err) {
-      setError('Failed to load folders');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to load folders';
+      setError(errorMessage);
       console.error('Error loading folders:', err);
     } finally {
       setLoading(false);

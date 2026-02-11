@@ -3,57 +3,56 @@ import { gmail } from './gmail-client';
 class MessageService {
   /**
    * Get messages in a folder (label)
+   * Uses users.messages.list and fetches only metadata (headers, no body)
    */
   async getMessages(folderId: string = 'INBOX', maxResults: number = 30) {
-    console.log('[MESSAGE SERVICE] Fetching threads for folder:', folderId);
+    console.log('[MESSAGE SERVICE] Fetching messages for folder:', folderId);
 
-    // Get list of threads
-    const threadsResponse: any = await gmail.users.threads.list({
+    // Get list of message IDs using users.messages.list
+    const messagesResponse: any = await gmail.users.messages.list({
       labelIds: [folderId],
       maxResults,
     });
 
-    const threads = threadsResponse.threads || [];
-    console.log('[MESSAGE SERVICE] Found threads:', threads.length);
+    const messageList = messagesResponse.messages || [];
+    console.log('[MESSAGE SERVICE] Found messages:', messageList.length);
 
-    if (threads.length === 0) {
+    if (messageList.length === 0) {
       return {
-        threads: [],
         messages: [],
       };
     }
 
-    // Fetch full thread details
-    const fullThreads = await Promise.all(
-      threads.map(async (thread: any) => {
-        const response = await gmail.users.threads.get({
-          id: thread.id,
-          format: 'full',
+    // Fetch message metadata (headers only, no body) - much lighter than 'full'
+    // format=metadata gets: headers, labelIds, snippet, but NOT the full body
+    const messages = await Promise.all(
+      messageList.map(async (msg: any) => {
+        const response = await gmail.users.messages.get({
+          id: msg.id,
+          format: 'metadata', // Only headers, ~5-10KB vs ~50-500KB for 'full'
+          metadataHeaders: ['From', 'To', 'Subject', 'Date'], // Only fetch needed headers
         });
         return response;
       })
     );
 
-    // Extract all messages from threads
-    const allMessages = fullThreads.flatMap((thread: any) => thread.messages || []);
-
-    console.log('[MESSAGE SERVICE] Total messages:', allMessages.length);
+    console.log('[MESSAGE SERVICE] Fetched metadata for messages:', messages.length);
 
     return {
-      threads: fullThreads,
-      messages: allMessages,
+      messages,
     };
   }
 
   /**
    * Get conversations (threads) and messages for a folder
    * Transforms Gmail API data into the format expected by the MessageList component
+   * ONLY fetches metadata (headers) - full message body is fetched when user clicks
    */
   async getConversationsForFolder(mailboxId: string, folderId: string, maxResults: number = 30) {
     console.log('[MESSAGE SERVICE] Fetching conversations for folder:', folderId);
 
-    // Get threads from Gmail API
-    const { threads, messages } = await this.getMessages(folderId, maxResults);
+    // Get messages with metadata only (no full body)
+    const { messages } = await this.getMessages(folderId, maxResults);
 
     // Transform messages into expected format
     const transformedMessages = messages.map((msg: any) => {
@@ -85,24 +84,9 @@ class MessageService {
       const isUnread = (msg.labelIds || []).includes('UNREAD');
       const isStarred = (msg.labelIds || []).includes('STARRED');
 
-      // Get attachments
-      const attachments: any[] = [];
-      const findAttachments = (part: any) => {
-        if (part.filename && part.body?.attachmentId) {
-          attachments.push({
-            id: part.body.attachmentId,
-            filename: part.filename,
-            mimeType: part.mimeType,
-            size: part.body.size || 0,
-          });
-        }
-        if (part.parts) {
-          part.parts.forEach(findAttachments);
-        }
-      };
-      if (msg.payload?.parts) {
-        msg.payload.parts.forEach(findAttachments);
-      }
+      // Note: Attachments info is not available in metadata format
+      // Will be fetched when user opens the full message
+      const hasAttachment = msg.snippet?.includes('attachment') || false;
 
       return {
         id: msg.id,
@@ -121,16 +105,25 @@ class MessageService {
           flagged: isStarred,
         },
         snippet: msg.snippet || '',
-        attachments,
+        attachments: [], // Will be populated when full message is fetched
+        hasAttachment,
       };
     });
 
-    // Transform threads into conversations format
-    const conversations = threads.map((thread: any) => ({
-      id: thread.id,
-      snippet: thread.snippet || '',
-      historyId: thread.historyId,
-    }));
+    // Group messages by threadId to create conversations
+    const conversationMap = new Map();
+    transformedMessages.forEach((msg: any) => {
+      if (!conversationMap.has(msg.conversationId)) {
+        conversationMap.set(msg.conversationId, {
+          id: msg.conversationId,
+          snippet: msg.snippet,
+          messages: [],
+        });
+      }
+      conversationMap.get(msg.conversationId).messages.push(msg);
+    });
+
+    const conversations = Array.from(conversationMap.values());
 
     return {
       messages: transformedMessages,

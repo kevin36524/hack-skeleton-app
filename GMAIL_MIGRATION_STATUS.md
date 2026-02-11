@@ -20,6 +20,15 @@
   - Identifies attachments
   - Ready for testing
 
+### ⚡ Performance Optimization (2026-02-10)
+- **Switched from threads.list to messages.list**: Using `users.messages.list` API for better control
+- **Lazy Loading Full Messages**: Only fetch `format=full` when user clicks on a message
+- **Metadata-Only List View**: List view now uses `format=metadata` with specific headers
+  - Fetches only: From, To, Subject, Date headers
+  - Reduces payload from ~50-500KB to ~5-10KB per message
+  - Attachments info populated only when full message is opened
+- **No More Automatic Full Fetches**: Removed automatic `format=full` calls for every thread
+
 ## Architecture Overview
 
 ### API Proxy Layer (Server-Side)
@@ -90,15 +99,27 @@ All Gmail API calls route through Next.js API routes:
 
 ## Expected Data Flow
 
+### List View (Optimized)
 ```
 User clicks folder →
 onFolderSelected(folderId) →
 message-service.getMessages(folderId) →
-gmail-client calls /api/gmail/threads →
-API route calls Gmail API with googleapis →
-Returns threads →
-Extract messages from threads →
-message-list.tsx renders messages
+gmail-client calls /api/gmail/messages with format=metadata →
+API route calls Gmail users.messages.list →
+For each message ID, fetch format=metadata (headers only) →
+Returns lightweight message metadata →
+message-list.tsx renders message list
+```
+
+### Message Detail View (On Demand)
+```
+User clicks message →
+onMessageSelected(messageId) →
+message-service.getMessage(messageId, 'full') →
+gmail-client calls /api/gmail/messages/[id]?format=full →
+API route fetches full message body →
+Returns complete message with body and attachments →
+message-detail.tsx renders full message
 ```
 
 ## Potential Issues

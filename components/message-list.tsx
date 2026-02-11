@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { setAccessToken } from '@/lib/services/gmail-client';
 
 interface MessageListProps {
   mailboxId: string;
@@ -26,12 +28,13 @@ interface GroupedMessage {
   conversation: Conversation | undefined;
 }
 
-export function MessageList({ 
-  mailboxId, 
-  folderId, 
-  onMessageSelected, 
-  selectedMessageId 
+export function MessageList({
+  mailboxId,
+  folderId,
+  onMessageSelected,
+  selectedMessageId
 }: MessageListProps) {
+  const { getValidAccessToken } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,16 +44,29 @@ export function MessageList({
   const loadMessages = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      // Update token in gmail client
+      setAccessToken(token);
+
       const data = await messageService.getConversationsForFolder(mailboxId, folderId);
       setMessages(data.messages);
       setConversations(data.conversations);
-    } catch (err) {
-      setError('Failed to load messages');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to load messages';
+      setError(errorMessage);
       console.error('Error loading messages:', err);
     } finally {
       setLoading(false);
     }
-  }, [mailboxId, folderId]);
+  }, [mailboxId, folderId, getValidAccessToken]);
 
   useEffect(() => {
     if (mailboxId && folderId) {

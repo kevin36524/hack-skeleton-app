@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -12,7 +12,7 @@ export async function GET(
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { id } = params;
+    const { id } = await params;
 
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'full';

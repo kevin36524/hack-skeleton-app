@@ -4,6 +4,8 @@ import { mailboxService } from '@/lib/services/mailbox-service';
 import { accountService } from '@/lib/services/account-service';
 import { folderService } from '@/lib/services/folder-service';
 import { messageService } from '@/lib/services/message-service';
+import { useAuth } from '@/lib/auth-context';
+import { setAccessToken } from '@/lib/services/gmail-client';
 
 // Query keys
 export const QUERY_KEYS = {
@@ -28,9 +30,20 @@ export function useAuthToken() {
 
 // Mailbox hooks
 export function useMailbox() {
+  const { getValidAccessToken } = useAuth();
+
   return useQuery({
     queryKey: QUERY_KEYS.MAILBOX,
-    queryFn: () => mailboxService.getMailbox(),
+    queryFn: async () => {
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      // Update token in gmail client
+      setAccessToken(token);
+      return mailboxService.getMailbox();
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   });
@@ -38,9 +51,20 @@ export function useMailbox() {
 
 // Accounts hooks
 export function useAccounts(mailboxId: string) {
+  const { getValidAccessToken } = useAuth();
+
   return useQuery({
     queryKey: [QUERY_KEYS.ACCOUNTS, mailboxId],
-    queryFn: () => accountService.getAccounts(mailboxId),
+    queryFn: async () => {
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      // Update token in gmail client
+      setAccessToken(token);
+      return accountService.getAccounts(mailboxId);
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
     enabled: !!mailboxId,
@@ -53,9 +77,20 @@ export function useAccounts(mailboxId: string) {
 
 // Folders hooks
 export function useFolders(mailboxId: string) {
+  const { getValidAccessToken } = useAuth();
+
   return useQuery({
     queryKey: [QUERY_KEYS.FOLDERS, mailboxId],
-    queryFn: () => folderService.getFolders(mailboxId),
+    queryFn: async () => {
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      // Update token in gmail client
+      setAccessToken(token);
+      return folderService.getFolders(mailboxId);
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
     enabled: !!mailboxId,

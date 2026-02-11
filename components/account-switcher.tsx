@@ -6,6 +6,8 @@ import { Account } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, User } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { setAccessToken } from '@/lib/services/gmail-client';
 
 interface AccountSwitcherProps {
   mailboxId: string;
@@ -13,11 +15,12 @@ interface AccountSwitcherProps {
   onAccountSelected?: (account: Account) => void;
 }
 
-export function AccountSwitcher({ 
-  mailboxId, 
-  selectedAccountId, 
-  onAccountSelected 
+export function AccountSwitcher({
+  mailboxId,
+  selectedAccountId,
+  onAccountSelected
 }: AccountSwitcherProps) {
+  const { getValidAccessToken } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,18 @@ export function AccountSwitcher({
   const loadAccounts = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Ensure we have a valid access token (auto-refreshes if expired)
+      const token = await getValidAccessToken();
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      // Update token in gmail client
+      setAccessToken(token);
+
       console.log('AccountSwitcher: Calling accountService.getEnabledAccounts for mailboxId:', mailboxId);
       const enabledAccounts = await accountService.getEnabledAccounts(mailboxId);
       console.log('AccountSwitcher: Got accounts:', enabledAccounts.length);
@@ -48,8 +63,9 @@ export function AccountSwitcher({
           onAccountSelected(primaryAccount);
         }
       }
-    } catch (err) {
-      setError('Failed to load accounts');
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to load accounts';
+      setError(errorMessage);
       console.error('Error loading accounts:', err);
     } finally {
       setLoading(false);

@@ -34,6 +34,53 @@ interface AuthProviderProps {
 const TOKEN_STORAGE_KEY = 'gmail_oauth_tokens';
 const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://hack.oath.email';
 
+/**
+ * Standalone token refresh function that can be called outside of React context
+ * Used by gmail-client for 401 retry logic
+ */
+export async function refreshTokenStandalone(): Promise<string | null> {
+  try {
+    const storedData = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!storedData) {
+      console.log('[AUTH STANDALONE] No token data found');
+      return null;
+    }
+
+    const tokenData: TokenData = JSON.parse(storedData);
+    console.log('[AUTH STANDALONE] Attempting token refresh...');
+
+    const response = await fetch(`${OAUTH_BRIDGE_URL}/api/token/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: tokenData.refresh_token }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Token refresh failed');
+    }
+
+    const refreshData = await response.json();
+    const expiresAt = Date.now() + (refreshData.expires_in * 1000);
+
+    const newTokenData: TokenData = {
+      ...tokenData,
+      access_token: refreshData.access_token,
+      expires_at: expiresAt,
+      ...(refreshData.refresh_token && { refresh_token: refreshData.refresh_token }),
+    };
+
+    // Store the new tokens
+    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(newTokenData));
+    console.log('[AUTH STANDALONE] Token refreshed successfully');
+
+    return newTokenData.access_token;
+  } catch (error) {
+    console.error('[AUTH STANDALONE] Failed to refresh token:', error);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
@@ -69,7 +116,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Check if token is expired
   const isTokenExpired = (data: TokenData): boolean => {
     // Add 5 minute buffer before expiry
-    return Date.now() >= (data.expires_at - 5 * 60 * 1000);
+    const now = Date.now();
+    const expiresAt = data.expires_at - 5 * 60 * 1000;
+    const isExpired = now >= expiresAt;
+
+    if (isExpired) {
+      const minutesUntilExpiry = Math.round((expiresAt - now) / (1000 * 60));
+      console.log('[AUTH] Token expired or expiring soon. Minutes until expiry:', minutesUntilExpiry);
+    }
+
+    return isExpired;
   };
 
   // Refresh access token
@@ -87,10 +143,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     const refreshData = await response.json();
+
+    // Calculate actual expiration timestamp
+    // expires_in is in seconds, but expires_at should be a Unix timestamp in milliseconds
+    const expiresAt = Date.now() + (refreshData.expires_in * 1000);
+
     const newTokenData: TokenData = {
       ...data,
       access_token: refreshData.access_token,
-      expires_at: refreshData.expires_in,
+      expires_at: expiresAt,
       // Update refresh_token if Google returns a new one
       ...(refreshData.refresh_token && { refresh_token: refreshData.refresh_token }),
     };
@@ -101,27 +162,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setToken(newTokenData.access_token);
     setAccessToken(newTokenData.access_token);
 
-    console.log('[AUTH] Access token refreshed successfully');
+    console.log('[AUTH] Access token refreshed successfully. New expiry:', new Date(expiresAt).toISOString());
     return newTokenData;
   };
 
   // Get valid access token (auto-refresh if expired)
   const getValidAccessToken = async (): Promise<string | null> => {
+    console.log('[AUTH] Getting valid access token...');
     let currentTokenData = tokenData;
     if (!currentTokenData) {
       const storedData = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (!storedData) return null;
+      if (!storedData) {
+        console.log('[AUTH] No token data found in storage');
+        return null;
+      }
       try {
         currentTokenData = JSON.parse(storedData);
       } catch {
+        console.error('[AUTH] Failed to parse stored token data');
         return null;
       }
     }
 
     // Refresh if expired
     if (isTokenExpired(currentTokenData)) {
+      console.log('[AUTH] Token expired, attempting refresh...');
       try {
         const newTokenData = await refreshAccessToken(currentTokenData);
+        console.log('[AUTH] Token refreshed successfully');
         return newTokenData.access_token;
       } catch (error) {
         console.error('[AUTH] Failed to refresh token:', error);
@@ -131,6 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
+    console.log('[AUTH] Token still valid, using existing token');
     return currentTokenData.access_token;
   };
 
