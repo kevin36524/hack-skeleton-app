@@ -9,10 +9,10 @@ class FolderService {
   async getFolders() {
     const labels = await this.getLabels();
 
-    // Filter out hidden labels and categories
+    // Filter out only hidden labels, but keep categories (PRIMARY, SOCIAL, etc.)
+    // and other system labels like UNREAD
     return labels.filter((label: any) =>
-      label.labelListVisibility !== 'labelHide' &&
-      !label.id?.startsWith('CATEGORY_')
+      label.labelListVisibility !== 'labelHide'
     );
   }
 

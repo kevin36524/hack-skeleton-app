@@ -5,7 +5,7 @@ import { folderService } from '@/lib/services/folder-service';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw, User, Users, Tag, Bell, MessageSquare, MailOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { setAccessToken } from '@/lib/services/gmail-client';
@@ -106,16 +106,59 @@ export function FolderSidebar({
         return AlertCircle;
       case 'STARRED':
         return Star;
+      case 'UNREAD':
+        return MailOpen;
+      case 'CATEGORY_PERSONAL':
+        return User;
+      case 'CATEGORY_SOCIAL':
+        return Users;
+      case 'CATEGORY_PROMOTIONS':
+        return Tag;
+      case 'CATEGORY_UPDATES':
+        return Bell;
+      case 'CATEGORY_FORUMS':
+        return MessageSquare;
+      case 'IMPORTANT':
+        return Star;
       default:
         return FileText;
     }
   };
 
-  const groupFolders = (): FolderGroup[] => {
-    const systemLabelIds = ['INBOX', 'SENT', 'DRAFT', 'TRASH', 'STARRED', 'SPAM', 'IMPORTANT'];
+  // Format folder name for display (e.g., "CATEGORY_PERSONAL" -> "Primary")
+  const getFolderDisplayName = (folder: any): string => {
+    const displayNames: Record<string, string> = {
+      'CATEGORY_PERSONAL': 'Primary',
+      'CATEGORY_SOCIAL': 'Social',
+      'CATEGORY_PROMOTIONS': 'Promotions',
+      'CATEGORY_UPDATES': 'Updates',
+      'CATEGORY_FORUMS': 'Forums',
+      'UNREAD': 'Unread',
+    };
+    return displayNames[folder.id] || folder.name;
+  };
 
-    const systemFolders = folders.filter(f =>
-      f.type === 'system' && systemLabelIds.includes(f.id)
+  const groupFolders = (): FolderGroup[] => {
+    // Core system labels that should appear first
+    const coreSystemLabelIds = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH', 'IMPORTANT'];
+    // Category labels (Primary, Social, Promotions, Updates, Forums)
+    const categoryLabelIds = ['CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'];
+    // Other system labels like UNREAD
+    const otherSystemLabelIds = ['UNREAD', 'CHAT', 'SCHEDULED'];
+
+    const coreSystemFolders = folders.filter(f =>
+      f.type === 'system' && coreSystemLabelIds.includes(f.id)
+    );
+
+    const categoryFolders = folders.filter(f =>
+      f.type === 'system' && categoryLabelIds.includes(f.id)
+    );
+
+    const otherSystemFolders = folders.filter(f =>
+      f.type === 'system' && 
+      !coreSystemLabelIds.includes(f.id) && 
+      !categoryLabelIds.includes(f.id) &&
+      !f.id?.startsWith('CATEGORY_')
     );
 
     const customFolders = folders.filter(f =>
@@ -124,17 +167,40 @@ export function FolderSidebar({
 
     const groups: FolderGroup[] = [];
 
-    // System folders
-    if (systemFolders.length > 0) {
+    // Core system folders
+    if (coreSystemFolders.length > 0) {
       groups.push({
         name: 'System Folders',
-        folders: systemFolders.sort((a, b) => {
-          const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH'];
+        folders: coreSystemFolders.sort((a, b) => {
+          const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH', 'IMPORTANT'];
           const aIndex = order.indexOf(a.id);
           const bIndex = order.indexOf(b.id);
           return aIndex - bIndex;
         }),
         icon: Inbox
+      });
+    }
+
+    // Category folders (Primary, Social, Promotions, etc.)
+    if (categoryFolders.length > 0) {
+      groups.push({
+        name: 'Categories',
+        folders: categoryFolders.sort((a, b) => {
+          const order = ['CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'];
+          const aIndex = order.indexOf(a.id);
+          const bIndex = order.indexOf(b.id);
+          return aIndex - bIndex;
+        }),
+        icon: FileText
+      });
+    }
+
+    // Other system folders (UNREAD, etc.)
+    if (otherSystemFolders.length > 0) {
+      groups.push({
+        name: 'Labels',
+        folders: otherSystemFolders.sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+        icon: FileText
       });
     }
 
@@ -264,7 +330,7 @@ export function FolderSidebar({
                             'w-full justify-center px-2',
                             selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
                           )}
-                          title={folder.name}
+                          title={getFolderDisplayName(folder)}
                         >
                           <Icon className="h-4 w-4" />
                         </Button>
@@ -285,7 +351,7 @@ export function FolderSidebar({
                         <div className="flex items-start justify-between w-full min-w-0 gap-2">
                           <div className="flex items-start space-x-2 min-w-0 flex-1">
                             <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                            <span className="break-all">{folder.name}</span>
+                            <span className="break-all">{getFolderDisplayName(folder)}</span>
                           </div>
                           <div className="flex items-center space-x-1 text-xs flex-shrink-0">
                             {folder.unread > 0 && (
