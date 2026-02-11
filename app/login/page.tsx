@@ -42,32 +42,6 @@ function LoginForm() {
     return () => window.removeEventListener('message', messageHandler);
   }, [login]);
 
-  // Check for OAuth tokens in URL hash (same-window mode fallback)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#oauth_')) {
-      try {
-        const encodedData = hash.substring(7); // Remove '#oauth_'
-        const tokenData = JSON.parse(decodeURIComponent(encodedData));
-
-        if (tokenData.error) {
-          setError('Authentication failed: ' + tokenData.error);
-        } else {
-          console.log('[LOGIN] OAuth tokens from URL hash');
-          login(tokenData).catch((err) => {
-            setError(err instanceof Error ? err.message : 'Login failed');
-          });
-        }
-
-        // Clear hash from URL
-        window.history.replaceState(null, '', window.location.pathname);
-      } catch (error) {
-        console.error('[LOGIN] Failed to parse OAuth tokens:', error);
-        setError('Failed to process authentication');
-      }
-    }
-  }, [login]);
-
   const handleGoogleLogin = () => {
     setIsLoading(true);
     setError('');

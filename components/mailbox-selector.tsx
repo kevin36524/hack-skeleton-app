@@ -55,35 +55,5 @@ export function MailboxSelector({ onMailboxSelected }: MailboxSelectorProps) {
     mailbox => mailbox.isPrimary && mailbox.isSelected
   );
 
-  return (
-    <div className="flex items-center space-x-3 max-w-sm overflow-hidden">
-      {primaryMailbox && (
-        <>
-          <div className="flex items-center space-x-2 flex-shrink-0">
-            <Mail className="h-4 w-4 text-purple-600" />
-            <Badge variant="default" className="text-xs px-2 py-1">Primary</Badge>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {primaryMailbox.email}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-              Status: {primaryMailbox.state}
-            </p>
-            {mailboxData.cpAttributes.accountCreationTime && (
-              <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
-                Created: {(() => {
-                  try {
-                    return new Date(mailboxData.cpAttributes.accountCreationTime).toLocaleDateString();
-                  } catch (error) {
-                    return 'Unknown';
-                  }
-                })()}
-              </p>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
+  return null;
 }
