@@ -262,6 +262,22 @@ class MessageService {
   }
 
   /**
+   * Intelligent search using natural language
+   * Converts natural language to Gmail query using AI agent
+   */
+  async intelligentSearch(naturalLanguageQuery: string, maxResults: number = 30, useAgent: boolean = true) {
+    console.log('[MESSAGE SERVICE] Intelligent search:', naturalLanguageQuery);
+    
+    const result = await gmail.users.messages.intelligentSearch({
+      query: naturalLanguageQuery,
+      maxResults,
+      useAgent,
+    });
+
+    return result;
+  }
+
+  /**
    * Get full message body by fetching complete message and extracting body
    * This method is called when user clicks on a message to view full content
    */

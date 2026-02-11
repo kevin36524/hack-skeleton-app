@@ -137,6 +137,40 @@ export const gmail = {
           method: 'POST',
         });
       },
+
+      /**
+       * Intelligent search using natural language
+       * Converts natural language queries into Gmail API queries using AI
+       * 
+       * Example: "emails from niti about birthday in inbox"
+       */
+      intelligentSearch: async (params: { 
+        query: string; 
+        maxResults?: number; 
+        useAgent?: boolean 
+      }) => {
+        const { query, maxResults = 30, useAgent = true } = params;
+        return apiRequest<{
+          query: string;
+          labelIds: string[];
+          explanation: string;
+          detectedParams: {
+            from?: string;
+            to?: string;
+            subject?: string;
+            folder?: string;
+            hasAttachment?: boolean;
+            isUnread?: boolean;
+            isStarred?: boolean;
+            dateRange?: string;
+            keywords?: string[];
+          };
+          messages: any[];
+        }>('/api/gmail/intelligent-search', {
+          method: 'POST',
+          body: JSON.stringify({ query, maxResults, useAgent }),
+        });
+      },
     },
   },
 };
