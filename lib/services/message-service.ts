@@ -262,6 +262,35 @@ class MessageService {
   }
 
   /**
+   * Get full message body by fetching complete message and extracting body
+   * This method is called when user clicks on a message to view full content
+   */
+  async getFullMessageBody(mailboxId: string, messageId: string) {
+    console.log('[MESSAGE SERVICE] Fetching full message body for:', messageId);
+
+    // Fetch the full message (includes body content)
+    const fullMessage: any = await gmail.users.messages.get({
+      id: messageId,
+      format: 'full',
+    });
+
+    // Extract the body content
+    const body = this.getMessageBody(fullMessage);
+
+    // Extract attachments info
+    const attachments = this.extractAttachments(fullMessage);
+
+    return {
+      simpleBody: {
+        html: body.html,
+        text: body.text,
+      },
+      attachments,
+      fullMessage, // Include full message for additional metadata if needed
+    };
+  }
+
+  /**
    * Extract message body (HTML or plain text)
    */
   getMessageBody(message: any): { html: string; text: string } {
@@ -284,6 +313,33 @@ class MessageService {
     parts.forEach(findBody);
 
     return { html, text };
+  }
+
+  /**
+   * Extract attachments from message
+   */
+  private extractAttachments(message: any): any[] {
+    const attachments: any[] = [];
+    const parts = message.payload?.parts || [message.payload];
+
+    const findAttachments = (part: any) => {
+      if (part.filename && part.body?.attachmentId) {
+        attachments.push({
+          filename: part.filename,
+          mimeType: part.mimeType,
+          size: part.body.size,
+          attachmentId: part.body.attachmentId,
+        });
+      }
+
+      if (part.parts) {
+        part.parts.forEach(findAttachments);
+      }
+    };
+
+    parts.forEach(findAttachments);
+
+    return attachments;
   }
 
   /**
