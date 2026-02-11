@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Message, Attachment } from '@/lib/types/api';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,8 @@ export function MessageDetail({
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
+  const [iframeHeight, setIframeHeight] = useState('100%');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Fetch full message body when message changes
   useEffect(() => {
@@ -123,6 +125,100 @@ export function MessageDetail({
     // This would typically involve creating a blob and downloading
     console.log('Downloading attachment:', attachment);
   };
+
+  // Handle iframe load and resize
+  const handleIframeLoad = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      try {
+        const doc = iframe.contentWindow.document;
+        const height = doc.body.scrollHeight;
+        setIframeHeight(`${height + 32}px`); // Add some padding
+      } catch {
+        // Fallback if cross-origin issues
+        setIframeHeight('100%');
+      }
+    }
+  }, []);
+
+  // Prepare isolated HTML content for iframe
+  const getIsolatedHtmlContent = (htmlContent: string) => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* Reset styles to prevent bleeding */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #333;
+      background: transparent;
+    }
+    /* Ensure images don't overflow */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    /* Basic table styling reset */
+    table {
+      max-width: 100%;
+    }
+    /* Link styling */
+    a {
+      color: #2563eb;
+    }
+    /* Prevent horizontal scroll */
+    pre, code {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  ${htmlContent}
+  <script>
+    // Auto-resize parent iframe
+    function notifyParent() {
+      const height = document.body.scrollHeight;
+      window.parent.postMessage({ type: 'email-height', height: height }, '*');
+    }
+    
+    // Notify on load
+    window.addEventListener('load', notifyParent);
+    
+    // Notify on image load
+    document.querySelectorAll('img').forEach(img => {
+      img.addEventListener('load', notifyParent);
+    });
+    
+    // Initial notification
+    notifyParent();
+  </script>
+</body>
+</html>
+    `;
+  };
+
+  // Listen for messages from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'email-height') {
+        setIframeHeight(`${event.data.height + 32}px`);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -243,7 +339,19 @@ export function MessageDetail({
                 <div className="whitespace-pre-wrap mt-2 text-gray-700">{message.snippet}</div>
               </div>
             ) : fullBody?.html ? (
-              <div dangerouslySetInnerHTML={{ __html: fullBody.html }} />
+              <iframe
+                ref={iframeRef}
+                srcDoc={getIsolatedHtmlContent(fullBody.html)}
+                onLoad={handleIframeLoad}
+                style={{
+                  width: '100%',
+                  height: iframeHeight,
+                  border: 'none',
+                  background: 'transparent',
+                }}
+                sandbox="allow-same-origin"
+                title="Email content"
+              />
             ) : fullBody?.text ? (
               <div className="whitespace-pre-wrap">{fullBody.text}</div>
             ) : (
