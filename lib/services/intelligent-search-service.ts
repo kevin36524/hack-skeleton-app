@@ -1,11 +1,13 @@
 import { mastra } from '@/src/mastra';
-import { gmail } from './gmail-client';
+import { google } from 'googleapis';
 
 /**
  * Intelligent Search Service
  * 
  * Uses the Gmail Search Agent to convert natural language queries into Gmail API queries
  * and then executes the search to return matching emails.
+ * 
+ * Note: This service runs server-side in API routes and uses the Google API client directly.
  */
 
 export interface IntelligentSearchResult {
@@ -27,6 +29,22 @@ export interface IntelligentSearchResult {
 }
 
 class IntelligentSearchService {
+  private accessToken: string | null = null;
+
+  /**
+   * Set the access token for Gmail API calls
+   */
+  setAccessToken(token: string) {
+    this.accessToken = token;
+  }
+
+  private getAccessToken(): string {
+    if (!this.accessToken) {
+      throw new Error('Access token not set. Call setAccessToken() first.');
+    }
+    return this.accessToken;
+  }
+
   /**
    * Search emails using natural language query
    * 
@@ -112,7 +130,8 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
     const messages = await this.executeSearch(
       searchConfig.query,
       searchConfig.labelIds || [],
-      maxResults
+      maxResults,
+      this.getAccessToken()
     );
 
     return {
@@ -126,17 +145,26 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
 
   /**
    * Execute the Gmail search with the generated query
+   * Uses Google API client directly (server-side)
    */
-  private async executeSearch(query: string, labelIds: string[], maxResults: number): Promise<any[]> {
+  private async executeSearch(query: string, labelIds: string[], maxResults: number, accessToken: string): Promise<any[]> {
     try {
+      // Create OAuth2 client and set credentials
+      const auth = new google.auth.OAuth2();
+      auth.setCredentials({ access_token: accessToken });
+
+      // Create Gmail API client
+      const gmail = google.gmail({ version: 'v1', auth });
+
       // First, get the list of message IDs
-      const listResponse: any = await gmail.users.messages.list({
+      const listResponse = await gmail.users.messages.list({
+        userId: 'me',
         q: query,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
         maxResults,
       });
 
-      const messageList = listResponse.messages || [];
+      const messageList = listResponse.data.messages || [];
       console.log('[INTELLIGENT SEARCH] Found messages:', messageList.length);
 
       if (messageList.length === 0) {
@@ -147,12 +175,13 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       const messages = await Promise.all(
         messageList.map(async (msg: any) => {
           try {
-            const fullMessage: any = await gmail.users.messages.get({
-              id: msg.id,
+            const fullMessage = await gmail.users.messages.get({
+              userId: 'me',
+              id: msg.id!,
               format: 'metadata',
               metadataHeaders: ['From', 'To', 'Subject', 'Date'],
             });
-            return fullMessage;
+            return fullMessage.data;
           } catch (error) {
             console.error(`[INTELLIGENT SEARCH] Failed to fetch message ${msg.id}:`, error);
             return null;
@@ -165,6 +194,148 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       console.error('[INTELLIGENT SEARCH] Search execution failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Quick rule-based search without AI agent
+   * Uses regex patterns to extract query components for simple queries
+   * Faster execution (no LLM call)
+   */
+  async quickSearch(naturalLanguageQuery: string, maxResults: number = 30): Promise<IntelligentSearchResult> {
+    console.log('[INTELLIGENT SEARCH] Quick search for:', naturalLanguageQuery);
+
+    const detectedParams: IntelligentSearchResult['detectedParams'] = {};
+    const queryParts: string[] = [];
+    const labelIds: string[] = [];
+
+    const query = naturalLanguageQuery.toLowerCase();
+
+    // Extract sender (from:)
+    const fromMatch = query.match(/from\s+([\w.@]+)|emails?\s+(?:from|by)\s+([\w.@]+)/i);
+    if (fromMatch) {
+      const sender = fromMatch[1] || fromMatch[2];
+      detectedParams.from = sender;
+      queryParts.push(`from:${sender}`);
+    }
+
+    // Extract recipient (to:)
+    const toMatch = query.match(/to\s+([\w.@]+)|sent\s+to\s+([\w.@]+)/i);
+    if (toMatch) {
+      const recipient = toMatch[1] || toMatch[2];
+      detectedParams.to = recipient;
+      queryParts.push(`to:${recipient}`);
+    }
+
+    // Extract subject keywords
+    const subjectMatch = query.match(/(?:about|subject|regarding)\s+["']?([^"']+?)["']?(?:\s+(?:from|in|with|has|is)\s+|\s*$)/i);
+    if (subjectMatch) {
+      const subject = subjectMatch[1].trim();
+      detectedParams.subject = subject;
+      queryParts.push(`subject:${subject}`);
+    }
+
+    // Extract folder/label
+    const folderMatch = query.match(/in\s+(?:my\s+)?(?:primary\s+)?(inbox|sent|drafts?|spam|trash|important|starred|archive)/i);
+    if (folderMatch) {
+      const folder = folderMatch[1].toLowerCase();
+      detectedParams.folder = folder;
+      if (folder === 'inbox') {
+        queryParts.push('in:inbox');
+        labelIds.push('INBOX');
+      } else if (folder === 'sent') {
+        queryParts.push('in:sent');
+      } else if (folder === 'draft' || folder === 'drafts') {
+        queryParts.push('in:draft');
+      } else if (folder === 'spam') {
+        queryParts.push('in:spam');
+      } else if (folder === 'trash') {
+        queryParts.push('in:trash');
+      } else if (folder === 'important') {
+        queryParts.push('in:important');
+        labelIds.push('IMPORTANT');
+      } else if (folder === 'starred') {
+        queryParts.push('is:starred');
+        detectedParams.isStarred = true;
+      }
+    }
+
+    // Check for unread status
+    if (query.includes('unread')) {
+      queryParts.push('is:unread');
+      detectedParams.isUnread = true;
+    }
+
+    // Check for starred status
+    if (query.includes('starred') || query.includes('favorite')) {
+      queryParts.push('is:starred');
+      detectedParams.isStarred = true;
+    }
+
+    // Check for attachments
+    const attachmentMatch = query.match(/(?:with|has|have)\s+(?:an?\s+)?attachment|attached/i);
+    if (attachmentMatch) {
+      queryParts.push('has:attachment');
+      detectedParams.hasAttachment = true;
+
+      // Check for specific file types
+      const pdfMatch = query.match(/pdf|\.pdf/i);
+      if (pdfMatch) {
+        queryParts.push('filename:pdf');
+      }
+      const imageMatch = query.match(/image|picture|photo|\.jpg|\.png|\.gif/i);
+      if (imageMatch) {
+        queryParts.push('filename:jpg OR filename:png OR filename:gif');
+      }
+    }
+
+    // Extract date ranges
+    const lastWeekMatch = query.match(/last\s+week/i);
+    if (lastWeekMatch) {
+      queryParts.push('newer_than:7d');
+      detectedParams.dateRange = 'last 7 days';
+    }
+    const lastMonthMatch = query.match(/last\s+month/i);
+    if (lastMonthMatch) {
+      queryParts.push('newer_than:30d');
+      detectedParams.dateRange = 'last 30 days';
+    }
+
+    // Extract remaining keywords (not already captured)
+    const keywords: string[] = [];
+    const words = query.split(/\s+/);
+    const stopWords = ['emails', 'email', 'from', 'to', 'in', 'my', 'with', 'has', 'have', 'is', 'are', 'the', 'a', 'an', 'about', 'show', 'me', 'search', 'find', 'get', 'all', 'any'];
+    
+    for (const word of words) {
+      const cleanWord = word.replace(/[^\w]/g, '');
+      if (cleanWord.length > 2 && !stopWords.includes(cleanWord) && !queryParts.some(part => part.includes(cleanWord))) {
+        keywords.push(cleanWord);
+      }
+    }
+    
+    if (keywords.length > 0) {
+      detectedParams.keywords = keywords;
+      // Add keywords that aren't already in the query
+      const uniqueKeywords = keywords.filter(kw => !queryParts.some(part => part.toLowerCase().includes(kw.toLowerCase())));
+      if (uniqueKeywords.length > 0) {
+        queryParts.push(uniqueKeywords.join(' '));
+      }
+    }
+
+    // Build final query
+    const finalQuery = queryParts.join(' ') || naturalLanguageQuery;
+
+    console.log('[INTELLIGENT SEARCH] Quick generated query:', finalQuery);
+
+    // Execute the search
+    const messages = await this.executeSearch(finalQuery, labelIds, maxResults, this.getAccessToken());
+
+    return {
+      query: finalQuery,
+      labelIds,
+      explanation: `Rule-based query: ${finalQuery}`,
+      detectedParams,
+      messages,
+    };
   }
 
   /**

@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
+    const token = authHeader.replace('Bearer ', '');
+    
     const body = await request.json();
     const { query, maxResults = 30, useAgent = true } = body;
 
@@ -41,6 +43,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[API] Intelligent search request:', query);
+
+    // Set the access token for the Gmail client
+    intelligentSearchService.setAccessToken(token);
 
     // Perform the intelligent search
     let result;
@@ -54,7 +59,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[API] Intelligent search error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to perform intelligent search' },
+      { 
+        error: error.message || 'Failed to perform intelligent search',
+        details: error.stack || 'No stack trace available'
+      },
       { status: error.status || 500 }
     );
   }
@@ -72,6 +80,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
+    const token = authHeader.replace('Bearer ', '');
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const maxResults = parseInt(searchParams.get('maxResults') || '30');
@@ -86,6 +96,9 @@ export async function GET(request: NextRequest) {
 
     console.log('[API] Intelligent search GET request:', query);
 
+    // Set the access token for the Gmail client
+    intelligentSearchService.setAccessToken(token);
+
     // Perform the intelligent search
     let result;
     if (useAgent) {
@@ -98,7 +111,10 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('[API] Intelligent search error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to perform intelligent search' },
+      { 
+        error: error.message || 'Failed to perform intelligent search',
+        details: error.stack || 'No stack trace available'
+      },
       { status: error.status || 500 }
     );
   }
