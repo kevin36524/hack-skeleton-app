@@ -9,10 +9,11 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Search } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 
@@ -29,6 +30,7 @@ function MailPageContent() {
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -120,6 +122,13 @@ function MailPageContent() {
     window.location.reload();
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/mail/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   const isReady = mailboxId;
 
   return (
@@ -144,10 +153,26 @@ function MailPageContent() {
               <div className="flex items-center space-x-4">
                 <Mail className="h-8 w-8 text-purple-600" />
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Oath Email</h1>
-                <MailboxSelector onMailboxSelected={handleMailboxSelected} />
+              </div>
+
+              {/* Search Box */}
+              <div className="flex-1 max-w-2xl mx-8">
+                <form onSubmit={handleSearch} className="w-full">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search emails..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 w-full"
+                    />
+                  </div>
+                </form>
               </div>
 
               <div className="flex items-center space-x-4">
+                <MailboxSelector onMailboxSelected={handleMailboxSelected} />
                 <AccountSwitcher
                   mailboxId={mailboxId}
                   onAccountSelected={handleAccountSelected}
