@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Mail } from 'lucide-react';
+import Image from 'next/image';
 
 const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.oath.email';
 
@@ -83,8 +83,14 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <Mail className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <Image
+              src="/logo.png"
+              alt="Oath Mail Logo"
+              width={64}
+              height={64}
+              className="rounded-full"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Oath Mail
