@@ -237,6 +237,40 @@ class MessageService {
   }
 
   /**
+   * Archive messages by removing INBOX label
+   * Gmail automatically archives when INBOX is removed
+   */
+  async archiveMessage(messageId: string) {
+    try {
+      // Get current message to check labels
+      const message: any = await gmail.users.messages.get({
+        id: messageId,
+        format: 'minimal',
+      });
+
+      // Remove INBOX label (Gmail archives automatically)
+      const labelsToRemove = (message.labelIds || []).filter((label: string) =>
+        label === 'INBOX'
+      );
+
+      if (labelsToRemove.length === 0) {
+        // Already archived
+        return { id: messageId, success: true, alreadyArchived: true };
+      }
+
+      await gmail.users.messages.modify({
+        id: messageId,
+        removeLabelIds: labelsToRemove,
+      });
+
+      return { id: messageId, success: true };
+    } catch (error) {
+      console.error(`Failed to archive message ${messageId}:`, error);
+      throw error; // Re-throw to let caller handle scope errors
+    }
+  }
+
+  /**
    * Delete messages (move to trash)
    */
   async deleteMessage(messageId: string) {

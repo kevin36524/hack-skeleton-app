@@ -43,20 +43,28 @@ function LoginForm() {
   }, [login]);
 
   const handleGoogleLogin = () => {
+    console.log('[LOGIN] Sign in button clicked');
     setIsLoading(true);
     setError('');
 
     const returnUrl = encodeURIComponent(window.location.origin + '/login');
     const oauthUrl = `${OAUTH_BRIDGE_URL}/api/auth/sandbox/start?returnUrl=${returnUrl}`;
 
+    console.log('[LOGIN] OAUTH_BRIDGE_URL:', OAUTH_BRIDGE_URL);
+    console.log('[LOGIN] Opening OAuth popup to:', oauthUrl);
+    console.log('[LOGIN] Return URL:', window.location.origin + '/login');
+
     // Open OAuth flow in a popup
     const popup = window.open(
       oauthUrl,
       'google_oauth',
-      'width=600,height=700,left=100,top=100'
+      'width=600,height=700,left=100,top=100,scrollbars=yes,resizable=yes'
     );
 
+    console.log('[LOGIN] Popup opened:', !!popup);
+
     if (!popup) {
+      console.error('[LOGIN] Failed to open popup - likely blocked');
       setError('Please allow popups for this site to sign in with Google');
       setIsLoading(false);
       return;

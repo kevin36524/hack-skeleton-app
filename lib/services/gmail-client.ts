@@ -11,6 +11,7 @@ let accessToken: string | null = null;
  * Set access token
  */
 export function setAccessToken(token: string) {
+  console.log('[GMAIL CLIENT] Setting new access token:', token ? `${token.substring(0, 20)}...` : 'null');
   accessToken = token;
 }
 
@@ -22,6 +23,26 @@ export function getAccessToken(): string {
     throw new Error('Gmail client not initialized. Please authenticate first.');
   }
   return accessToken;
+}
+
+/**
+ * Check if error is due to insufficient scope/permissions
+ */
+export function isInsufficientScopeError(error: any): boolean {
+  // Check for 403 with insufficient permissions
+  if (error.status === 403 || error.message?.includes('403')) {
+    const errorMessage = error.message || '';
+    const errorBody = error.body || '';
+
+    return (
+      errorMessage.toLowerCase().includes('insufficient') ||
+      errorMessage.toLowerCase().includes('permission') ||
+      errorMessage.toLowerCase().includes('scope') ||
+      errorBody.includes('PERMISSION_DENIED') ||
+      errorBody.includes('insufficient authentication scopes')
+    );
+  }
+  return false;
 }
 
 /**
@@ -63,9 +84,27 @@ async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    console.error('API Error:', response.status, error);
-    throw new Error(error.error || `API Error: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error('API Error:', response.status, errorData);
+
+    // Create detailed error object
+    const error: any = new Error(errorData.error || errorData.message || `API Error: ${response.status}`);
+    error.status = response.status;
+    error.statusText = response.statusText;
+    error.body = errorData;
+
+    // Special handling for 403 errors (insufficient scope)
+    if (response.status === 403) {
+      console.warn('[GMAIL CLIENT] 403 Forbidden - may require additional OAuth scopes');
+
+      // Check if it's a scope error
+      if (isInsufficientScopeError(error)) {
+        console.error('[GMAIL CLIENT] Insufficient scope detected. User needs to grant additional permissions.');
+        error.needsScopeUpgrade = true;
+      }
+    }
+
+    throw error;
   }
 
   return response.json();

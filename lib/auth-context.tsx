@@ -23,6 +23,7 @@ interface AuthContextType {
   logout: () => void;
   validateToken: (token: string) => Promise<boolean>;
   getValidAccessToken: () => Promise<string | null>;
+  requestAdditionalScopes: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -249,6 +250,96 @@ export function AuthProvider({ children }: AuthProviderProps) {
     router.push('/login');
   };
 
+  /**
+   * Request additional OAuth scopes (e.g., write permissions)
+   * Opens OAuth bridge with prompt=consent to force re-authentication
+   */
+  const requestAdditionalScopes = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const returnUrl = encodeURIComponent(window.location.origin + '/mail');
+      const oauthUrl = `${OAUTH_BRIDGE_URL}/api/auth/sandbox/start?returnUrl=${returnUrl}&prompt=consent`;
+
+      console.log('[AUTH] Opening OAuth popup for additional scopes...');
+      console.log('[AUTH] OAuth URL:', oauthUrl);
+      console.log('[AUTH] Return URL:', window.location.origin + '/mail');
+
+      const popup = window.open(oauthUrl, 'google_oauth_upgrade', 'width=600,height=700,scrollbars=yes,resizable=yes');
+
+      if (!popup) {
+        console.error('[AUTH] Failed to open popup - likely blocked by browser');
+        alert('Please allow popups for this site to grant additional permissions. Check your browser\'s address bar for a popup blocker icon.');
+        resolve(false);
+        return;
+      }
+
+      console.log('[AUTH] Popup opened successfully');
+
+      // Try to focus the popup
+      try {
+        popup.focus();
+      } catch (e) {
+        console.warn('[AUTH] Could not focus popup:', e);
+      }
+
+      const messageHandler = (event: MessageEvent) => {
+        console.log('[AUTH] Received message from:', event.origin, 'Expected:', OAUTH_BRIDGE_URL);
+        console.log('[AUTH] Message data:', event.data);
+
+        // Verify origin for security (be more lenient for debugging)
+        if (!event.origin.includes('oath.email') && event.origin !== OAUTH_BRIDGE_URL) {
+          console.warn('[AUTH] Message from unexpected origin, ignoring');
+          return;
+        }
+
+        if (event.data.type === 'OAUTH_SUCCESS') {
+          console.log('[AUTH] OAuth upgrade successful!');
+          const newTokenData = event.data.data;
+          console.log('[AUTH] New token data received:', {
+            hasAccessToken: !!newTokenData.access_token,
+            hasRefreshToken: !!newTokenData.refresh_token,
+            email: newTokenData.email
+          });
+
+          // Update tokens in localStorage
+          localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(newTokenData));
+
+          // Update token in gmail-client
+          setAccessToken(newTokenData.access_token);
+
+          // Update auth context state
+          setToken(newTokenData.access_token);
+          setTokenData(newTokenData);
+
+          // Mark scope as granted
+          localStorage.setItem('gmail_write_scope_granted', 'true');
+
+          console.log('[AUTH] All tokens updated successfully');
+
+          window.removeEventListener('message', messageHandler);
+          popup?.close();
+          resolve(true);
+        } else if (event.data.type === 'OAUTH_ERROR') {
+          console.error('[AUTH] OAuth upgrade failed:', event.data.error);
+          window.removeEventListener('message', messageHandler);
+          popup?.close();
+          resolve(false);
+        }
+      };
+
+      window.addEventListener('message', messageHandler);
+
+      // Handle popup closed without completing OAuth
+      const checkPopup = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkPopup);
+          window.removeEventListener('message', messageHandler);
+          console.log('[AUTH] OAuth popup closed by user');
+          resolve(false);
+        }
+      }, 500);
+    });
+  };
+
   const value: AuthContextType = {
     token,
     tokenData,
@@ -258,6 +349,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     validateToken,
     getValidAccessToken,
+    requestAdditionalScopes,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

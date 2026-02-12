@@ -12,7 +12,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 import { messageService } from '@/lib/services/message-service';
-import { setAccessToken } from '@/lib/services/gmail-client';
+import { setAccessToken, isInsufficientScopeError } from '@/lib/services/gmail-client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -62,7 +62,7 @@ interface IntelligentSearchResult {
 }
 
 function SearchPageContent() {
-  const { logout, getValidAccessToken } = useAuth();
+  const { logout, getValidAccessToken, requestAdditionalScopes } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: mailboxData } = useMailbox();
@@ -396,6 +396,66 @@ function SearchPageContent() {
       .slice(0, 2);
   };
 
+  const handleArchive = async (messageId: string) => {
+    try {
+      console.log('[SEARCH PAGE] Archiving message:', messageId);
+      await messageService.archiveMessage(messageId);
+
+      // Show success feedback (basic alert for now)
+      alert('Message archived successfully');
+
+      // Refresh the search results
+      if (searchQuery.trim()) {
+        performSearch(searchQuery);
+      }
+    } catch (error: any) {
+      console.error('[SEARCH PAGE] Failed to archive message:', error);
+
+      // Check if it's a scope error
+      if (isInsufficientScopeError(error)) {
+        console.log('[SEARCH PAGE] Insufficient scope, requesting additional permissions...');
+
+        // Show dialog explaining why we need additional permissions
+        const userConfirmed = confirm(
+          'Archive requires write access to your Gmail. Click OK to grant permissions.'
+        );
+
+        if (userConfirmed) {
+          // Request additional scopes
+          console.log('[SEARCH PAGE] Requesting additional scopes...');
+          const success = await requestAdditionalScopes();
+          console.log('[SEARCH PAGE] Scope request result:', success);
+
+          if (success) {
+            // Wait a moment for token to be fully updated
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Retry archive operation
+            try {
+              console.log('[SEARCH PAGE] Retrying archive with new token...');
+              await messageService.archiveMessage(messageId);
+              console.log('[SEARCH PAGE] Archive successful after scope upgrade!');
+              alert('Message archived successfully');
+              // Refresh search results
+              if (searchQuery.trim()) {
+                performSearch(searchQuery);
+              }
+            } catch (retryError) {
+              console.error('[SEARCH PAGE] Failed to archive after scope upgrade:', retryError);
+              alert('Failed to archive message. Please try again.');
+            }
+          } else {
+            console.log('[SEARCH PAGE] User denied scope upgrade or popup closed');
+            alert('Archive requires additional permissions. You can try again from Settings.');
+          }
+        }
+      } else {
+        // Network or other error
+        alert('Failed to archive message. Please check your connection and try again.');
+      }
+    }
+  };
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -580,7 +640,7 @@ function SearchPageContent() {
                       onReply={(message) => console.log('Reply to:', message.id)}
                       onForward={(message) => console.log('Forward:', message.id)}
                       onDelete={(messageId) => console.log('Delete:', messageId)}
-                      onArchive={(messageId) => console.log('Archive:', messageId)}
+                      onArchive={handleArchive}
                     />
                   </div>
                 </div>
@@ -723,7 +783,7 @@ function SearchPageContent() {
                     onReply={(message) => console.log('Reply to:', message.id)}
                     onForward={(message) => console.log('Forward:', message.id)}
                     onDelete={(messageId) => console.log('Delete:', messageId)}
-                    onArchive={(messageId) => console.log('Archive:', messageId)}
+                    onArchive={handleArchive}
                   />
                 </div>
               </div>
