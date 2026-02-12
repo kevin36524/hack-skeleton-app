@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
 import { ThemeToggle } from './theme-toggle';
+import Image from 'next/image';
 
 interface MobileHeaderProps {
   onToggleSidebar: () => void;
@@ -49,7 +50,13 @@ export function MobileHeader({
               )}
             </Button>
             <div className="flex items-center space-x-2">
-              <Mail className="h-6 w-6 text-purple-600" />
+              <Image
+                src="/logo.png"
+                alt="Oath Mail Logo"
+                width={24}
+                height={24}
+                className="h-6 w-6 object-contain"
+              />
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Oath Mail
               </h1>

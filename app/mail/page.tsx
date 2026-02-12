@@ -16,6 +16,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
+import Image from 'next/image';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -151,7 +152,13 @@ function MailPageContent() {
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-4">
-                <Mail className="h-8 w-8 text-purple-600" />
+                <Image
+                  src="/logo.png"
+                  alt="Oath Mail Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Oath Mail</h1>
               </div>
 

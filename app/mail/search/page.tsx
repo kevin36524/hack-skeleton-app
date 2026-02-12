@@ -23,6 +23,7 @@ import { useMailbox } from '@/lib/hooks/use-yahoo-mail';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import Image from 'next/image';
 
 interface SearchResultMessage {
   id: string;
@@ -412,7 +413,13 @@ function SearchPageContent() {
                   <ArrowLeft className="h-4 w-4" />
                   <span className="hidden sm:inline">Back</span>
                 </Button>
-                <Mail className="h-8 w-8 text-purple-600" />
+                <Image
+                  src="/logo.png"
+                  alt="Oath Mail Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                />
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white hidden sm:block">Search</h1>
               </div>
 
