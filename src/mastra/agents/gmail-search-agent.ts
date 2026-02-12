@@ -37,6 +37,23 @@ export const gmailSearchAgent = new Agent({
 - in:trash - Trash emails
 - label:labelname - Emails with specific label
 
+**Gmail Categories (use these exact label IDs):**
+- category:primary - Primary emails (use CATEGORY_PERSONAL)
+- category:social - Social emails (use CATEGORY_SOCIAL)
+- category:promotions - Promotional emails (use CATEGORY_PROMOTIONS)
+- category:updates - Update emails (use CATEGORY_UPDATES)
+- category:forums - Forum emails (use CATEGORY_FORUMS)
+
+**Valid Label IDs:**
+- INBOX, SENT, DRAFT, SPAM, TRASH
+- IMPORTANT, STARRED, UNREAD
+- CATEGORY_PERSONAL, CATEGORY_SOCIAL, CATEGORY_PROMOTIONS, CATEGORY_UPDATES, CATEGORY_FORUMS
+- CHAT
+
+IMPORTANT: When users mention "updates", "promotions", "social", "forums", or "primary" category:
+- Use the query format: category:updates (not label:updates)
+- Use the labelId format: CATEGORY_UPDATES (not UPDATE)
+
 **Status:**
 - is:unread - Unread emails
 - is:read - Read emails
@@ -77,12 +94,31 @@ User: "starred emails from boss with pdf attachments"
 → Query: "from:boss is:starred has:attachment filename:pdf"
 → LabelIds: []
 
+User: "show me emails in updates category"
+→ Query: "category:updates"
+→ LabelIds: ["CATEGORY_UPDATES"]
+
+User: "promotional emails from last month"
+→ Query: "category:promotions newer_than:30d"
+→ LabelIds: ["CATEGORY_PROMOTIONS"]
+
+User: "social media notifications"
+→ Query: "category:social"
+→ LabelIds: ["CATEGORY_SOCIAL"]
+
 ## Instructions:
 
 1. Analyze the user's natural language request
 2. Identify all search criteria (sender, subject, folder, status, attachments, date)
 3. Construct a Gmail query string using the operators above
-4. Determine appropriate labelIds if specific folders are mentioned
+4. Determine appropriate labelIds if specific folders are mentioned:
+   - If user mentions "updates" → use query "category:updates" and labelIds: ["CATEGORY_UPDATES"]
+   - If user mentions "promotions" → use query "category:promotions" and labelIds: ["CATEGORY_PROMOTIONS"]
+   - If user mentions "social" → use query "category:social" and labelIds: ["CATEGORY_SOCIAL"]
+   - If user mentions "forums" → use query "category:forums" and labelIds: ["CATEGORY_FORUMS"]
+   - If user mentions "primary" → use query "category:primary" and labelIds: ["CATEGORY_PERSONAL"]
+   - If user mentions "inbox" → use query "in:inbox" and labelIds: ["INBOX"]
+   - If user mentions "important" → use query "is:important" and labelIds: ["IMPORTANT"]
 5. Return ONLY a JSON object with this exact structure:
 
 {
