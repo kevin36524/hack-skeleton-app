@@ -156,7 +156,6 @@ function LoginForm() {
               </h3>
               <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
                 <li>• Tokens stored locally in your browser only</li>
-                <li>• Read-only access to Gmail and Calendar</li>
                 <li>• No server-side token storage</li>
                 <li>• Secure OAuth 2.0 authentication</li>
               </ul>
