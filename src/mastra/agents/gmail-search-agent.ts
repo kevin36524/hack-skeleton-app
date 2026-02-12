@@ -1,6 +1,4 @@
 import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { LibSQLStore } from "@mastra/libsql";
 
 /**
  * Gmail Search Agent
@@ -105,13 +103,5 @@ User: "starred emails from boss with pdf attachments"
 }
 
 Return ONLY the JSON object, no markdown formatting, no code blocks.`,
-  model: "google/gemini-2.5-flash-lite",
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: "file:./mastra-memory.db",
-    }),
-    options: {
-      lastMessages: 10,
-    },
-  }),
+model: "google/gemini-2.5-flash-lite",
 });

@@ -118,7 +118,29 @@ Ask about requirements before providing solutions.`,
 });
 ```
 
-### Template 3: Agent with Tools
+### Template 3: Agent with Custom Model
+
+```typescript
+import { Agent } from "@mastra/core/agent";
+
+export const customModelAgent = new Agent({
+  id: "custom-model-agent",
+  name: "Custom Model Agent",
+  instructions: "You are a helpful assistant using a custom model.",
+  model: {
+    url: "https://api.kimi.com/coding/v1",
+    id: "kimi-for-coding/k2p5",
+    apiKey: process.env.KIMI_API_KEY,
+    headers: {
+      "X-Custom-Header": "value",
+      "User-Agent": "claude-cli/2.1.39 (external, cli)",
+      "Host": "api.anthropic.com"
+    }
+  },
+});
+```
+
+### Template 4: Agent with Tools
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -137,7 +159,7 @@ Provide personalized travel recommendations.`,
 });
 ```
 
-### Template 4: Multi-role Agent
+### Template 5: Multi-role Agent
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -162,7 +184,7 @@ Always ask what type of content is needed.`,
 });
 ```
 
-### Template 5: Agent with Memory and Tools
+### Template 6: Agent with Memory and Tools
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -181,6 +203,7 @@ export const financialAgent = new Agent({
   tools: { getTransactionsTool },
   memory: new Memory({
     storage: new LibSQLStore({
+      id: "financial-agent-memory",
       url: "file:./memory.db",
     }),
     options: {
@@ -258,6 +281,7 @@ export const memoryAgent = new Agent({
   model: "google/gemini-2.5-flash-lite",
   memory: new Memory({
     storage: new LibSQLStore({
+      id: "agent-memory",  // Required: unique identifier
       url: "file:./mastra-memory.db",
     }),
     options: {
@@ -293,6 +317,7 @@ export const myAgent = new Agent({
   // ... other config
   memory: new Memory({
     storage: new LibSQLStore({
+      id: "my-agent-memory",  // Required: unique identifier for this storage
       url: "file:./mastra-memory.db",  // Can use same DB for multiple agents
     }),
     options: {
@@ -313,6 +338,7 @@ import { LibSQLStore } from "@mastra/libsql";
 
 export const mastra = new Mastra({
   storage: new LibSQLStore({
+    id: "mastra-main-storage",
     url: "file:./mastra-memory.db",
   }),
   agents: {
@@ -353,6 +379,7 @@ export const myAgent = new Agent({
 import { LibSQLStore } from "@mastra/libsql";
 
 storage: new LibSQLStore({
+  id: "my-storage",  // Required: unique identifier
   url: "file:./memory.db",  // Local SQLite file
   // OR
   url: ":memory:",  // In-memory (data lost on restart)
@@ -434,6 +461,42 @@ model: "openai/gpt-4o"                   // More capable
 model: "openai/gpt-4-turbo"              // Complex tasks
 ```
 
+### Custom Model Configuration
+
+For custom API endpoints (e.g., Kimi, local models, proxy services):
+
+```typescript
+model: {
+  url: "https://api.kimi.com/coding/v1",
+  id: "kimi-for-coding/k2p5",
+  apiKey: process.env.KIMI_API_KEY,
+  headers: {
+    "User-Agent": "your-app/1.0",
+    "Host": "api.anthropic.com"
+  }
+}
+```
+
+**Parameters:**
+- `url`: The custom API endpoint
+- `id`: The model identifier
+- `apiKey`: Authentication key (use environment variables)
+- `headers`: Optional custom HTTP headers
+
+**Example with Kimi API:**
+```typescript
+export const codingAgent = new Agent({
+  id: "coding-agent",
+  name: "Coding Agent",
+  instructions: "You are a coding assistant...",
+  model: {
+    url: "https://api.kimi.com/coding/v1",
+    id: "kimi-for-coding/k2p5",
+    apiKey: process.env.KIMI_API_KEY,
+  },
+});
+```
+
 ## Validation
 
 Check agent is working:
@@ -493,6 +556,15 @@ console.log(agent.name); // Should print agent name
 **Issue: TypeScript error "implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer"**
 - Solution: Circular dependency detected. This happens when an agent file imports `mastra` from `../index` and `index` imports the agent. Use dedicated storage in the agent instead of `mastra.getStorage()`. See Option 1 in Memory Configuration above.
 
+**Issue: "LibSQLStore: id must be provided and cannot be empty" (Mastra v1.x)**
+- Solution: This is a breaking change in Mastra v1.x. The `LibSQLStore` now requires an `id` parameter. Update your code:
+  ```typescript
+  storage: new LibSQLStore({
+    id: "my-storage-id",  // Required in v1.x
+    url: "file:./memory.db",
+  })
+  ```
+
 ## Next Steps
 
 After creating an agent:
@@ -535,6 +607,7 @@ Feel free to ask users what kind of jokes they'd like to hear, and always aim to
   model: "google/gemini-2.5-flash-lite",
   memory: new Memory({
     storage: new LibSQLStore({
+      id: "agent-memory",  // Required: unique identifier
       url: "file:./mastra-memory.db",
     }),
     options: {
@@ -551,6 +624,7 @@ import { jokeTeller } from './agents/joke-teller';
 export const mastra = new Mastra({
   agents: { jokeTeller },
   storage: new LibSQLStore({
+    id: 'mastra-storage',
     url: 'file:./mastra-memory.db',
   }),
   // ... other config
