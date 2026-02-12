@@ -1,6 +1,6 @@
 # OAuth Bridge Server - Implementation Requirements
 
-**Project**: hack.oath.email OAuth Bridge for Sandbox Mail Application
+**Project**: login.oath.email OAuth Bridge for Sandbox Mail Application
 **Purpose**: Stateless OAuth 2.0 bridge to enable Gmail/Calendar access for sandbox applications
 **Date**: 2026-02-10
 
@@ -349,7 +349,7 @@ NODE_ENV=production
 # Note: These credentials are separate from your platform auth
 SANDBOX_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 SANDBOX_GOOGLE_CLIENT_SECRET=your-client-secret
-SANDBOX_GOOGLE_REDIRECT_URI=https://hack.oath.email/api/auth/sandbox/callback/google
+SANDBOX_GOOGLE_REDIRECT_URI=https://login.oath.email/api/auth/sandbox/callback/google
 
 # Session Secret (generate with: openssl rand -base64 32)
 SESSION_SECRET=your-random-session-secret
@@ -367,8 +367,8 @@ SESSION_SECRET=your-random-session-secret
 
 **Request**:
 ```http
-GET /api/auth/sandbox/start?returnUrl=https%3A%2F%2Fsandbox-abc123.hack.oath.email HTTP/1.1
-Host: hack.oath.email
+GET /api/auth/sandbox/start?returnUrl=https%3A%2F%2Fsandbox-abc123.login.oath.email HTTP/1.1
+Host: login.oath.email
 ```
 
 **Response**:
@@ -385,7 +385,7 @@ Set-Cookie: connect.sid=s%3Axyz123...; Path=/; HttpOnly; Secure
 **Request** (from Google):
 ```http
 GET /api/auth/sandbox/callback/google?code=4/0AY0e-g7...&state=abc123... HTTP/1.1
-Host: hack.oath.email
+Host: login.oath.email
 Cookie: connect.sid=s%3Axyz123...
 ```
 
@@ -402,7 +402,7 @@ Location: /api/auth/sandbox/done?access_token=ya29.a0...&refresh_token=1//0g...&
 **Request**:
 ```http
 GET /api/auth/sandbox/done?access_token=ya29.a0...&refresh_token=1//0g...&expires_in=1707567890&email=user@gmail.com HTTP/1.1
-Host: hack.oath.email
+Host: login.oath.email
 ```
 
 **Response**:
@@ -431,7 +431,7 @@ Content-Type: text/html
 **Request**:
 ```http
 POST /api/token/refresh HTTP/1.1
-Host: hack.oath.email
+Host: login.oath.email
 Content-Type: application/json
 
 {
@@ -477,7 +477,7 @@ You have already set up the Google OAuth client in GCP with:
 - `userinfo.email`, `userinfo.profile`
 
 **Authorized redirect URIs**:
-- `https://hack.oath.email/api/auth/sandbox/callback/google`
+- `https://login.oath.email/api/auth/sandbox/callback/google`
 - `http://localhost:3000/api/auth/sandbox/callback/google` (optional)
 
 **Credentials**:

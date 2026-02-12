@@ -50,7 +50,7 @@ export function AccountSwitcher({
       setAccessToken(token);
 
       console.log('AccountSwitcher: Calling accountService.getEnabledAccounts for mailboxId:', mailboxId);
-      const enabledAccounts = await accountService.getEnabledAccounts(mailboxId);
+      const enabledAccounts = await accountService.getEnabledAccounts();
       console.log('AccountSwitcher: Got accounts:', enabledAccounts.length);
       setAccounts(enabledAccounts);
 

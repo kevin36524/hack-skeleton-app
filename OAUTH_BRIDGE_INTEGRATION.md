@@ -18,7 +18,7 @@ The OAuth Bridge is a stateless authentication service that enables sandbox appl
 
 | Environment | Base URL |
 |-------------|----------|
-| **Production** | `https://hack.oath.email` |
+| **Production** | `https://login.oath.email` |
 | **Local Development** | `http://localhost:3000` |
 
 ---
@@ -42,7 +42,7 @@ GET /api/auth/sandbox/start?returnUrl=<your-sandbox-url>
 **Example:**
 ```javascript
 const returnUrl = encodeURIComponent('https://your-sandbox.example.com');
-window.location.href = `https://hack.oath.email/api/auth/sandbox/start?returnUrl=${returnUrl}`;
+window.location.href = `https://login.oath.email/api/auth/sandbox/start?returnUrl=${returnUrl}`;
 ```
 
 ---
@@ -200,7 +200,7 @@ The OAuth bridge requests the following Google API scopes:
 // Store this function in your sandbox app
 function connectGmail() {
   const returnUrl = window.location.href;
-  const oauthUrl = `https://hack.oath.email/api/auth/sandbox/start?returnUrl=${encodeURIComponent(returnUrl)}`;
+  const oauthUrl = `https://login.oath.email/api/auth/sandbox/start?returnUrl=${encodeURIComponent(returnUrl)}`;
 
   // Open popup
   const popup = window.open(
@@ -221,7 +221,7 @@ function connectGmail() {
 // Listen for OAuth success message
 window.addEventListener('message', (event) => {
   // Security: Verify origin in production
-  // if (event.origin !== 'https://hack.oath.email') return;
+  // if (event.origin !== 'https://login.oath.email') return;
 
   if (event.data.type === 'OAUTH_SUCCESS') {
     const tokens = event.data.data;
@@ -284,7 +284,7 @@ async function refreshAccessToken() {
     return null;
   }
 
-  const response = await fetch('https://hack.oath.email/api/token/refresh', {
+  const response = await fetch('https://login.oath.email/api/token/refresh', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -326,7 +326,7 @@ async function refreshAccessToken() {
 ```javascript
 function connectGmail() {
   const returnUrl = window.location.href.split('#')[0]; // Remove hash
-  window.location.href = `https://hack.oath.email/api/auth/sandbox/start?returnUrl=${encodeURIComponent(returnUrl)}`;
+  window.location.href = `https://login.oath.email/api/auth/sandbox/start?returnUrl=${encodeURIComponent(returnUrl)}`;
 }
 ```
 
@@ -390,7 +390,7 @@ Here's a complete, production-ready example:
   <div id="emails"></div>
 
   <script>
-    const OAUTH_BRIDGE_URL = 'https://hack.oath.email';
+    const OAUTH_BRIDGE_URL = 'https://login.oath.email';
     const STORAGE_KEY = 'gmail_tokens';
 
     // Check if already authenticated
@@ -596,7 +596,7 @@ Always validate tokens before using:
 
 ```javascript
 async function isTokenValid(accessToken) {
-  const response = await fetch('https://hack.oath.email/api/token/validate', {
+  const response = await fetch('https://login.oath.email/api/token/validate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ access_token: accessToken })
@@ -618,7 +618,7 @@ When using popup mode, verify the postMessage origin:
 ```javascript
 window.addEventListener('message', (event) => {
   // Verify origin
-  if (event.origin !== 'https://hack.oath.email') {
+  if (event.origin !== 'https://login.oath.email') {
     console.warn('Ignored postMessage from unknown origin:', event.origin);
     return;
   }
@@ -706,7 +706,7 @@ async function handleOAuthError(error) {
 ### Test Page
 
 A test page is available at:
-- **Production:** https://hack.oath.email/test-oauth-bridge.html
+- **Production:** https://login.oath.email/test-oauth-bridge.html
 - **Local:** http://localhost:3000/test-oauth-bridge.html
 
 This page allows you to:
@@ -741,7 +741,7 @@ This page allows you to:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Find OAuth client ID: `1048905392258-e9n7196r2dd5l1tep20o7hbr6bu06npf`
 3. Add these redirect URIs:
-   - `https://hack.oath.email/api/auth/sandbox/callback/google`
+   - `https://login.oath.email/api/auth/sandbox/callback/google`
    - `http://localhost:3000/api/auth/sandbox/callback/google` (for local testing)
 
 ### Issue: Popup blocked
@@ -796,7 +796,7 @@ A: Yes! The OAuth bridge automatically detects localhost and uses the appropriat
 For issues or questions:
 1. Check the [troubleshooting section](#troubleshooting)
 2. Review the [complete integration example](#complete-integration-example)
-3. Test with the [test page](https://hack.oath.email/test-oauth-bridge.html)
+3. Test with the [test page](https://login.oath.email/test-oauth-bridge.html)
 4. Contact the platform team if issues persist
 
 ---

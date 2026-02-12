@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail } from 'lucide-react';
 
-const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://hack.oath.email';
+const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.oath.email';
 
 function LoginForm() {
   const [error, setError] = useState('');

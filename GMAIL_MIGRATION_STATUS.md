@@ -5,7 +5,7 @@
 ## Current State
 
 ### ✅ Working
-- **OAuth Flow**: Successfully authenticating with Google via hack.oath.email bridge
+- **OAuth Flow**: Successfully authenticating with Google via login.oath.email bridge
 - **Token Management**: Access and refresh tokens saving to localStorage
 - **Folder/Label Display**: Folders are loading and displaying in the sidebar
   - System folders (INBOX, SENT, DRAFT, TRASH, STARRED, SPAM)

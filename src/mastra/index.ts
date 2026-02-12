@@ -3,9 +3,6 @@ import { Mastra } from '@mastra/core/mastra';
 import { gmailSearchAgent } from './agents/gmail-search-agent';
 
 export const mastra = new Mastra({
-  observability: {
-    default: { enabled: true }
-  },
   agents: {
     gmailSearchAgent,
   },

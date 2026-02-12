@@ -199,10 +199,19 @@ export function gmailLabelToFolder(label: GmailLabel): Folder {
   return {
     id: label.id,
     name: label.name,
-    type: mapLabelToFolderType(label.id),
-    unreadCount: label.messagesUnread || 0,
-    totalCount: label.messagesTotal || 0,
-    symbol: getFolderSymbol(label.id),
+    types: [mapLabelToFolderType(label.id)],
+    unread: label.messagesUnread || 0,
+    total: label.messagesTotal || 0,
+    size: 0,
+    uidNext: 0,
+    uidValidity: 0,
+    acctId: '',
+    highestModSeq: 0,
+    link: {
+      type: 'gmail',
+      href: '',
+    },
+    bidi: [],
   };
 }
 
@@ -254,13 +263,15 @@ function getFolderSymbol(labelId: string): string {
 export function gmailProfileToMailbox(profile: GmailProfile): Mailbox {
   return {
     id: 'primary',
-    name: profile.emailAddress,
     email: profile.emailAddress,
     isPrimary: true,
-    folderInfo: {
-      totalCount: profile.messagesTotal,
-      unreadCount: 0, // Will be updated from labels
+    isSelected: true,
+    link: {
+      type: 'gmail',
+      href: '',
     },
+    state: 'active',
+    type: 'gmail',
   };
 }
 

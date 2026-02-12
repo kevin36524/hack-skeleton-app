@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the complete plan for migrating the mail prototype from Yahoo Mail to Gmail, with OAuth 2.0 authentication that works seamlessly with changing sandbox URLs by using a **stateless** OAuth bridge domain (`hack.oath.email`).
+This document outlines the complete plan for migrating the mail prototype from Yahoo Mail to Gmail, with OAuth 2.0 authentication that works seamlessly with changing sandbox URLs by using a **stateless** OAuth bridge domain (`login.oath.email`).
 
 **🔒 Security Model**: All tokens are stored client-side only. The OAuth bridge is completely stateless and never stores tokens - it only facilitates the OAuth flow and proxies token refresh requests.
 
@@ -18,7 +18,7 @@ This document outlines the complete plan for migrating the mail prototype from Y
            │ 1. Redirect to OAuth
            ▼
 ┌─────────────────────┐
-│  hack.oath.email    │
+│  login.oath.email    │
 │  (Stateless Bridge) │
 │  No token storage ❌│
 └──────────┬──────────┘
@@ -33,7 +33,7 @@ This document outlines the complete plan for migrating the mail prototype from Y
            │ 3. Callback with code
            ▼
 ┌─────────────────────┐
-│  hack.oath.email    │
+│  login.oath.email    │
 │  Exchange & Return  │
 └──────────┬──────────┘
            │
@@ -104,12 +104,12 @@ This document outlines the complete plan for migrating the mail prototype from Y
 4. **Name**: `hack-mail-oauth-client`
 5. **Authorized JavaScript origins**:
    ```
-   https://hack.oath.email
+   https://login.oath.email
    http://localhost:3000 (for local testing)
    ```
 6. **Authorized redirect URIs**:
    ```
-   https://hack.oath.email/api/auth/sandbox/callback/google
+   https://login.oath.email/api/auth/sandbox/callback/google
    http://localhost:3000/api/auth/sandbox/callback/google (for local testing)
    ```
 
@@ -120,7 +120,7 @@ This document outlines the complete plan for migrating the mail prototype from Y
 
 ### 1.3 Important Security Notes
 
-- **Keep client_secret secure** - Store only on hack.oath.email server, never in frontend
+- **Keep client_secret secure** - Store only on login.oath.email server, never in frontend
 - **No token storage on server** - Bridge is stateless, tokens go directly to client
 - **Use HTTPS everywhere** - Protect tokens in transit
 - **Implement PKCE** - Proof Key for Code Exchange for additional security (optional but recommended)
@@ -128,7 +128,7 @@ This document outlines the complete plan for migrating the mail prototype from Y
 
 ---
 
-## Phase 2: hack.oath.email Server Setup
+## Phase 2: login.oath.email Server Setup
 
 ### 2.1 Server Technology Stack Recommendation
 
@@ -183,7 +183,7 @@ CORS_ORIGINS=*  # Allow all sandbox domains
 # Google OAuth - Sandbox Mail App
 SANDBOX_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 SANDBOX_GOOGLE_CLIENT_SECRET=your-client-secret
-SANDBOX_GOOGLE_REDIRECT_URI=https://hack.oath.email/api/auth/sandbox/callback/google
+SANDBOX_GOOGLE_REDIRECT_URI=https://login.oath.email/api/auth/sandbox/callback/google
 
 # Session Secret (for temporary OAuth state only)
 SESSION_SECRET=your-session-secret
@@ -646,7 +646,7 @@ router.post('/token/validate', async (req, res) => {
 export default router;
 ```
 
-### 2.6 Deployment Options for hack.oath.email
+### 2.6 Deployment Options for login.oath.email
 
 **Option A: Vercel**
 - Easy deployment
@@ -663,7 +663,7 @@ export default router;
 
 ### 2.7 DNS Configuration
 
-1. Point `hack.oath.email` A record to your server IP
+1. Point `login.oath.email` A record to your server IP
 2. Set up SSL certificate (Let's Encrypt via Certbot)
 3. Configure HTTPS redirect
 
@@ -692,7 +692,7 @@ interface TokenData {
 }
 
 const TOKEN_STORAGE_KEY = 'gmail_oauth_tokens';
-const OAUTH_BRIDGE_URL = 'https://hack.oath.email';
+const OAUTH_BRIDGE_URL = 'https://login.oath.email';
 
 // Store tokens in localStorage (plaintext is fine - see security note below)
 const storeTokens = (tokens: TokenData): void => {
@@ -844,7 +844,7 @@ You'll need to map Yahoo API calls to Gmail API equivalents.
 **File: `.env.local`**
 
 ```bash
-NEXT_PUBLIC_OAUTH_BRIDGE_URL=https://hack.oath.email
+NEXT_PUBLIC_OAUTH_BRIDGE_URL=https://login.oath.email
 NEXT_PUBLIC_GMAIL_API_URL=https://gmail.googleapis.com/gmail/v1
 NEXT_PUBLIC_CALENDAR_API_URL=https://www.googleapis.com/calendar/v3
 ```
@@ -871,7 +871,7 @@ NEXT_PUBLIC_CALENDAR_API_URL=https://www.googleapis.com/calendar/v3
 
 ### 4.2 Production Testing
 
-1. **Deploy OAuth bridge to hack.oath.email**
+1. **Deploy OAuth bridge to login.oath.email**
 2. **Update Google OAuth settings** with production URLs
 3. **Test with real sandbox URLs**
 4. **Verify cross-domain communication works**
@@ -921,7 +921,7 @@ Client-side encryption is **security theater** and doesn't actually help:
      script-src 'self' 'unsafe-eval' 'unsafe-inline';
      style-src 'self' 'unsafe-inline';
      img-src 'self' data: https:;
-     connect-src 'self' https://gmail.googleapis.com https://hack.oath.email;
+     connect-src 'self' https://gmail.googleapis.com https://login.oath.email;
    `;
    ```
 
@@ -984,7 +984,7 @@ Client-side encryption is **security theater** and doesn't actually help:
 ### Your Chosen Approach: Stateless OAuth Bridge ✅
 
 **Architecture:**
-- OAuth bridge at hack.oath.email (stateless)
+- OAuth bridge at login.oath.email (stateless)
 - All tokens stored client-side only
 - Token refresh via stateless proxy
 
@@ -1058,7 +1058,7 @@ Client-side encryption is **security theater** and doesn't actually help:
 
 ### Week 1: Setup & Infrastructure
 - [ ] Create GCP project and configure OAuth
-- [ ] Set up hack.oath.email server
+- [ ] Set up login.oath.email server
 - [ ] Deploy OAuth bridge server
 - [ ] Configure DNS and SSL
 
@@ -1143,7 +1143,7 @@ Client-side encryption is **security theater** and doesn't actually help:
 - [ ] Calendar API enabled
 - [ ] OAuth credentials configured
 - [ ] OAuth consent screen configured
-- [ ] hack.oath.email server deployed
+- [ ] login.oath.email server deployed
 - [ ] SSL certificate configured
 - [ ] OAuth endpoints implemented
 - [ ] Token refresh endpoint implemented

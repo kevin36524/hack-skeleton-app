@@ -5,7 +5,7 @@
 ### 1. Environment Configuration
 **File: `.env.local`** (created)
 ```bash
-NEXT_PUBLIC_OAUTH_BRIDGE_URL=https://hack.oath.email
+NEXT_PUBLIC_OAUTH_BRIDGE_URL=https://login.oath.email
 NEXT_PUBLIC_GMAIL_API_URL=https://gmail.googleapis.com/gmail/v1
 NEXT_PUBLIC_CALENDAR_API_URL=https://www.googleapis.com/calendar/v3
 ```
@@ -26,7 +26,7 @@ NEXT_PUBLIC_CALENDAR_API_URL=https://www.googleapis.com/calendar/v3
 
 **OAuth Flow:**
 1. User clicks "Sign in with Google"
-2. Popup opens to `https://hack.oath.email/api/auth/sandbox/start?returnUrl={current_url}`
+2. Popup opens to `https://login.oath.email/api/auth/sandbox/start?returnUrl={current_url}`
 3. OAuth bridge redirects to Google OAuth consent screen
 4. User authorizes app
 5. OAuth bridge sends tokens back via `postMessage`
@@ -57,7 +57,7 @@ NEXT_PUBLIC_CALENDAR_API_URL=https://www.googleapis.com/calendar/v3
 
 **Token Refresh Flow:**
 1. Check if token expires in < 5 minutes
-2. If expired, call `https://hack.oath.email/api/token/refresh`
+2. If expired, call `https://login.oath.email/api/token/refresh`
 3. Receive new access_token (and optionally new refresh_token)
 4. Update localStorage and state
 5. Update API client with new token
@@ -299,7 +299,7 @@ Similar changes - Gmail only has one account (the authenticated user).
 
 ### OAuth Bridge Documentation
 - See `OAUTH_BRIDGE_INTEGRATION.md` for complete API reference
-- Base URL: https://hack.oath.email
+- Base URL: https://login.oath.email
 - Endpoints: `/api/auth/sandbox/start`, `/api/token/refresh`, `/api/token/validate`
 
 ### Code Examples

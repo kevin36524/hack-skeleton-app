@@ -107,6 +107,18 @@ class MessageService {
         snippet: msg.snippet || '',
         attachments: [], // Will be populated when full message is fetched
         hasAttachment,
+        folder: {
+          id: folderId,
+          name: folderId,
+          types: [],
+          unread: 0,
+          total: 0,
+          acctId: mailboxId,
+          highestModSeq: 0,
+        },
+        decos: [],
+        dedupId: 0,
+        modSeq: 0,
       };
     });
 

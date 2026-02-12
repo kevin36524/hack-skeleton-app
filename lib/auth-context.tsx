@@ -32,7 +32,7 @@ interface AuthProviderProps {
 }
 
 const TOKEN_STORAGE_KEY = 'gmail_oauth_tokens';
-const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://hack.oath.email';
+const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.oath.email';
 
 /**
  * Standalone token refresh function that can be called outside of React context
@@ -182,6 +182,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('[AUTH] Failed to parse stored token data');
         return null;
       }
+    }
+
+    // Additional safety check
+    if (!currentTokenData) {
+      console.log('[AUTH] No token data available');
+      return null;
     }
 
     // Refresh if expired

@@ -63,7 +63,7 @@ export function useAccounts(mailboxId: string) {
       }
       // Update token in gmail client
       setAccessToken(token);
-      return accountService.getAccounts(mailboxId);
+      return accountService.getAccounts();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
@@ -89,7 +89,7 @@ export function useFolders(mailboxId: string) {
       }
       // Update token in gmail client
       setAccessToken(token);
-      return folderService.getFolders(mailboxId);
+      return folderService.getFolders();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
@@ -101,7 +101,7 @@ export function useFolders(mailboxId: string) {
 export function useConversations(mailboxId: string, folderId: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.CONVERSATIONS, mailboxId, folderId],
-    queryFn: () => messageService.getConversations(mailboxId, folderId),
+    queryFn: () => messageService.getConversationsForFolder(mailboxId, folderId),
     staleTime: 30 * 1000, // 30 seconds
     retry: 1,
     enabled: !!mailboxId && !!folderId,
@@ -112,7 +112,7 @@ export function useConversations(mailboxId: string, folderId: string) {
 export function useConversationMessages(mailboxId: string, folderId: string, conversationId: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.CONVERSATION_MESSAGES, mailboxId, folderId, conversationId],
-    queryFn: () => messageService.getMessagesByConversation(mailboxId, folderId, conversationId),
+    queryFn: () => messageService.getThread(conversationId),
     staleTime: 30 * 1000, // 30 seconds
     retry: 1,
     enabled: !!mailboxId && !!folderId && !!conversationId,
@@ -125,7 +125,7 @@ export function useMarkAsRead() {
   
   return useMutation({
     mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.markAsRead(mailboxId, messageIds),
+      messageService.markAsRead(messageIds),
     onSuccess: () => {
       // Invalidate all conversation queries to refresh read status
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
@@ -139,7 +139,7 @@ export function useMarkAsUnread() {
   
   return useMutation({
     mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.markAsRead(mailboxId, messageIds, false),
+      messageService.markAsRead(messageIds, false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
@@ -149,10 +149,10 @@ export function useMarkAsUnread() {
 
 export function useStarMessages() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.toggleStar(mailboxId, messageIds),
+      messageService.toggleStar(messageIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
@@ -162,10 +162,10 @@ export function useStarMessages() {
 
 export function useUnstarMessages() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.toggleStar(mailboxId, messageIds, false),
+      messageService.toggleStar(messageIds, false),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
@@ -175,10 +175,10 @@ export function useUnstarMessages() {
 
 export function useMoveMessages() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: ({ mailboxId, messageIds, targetFolderId }: { mailboxId: string; messageIds: string[]; targetFolderId: string }) =>
-      messageService.moveMessages(mailboxId, messageIds, targetFolderId),
+      messageService.moveMessages(messageIds, targetFolderId),
     onSuccess: () => {
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
@@ -199,7 +199,7 @@ export function useMailboxData() {
     mailbox: mailboxQuery.data,
     mailboxId,
     accounts: accountsQuery.data?.accounts || [],
-    folders: foldersQuery.data?.folders || [],
+    folders: foldersQuery.data || [],
     isLoading: mailboxQuery.isLoading || accountsQuery.isLoading || foldersQuery.isLoading,
     error: mailboxQuery.error || accountsQuery.error || foldersQuery.error,
     refetch: () => {
@@ -231,7 +231,7 @@ export function useSelectedAccount(mailboxId: string) {
 // Hook for folder navigation
 export function useFolderNavigation(mailboxId: string) {
   const { data } = useFolders(mailboxId);
-  const folders = data?.folders || [];
+  const folders = data || [];
   const queryClient = useQueryClient();
 
   const getFolderByType = (type: string) => {
