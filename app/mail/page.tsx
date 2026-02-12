@@ -152,7 +152,7 @@ function MailPageContent() {
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-4">
                 <Mail className="h-8 w-8 text-purple-600" />
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Oath Email</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Oath Mail</h1>
               </div>
 
               {/* Search Box */}
