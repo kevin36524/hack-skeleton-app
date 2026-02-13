@@ -16,6 +16,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
+import { User } from 'lucide-react';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -185,6 +186,16 @@ function MailPageContent() {
                   className="flex items-center space-x-2"
                 >
                   <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/mail/profile')}
+                  className="flex items-center space-x-2"
+                  title="User Profile"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden lg:inline">Profile</span>
                 </Button>
 
                 <Button

@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, Search, ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import { LogOut, Mail, Search, ArrowLeft, Sparkles, Loader2, User } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
@@ -454,6 +454,16 @@ function SearchPageContent() {
                 </div>
                 
                 <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/mail/profile')}
+                  className="flex items-center space-x-2"
+                  title="User Profile"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden lg:inline">Profile</span>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
