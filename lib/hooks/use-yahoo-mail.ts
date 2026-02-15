@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/services/api-client';
 import { mailboxService } from '@/lib/services/mailbox-service';
 import { accountService } from '@/lib/services/account-service';
@@ -116,74 +116,6 @@ export function useConversationMessages(mailboxId: string, folderId: string, con
     staleTime: 30 * 1000, // 30 seconds
     retry: 1,
     enabled: !!mailboxId && !!folderId && !!conversationId,
-  });
-}
-
-// Message triage mutations
-export function useMarkAsRead() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.markAsRead(messageIds),
-    onSuccess: () => {
-      // Invalidate all conversation queries to refresh read status
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
-    },
-  });
-}
-
-export function useMarkAsUnread() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.markAsRead(messageIds, false),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
-    },
-  });
-}
-
-export function useStarMessages() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.toggleStar(messageIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
-    },
-  });
-}
-
-export function useUnstarMessages() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ mailboxId, messageIds }: { mailboxId: string; messageIds: string[] }) =>
-      messageService.toggleStar(messageIds, false),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['conversation-messages'] });
-    },
-  });
-}
-
-export function useMoveMessages() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ mailboxId, messageIds, targetFolderId }: { mailboxId: string; messageIds: string[]; targetFolderId: string }) =>
-      messageService.moveMessages(messageIds, targetFolderId),
-    onSuccess: () => {
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['folders'] });
-    },
   });
 }
 
