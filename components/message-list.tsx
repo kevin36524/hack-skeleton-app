@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
+import { Star, Paperclip, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { setAccessToken } from '@/lib/services/gmail-client';
 

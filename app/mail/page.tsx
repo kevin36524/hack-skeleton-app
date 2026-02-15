@@ -305,9 +305,6 @@ function MailPageContent() {
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
-                    onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
-                    onReply={(message) => console.log('Reply to:', message.id)}
-                    onForward={(message) => console.log('Forward:', message.id)}
                   />
                 </div>
               </div>
@@ -369,9 +366,6 @@ function MailPageContent() {
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
-                    onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
-                    onReply={(message) => console.log('Reply to:', message.id)}
-                    onForward={(message) => console.log('Forward:', message.id)}
                   />
                 </div>
               </div>

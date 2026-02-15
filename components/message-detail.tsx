@@ -11,8 +11,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
   Star,
-  Reply,
-  Forward,
   Paperclip,
   Download,
   Eye,
@@ -26,16 +24,14 @@ interface MessageDetailProps {
   message: Message | null;
   mailboxId?: string;
   onToggleStar?: (messageId: string) => void;
-  onReply?: (message: Message) => void;
-  onForward?: (message: Message) => void;
+
 }
 
 export function MessageDetail({
   message,
   mailboxId,
   onToggleStar,
-  onReply,
-  onForward
+
 }: MessageDetailProps) {
   const [showHeaders, setShowHeaders] = useState(false);
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
@@ -374,7 +370,8 @@ export function MessageDetail({
         </div>
       </ScrollArea>
 
-      {/* Action Bar */}
+      {/* Action Bar - Write operations disabled (read-only permissions) */}
+      {/*
       <div className="border-t p-4">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" onClick={() => onReply?.(message)}>
@@ -387,6 +384,7 @@ export function MessageDetail({
           </Button>
         </div>
       </div>
+      */}
     </div>
   );
 }

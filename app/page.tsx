@@ -68,7 +68,7 @@ export default function LandingPage() {
               Email Management
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Read, compose, and organize your emails with an intuitive interface.
+              Read and organize your emails with an intuitive interface.
             </p>
           </div>
 
