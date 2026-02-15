@@ -31,7 +31,7 @@ class MailboxService {
       shardId: '0',
       namespace: 'gmail',
       oauth: {
-        scopes: ['gmail.readonly', 'gmail.modify'],
+        scopes: ['gmail.readonly'],
       },
     };
   }

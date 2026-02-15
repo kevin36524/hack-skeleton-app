@@ -472,8 +472,7 @@ Content-Type: application/json
 You have already set up the Google OAuth client in GCP with:
 
 **Scopes**:
-- `gmail.readonly`, `gmail.modify`, `gmail.compose`
-- `calendar.readonly`
+- `gmail.readonly` (read-only access to Gmail)
 - `userinfo.email`, `userinfo.profile`
 
 **Authorized redirect URIs**:

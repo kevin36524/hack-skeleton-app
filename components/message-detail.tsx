@@ -13,44 +13,29 @@ import {
   Star,
   Reply,
   Forward,
-  MoreVertical,
   Paperclip,
   Download,
   Eye,
   EyeOff,
   Loader2
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { messageService } from '@/lib/services/message-service';
 
 interface MessageDetailProps {
   message: Message | null;
   mailboxId?: string;
-  onMarkAsRead?: (messageId: string) => void;
-  onMarkAsUnread?: (messageId: string) => void;
   onToggleStar?: (messageId: string) => void;
   onReply?: (message: Message) => void;
   onForward?: (message: Message) => void;
-  onDelete?: (messageId: string) => void;
-  onArchive?: (messageId: string) => void;
 }
 
 export function MessageDetail({
   message,
   mailboxId,
-  onMarkAsRead,
-  onMarkAsUnread,
   onToggleStar,
   onReply,
-  onForward,
-  onDelete,
-  onArchive
+  onForward
 }: MessageDetailProps) {
   const [showHeaders, setShowHeaders] = useState(false);
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
@@ -244,36 +229,7 @@ export function MessageDetail({
                 )}
               />
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onMarkAsRead?.(message.id)}>
-                  Mark as read
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onMarkAsUnread?.(message.id)}>
-                  Mark as unread
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onReply?.(message)}>
-                  Reply
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onForward?.(message)}>
-                  Forward
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onArchive?.(message.id)}>
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={() => onDelete?.(message.id)}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
           </div>
         </div>
       </div>

@@ -162,21 +162,6 @@ export const gmail = {
         return apiRequest(`/api/gmail/messages/${id}?${queryParams}`);
       },
 
-      modify: async (params: { id: string; addLabelIds?: string[]; removeLabelIds?: string[] }) => {
-        const { id, addLabelIds, removeLabelIds } = params;
-        return apiRequest(`/api/gmail/messages/${id}/modify`, {
-          method: 'POST',
-          body: JSON.stringify({ addLabelIds, removeLabelIds }),
-        });
-      },
-
-      trash: async (params: { id: string }) => {
-        const { id } = params;
-        return apiRequest(`/api/gmail/messages/${id}/trash`, {
-          method: 'POST',
-        });
-      },
-
       /**
        * Intelligent search using natural language
        * Converts natural language queries into Gmail API queries using AI

@@ -17,11 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 import Image from 'next/image';
-import { messageService } from '@/lib/services/message-service';
-import { isInsufficientScopeError } from '@/lib/services/gmail-client';
+
 
 function MailPageContent() {
-  const { logout, requestAdditionalScopes } = useAuth();
+  const { logout } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -129,61 +128,6 @@ function MailPageContent() {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/mail/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
-  const handleArchive = async (messageId: string) => {
-    try {
-      console.log('[MAIL PAGE] Archiving message:', messageId);
-      await messageService.archiveMessage(messageId);
-
-      // Show success feedback (basic alert for now)
-      alert('Message archived successfully');
-
-      // Refresh the message list
-      window.location.reload();
-    } catch (error: any) {
-      console.error('[MAIL PAGE] Failed to archive message:', error);
-
-      // Check if it's a scope error
-      if (isInsufficientScopeError(error)) {
-        console.log('[MAIL PAGE] Insufficient scope, requesting additional permissions...');
-
-        // Show dialog explaining why we need additional permissions
-        const userConfirmed = confirm(
-          'Archive requires write access to your Gmail. Click OK to grant permissions.'
-        );
-
-        if (userConfirmed) {
-          // Request additional scopes
-          console.log('[MAIL PAGE] Requesting additional scopes...');
-          const success = await requestAdditionalScopes();
-          console.log('[MAIL PAGE] Scope request result:', success);
-
-          if (success) {
-            // Wait a moment for token to be fully updated
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Retry archive operation
-            try {
-              console.log('[MAIL PAGE] Retrying archive with new token...');
-              await messageService.archiveMessage(messageId);
-              console.log('[MAIL PAGE] Archive successful after scope upgrade!');
-              alert('Message archived successfully');
-              window.location.reload();
-            } catch (retryError) {
-              console.error('[MAIL PAGE] Failed to archive after scope upgrade:', retryError);
-              alert('Failed to archive message. Please try again.');
-            }
-          } else {
-            console.log('[MAIL PAGE] User denied scope upgrade or popup closed');
-            alert('Archive requires additional permissions. You can try again from Settings.');
-          }
-        }
-      } else {
-        // Network or other error
-        alert('Failed to archive message. Please check your connection and try again.');
-      }
     }
   };
 
@@ -361,13 +305,9 @@ function MailPageContent() {
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
-                    onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
-                    onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
                     onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
                     onReply={(message) => console.log('Reply to:', message.id)}
                     onForward={(message) => console.log('Forward:', message.id)}
-                    onDelete={(messageId) => console.log('Delete:', messageId)}
-                    onArchive={handleArchive}
                   />
                 </div>
               </div>
@@ -429,13 +369,9 @@ function MailPageContent() {
                   <MessageDetail
                     message={selectedMessage}
                     mailboxId={mailboxId}
-                    onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
-                    onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
                     onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
                     onReply={(message) => console.log('Reply to:', message.id)}
                     onForward={(message) => console.log('Forward:', message.id)}
-                    onDelete={(messageId) => console.log('Delete:', messageId)}
-                    onArchive={handleArchive}
                   />
                 </div>
               </div>
