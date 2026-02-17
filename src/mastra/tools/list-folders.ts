@@ -30,19 +30,13 @@ export const listFolders = createTool({
     // Get accountId from params or requestContext
     const accountId = params.accountId || getAccountId(params);
 
-    // Use the same endpoint as frontend (folder-service.ts)
-    const response = await yahooGet<GetFoldersApiResponse>(
-      token,
-      `/mailboxes/@.id==${mailboxId}/folders`
-    );
+    // Use server-side account filter when accountId is available
+    const endpoint = accountId
+      ? `/mailboxes/@.id==${mailboxId}/folders/@.select==q?q=acctId:${accountId}`
+      : `/mailboxes/@.id==${mailboxId}/folders`;
 
-    let folders = response.folders;
+    const response = await yahooGet<GetFoldersApiResponse>(token, endpoint);
 
-    // Filter by accountId if provided
-    if (accountId) {
-      folders = folders.filter(folder => folder.acctId === accountId);
-    }
-
-    return folders.map(toSlimFolder);
+    return response.folders.map(toSlimFolder);
   },
 });

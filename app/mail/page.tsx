@@ -9,15 +9,16 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Bot } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { AgentChat } from '@/components/agent-chat';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 
 function MailPageContent() {
-  const { logout } = useAuth();
+  const { logout, token } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -29,6 +30,7 @@ function MailPageContent() {
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -153,6 +155,16 @@ function MailPageContent() {
                   onAccountSelected={handleAccountSelected}
                 />
                 <ThemeToggle />
+                <Button
+                  variant={chatOpen ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setChatOpen((o) => !o)}
+                  className={chatOpen ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}
+                  title="Mail Agent"
+                >
+                  <Bot className="h-4 w-4" />
+                  <span className="ml-1.5">Agent</span>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -354,6 +366,26 @@ function MailPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Floating chat button — mobile only */}
+      <button
+        onClick={() => setChatOpen((o) => !o)}
+        className="md:hidden fixed bottom-5 right-5 z-30 h-14 w-14 rounded-full bg-purple-600 text-white shadow-lg flex items-center justify-center hover:bg-purple-700 transition-colors"
+        aria-label="Open Mail Agent"
+      >
+        <Bot className="h-6 w-6" />
+      </button>
+
+      {/* Agent chat panel */}
+      {token && (
+        <AgentChat
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+          token={token}
+          userGuid={mailboxId || 'anonymous'}
+          accountId={accountId}
+        />
+      )}
     </ProtectedRoute>
   );
 }
