@@ -118,7 +118,44 @@ Ask about requirements before providing solutions.`,
 });
 ```
 
-### Template 3: Agent with Tools
+### Template 3: Agent with Kimi (Moonshot AI)
+
+Mastra natively supports Kimi via the `moonshotai/` provider prefix. Set `MOONSHOT_API_KEY` in your env.
+
+**Simple usage:**
+```typescript
+import { Agent } from "@mastra/core/agent";
+
+export const kimiAgent = new Agent({
+  id: "kimi-agent",
+  name: "Kimi Agent",
+  instructions: "You are a helpful assistant.",
+  model: "moonshotai/kimi-k2-0711-preview",
+});
+```
+
+**With custom headers** (e.g. for routing through a specific endpoint):
+```typescript
+import { Agent } from "@mastra/core/agent";
+
+export const kimiAgent = new Agent({
+  id: "kimi-agent",
+  name: "Kimi Agent",
+  instructions: "You are a helpful assistant.",
+  model: {
+    url: "https://api.moonshot.ai/anthropic/v1",
+    id: "moonshotai/kimi-k2-0711-preview",
+    apiKey: process.env.MOONSHOT_API_KEY,
+    headers: {
+      "X-Custom-Header": "value",
+    },
+  },
+});
+```
+
+**Env var:** Add `MOONSHOT_API_KEY=your-key-here` to `.env.local`.
+
+### Template 4: Agent with Tools
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -137,7 +174,7 @@ Provide personalized travel recommendations.`,
 });
 ```
 
-### Template 4: Multi-role Agent
+### Template 5: Multi-role Agent
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -162,7 +199,7 @@ Always ask what type of content is needed.`,
 });
 ```
 
-### Template 5: Agent with Memory and Tools
+### Template 6: Agent with Memory and Tools
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -190,7 +227,7 @@ export const financialAgent = new Agent({
 });
 ```
 
-### Template 6: OAuth Agent with Tools + PostgreSQL Memory (Production)
+### Template 7: OAuth Agent with Tools + PostgreSQL Memory (Production)
 
 Use this template when tools need an OAuth token (passed per-request) and you want Postgres-backed persistent memory (e.g., Supabase). This is the pattern used by the mail triage agent.
 

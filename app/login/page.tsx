@@ -23,8 +23,14 @@ function LoginForm() {
       // if (event.origin !== OAUTH_BRIDGE_URL) return;
 
       if (event.data.type === 'OAUTH_SUCCESS') {
-        const tokenData = event.data.data;
+        const rawData = event.data.data;
         console.log('[LOGIN] OAuth success, storing tokens');
+
+        // Bridge returns expires_in as a Unix timestamp (seconds); convert to ms for expires_at
+        const tokenData = {
+          ...rawData,
+          expires_at: rawData.expires_in * 1000,
+        };
 
         // Login with the token data
         login(tokenData).catch((err) => {

@@ -62,7 +62,8 @@ export async function refreshTokenStandalone(): Promise<string | null> {
     }
 
     const refreshData = await response.json();
-    const expiresAt = Date.now() + (refreshData.expires_in * 1000);
+    // Bridge returns expires_in as a Unix timestamp (seconds); convert to ms
+    const expiresAt = refreshData.expires_in * 1000;
 
     const newTokenData: TokenData = {
       ...tokenData,
@@ -145,9 +146,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const refreshData = await response.json();
 
-    // Calculate actual expiration timestamp
-    // expires_in is in seconds, but expires_at should be a Unix timestamp in milliseconds
-    const expiresAt = Date.now() + (refreshData.expires_in * 1000);
+    // Bridge returns expires_in as a Unix timestamp (seconds); convert to ms
+    const expiresAt = refreshData.expires_in * 1000;
 
     const newTokenData: TokenData = {
       ...data,

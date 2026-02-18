@@ -73,5 +73,14 @@ Your job is to analyze all emails and write a rich, detailed markdown profile do
 Write a well-organized markdown document using headings, bullet points, and sub-sections as appropriate. You have full freedom to structure and emphasize based on what you find. Include only sections where you found relevant data. Be thorough but concise. If you find something interesting or noteworthy, call it out.
 
 Do NOT wrap the output in code blocks. Output the raw markdown directly.`,
-  model: "google/gemini-2.5-flash-lite",
+  model: {
+    url: "https://api.kimi.com/coding/v1",
+    id: "kimi-for-coding/k2p5",
+    apiKey: process.env.KIMI_API_KEY,
+    headers: {
+      "X-Custom-Header": "value",
+      "User-Agent": "claude-cli/2.1.39 (external, cli)",
+      "Host": "api.anthropic.com",
+    },
+  },
 });

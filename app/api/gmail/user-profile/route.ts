@@ -2,6 +2,122 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { mastra } from '@/src/mastra';
 
+// Summarize step INPUT to avoid sending huge arrays over SSE
+function summarizeInput(stepId: string, input: unknown): unknown {
+  if (!input || typeof input !== 'object') return input;
+  const d = { ...(input as Record<string, unknown>) };
+
+  if ('accessToken' in d) d.accessToken = '[redacted]';
+
+  switch (stepId) {
+    case 'fetch-all-categories':
+      return { emailAddress: d.emailAddress, maxResultsPerCategory: d.maxResultsPerCategory };
+
+    case 'deduplicate-and-annotate':
+      return {
+        totalFetched: d.totalFetched,
+        categoryBreakdown: Array.isArray(d.results)
+          ? d.results.map((r: any) => ({ category: r.category, count: r.messageIds?.length ?? 0 }))
+          : d.results,
+      };
+
+    case 'fetch-all-metadata':
+      return {
+        totalUnique: d.totalUnique,
+        categoryCounts: d.categoryCounts,
+        annotatedMessages: Array.isArray(d.annotatedMessages)
+          ? `[${d.annotatedMessages.length} messages]`
+          : d.annotatedMessages,
+      };
+
+    case 'classify-importance':
+      return {
+        fetchErrors: d.fetchErrors,
+        categoryCounts: d.categoryCounts,
+        emailsWithMetadata: Array.isArray(d.emailsWithMetadata)
+          ? `[${d.emailsWithMetadata.length} emails]`
+          : d.emailsWithMetadata,
+      };
+
+    case 'generate-profile':
+      return {
+        skippedCount: d.skippedCount,
+        totalProcessed: d.totalProcessed,
+        categoryCounts: d.categoryCounts,
+        importantEmails: Array.isArray(d.importantEmails)
+          ? `[${d.importantEmails.length} emails]`
+          : d.importantEmails,
+      };
+
+    default:
+      return d;
+  }
+}
+
+// Summarize step OUTPUT to avoid sending huge arrays over SSE
+function summarizeOutput(stepId: string, output: unknown): unknown {
+  if (!output || typeof output !== 'object') return output;
+  const d = output as Record<string, unknown>;
+
+  switch (stepId) {
+    case 'fetch-all-categories':
+      return {
+        totalFetched: d.totalFetched,
+        categoryBreakdown: Array.isArray(d.results)
+          ? d.results.map((r: any) => ({ category: r.category, count: r.messageIds?.length ?? 0 }))
+          : d.results,
+      };
+
+    case 'deduplicate-and-annotate':
+      return {
+        totalUnique: d.totalUnique,
+        categoryCounts: d.categoryCounts,
+        annotatedMessages: Array.isArray(d.annotatedMessages)
+          ? `[${d.annotatedMessages.length} messages deduplicated]`
+          : d.annotatedMessages,
+      };
+
+    case 'fetch-all-metadata': {
+      const emails = Array.isArray(d.emailsWithMetadata) ? d.emailsWithMetadata : [];
+      return {
+        totalFetched: emails.length,
+        fetchErrors: d.fetchErrors,
+        categoryCounts: d.categoryCounts,
+        sample: emails.slice(0, 3).map((e: any) => ({
+          from: e.from,
+          subject: e.subject,
+          date: e.date,
+        })),
+      };
+    }
+
+    case 'classify-importance': {
+      const important = Array.isArray(d.importantEmails) ? d.importantEmails : [];
+      return {
+        importantCount: important.length,
+        skippedCount: d.skippedCount,
+        totalProcessed: d.totalProcessed,
+        categoryCounts: d.categoryCounts,
+        sample: important.slice(0, 3).map((e: any) => ({
+          from: e.from,
+          subject: e.subject,
+        })),
+      };
+    }
+
+    case 'generate-profile':
+      return {
+        emailAddress: d.emailAddress,
+        generatedAt: d.generatedAt,
+        profileLength: typeof d.profile === 'string' ? `${d.profile.length} chars` : 0,
+        stats: d.stats,
+      };
+
+    default:
+      return output;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -38,7 +154,50 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return new Response(streamOutput.fullStream as unknown as ReadableStream, {
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        const emit = (eventType: string, data: object) => {
+          const chunk = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+          controller.enqueue(encoder.encode(chunk));
+        };
+
+        try {
+          let finalResult: unknown = null;
+
+          for await (const event of streamOutput.fullStream as AsyncIterable<any>) {
+            const { type, payload } = event ?? {};
+
+            if (type === 'workflow-step-start') {
+              const stepId = payload?.id;
+              emit('step-start', {
+                stepId,
+                input: summarizeInput(stepId, payload?.payload),
+              });
+            } else if (type === 'workflow-step-result') {
+              const { id, status, output, payload: inputPayload } = payload ?? {};
+              if (status === 'success') {
+                if (id === 'generate-profile') finalResult = output;
+                emit('step-complete', {
+                  stepId: id,
+                  input: summarizeInput(id, inputPayload),
+                  output: summarizeOutput(id, output),
+                });
+              } else if (status === 'failed') {
+                emit('step-error', { stepId: id });
+              }
+            }
+          }
+
+          emit('workflow-complete', { result: finalResult });
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
+
+    return new Response(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

@@ -1,4 +1,8 @@
 import { Agent } from "@mastra/core/agent";
+import { createGroq } from "@ai-sdk/groq";
+
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+const groqModel = groq("openai/gpt-oss-120b");
 
 /**
  * Gmail Search Agent
@@ -139,5 +143,5 @@ User: "social media notifications"
 }
 
 Return ONLY the JSON object, no markdown formatting, no code blocks.`,
-model: "google/gemini-2.5-flash-lite",
+model: groqModel,
 });

@@ -240,18 +240,25 @@ const classifyImportance = createStep({
   }),
   execute: async ({ inputData, mastra }) => {
     const agent = mastra.getAgent('emailClassifierAgent');
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 20;
+    const PARALLEL_CONCURRENCY = 3;
+    const GROUP_DELAY_MS = 500;
     const allImportantIds = new Set<string>();
     const emails = inputData.emailsWithMetadata;
 
+    // Split into small batches
+    const batches: (typeof emails)[] = [];
     for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-      const batch = emails.slice(i, i + BATCH_SIZE);
+      batches.push(emails.slice(i, i + BATCH_SIZE));
+    }
+
+    const classifyBatch = async (batch: typeof emails) => {
       const batchData = batch.map(e => ({
         id: e.id,
         subject: e.subject,
         from: e.from,
         to: e.to,
-        snippet: e.snippet.substring(0, 120),
+        snippet: e.snippet.substring(0, 80),
         categories: e.categories,
         date: e.date,
       }));
@@ -260,20 +267,36 @@ const classifyImportance = createStep({
         `Classify these emails for user profile building. Here are ${batchData.length} emails:\n\n${JSON.stringify(batchData)}`
       );
 
-      try {
-        const text = response.text || response.toString();
-        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
-                          text.match(/```\s*([\s\S]*?)\s*```/) ||
-                          [null, text];
-        const parsed = JSON.parse((jsonMatch[1] || text).trim());
+      const text = response.text || response.toString();
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
+                        text.match(/```\s*([\s\S]*?)\s*```/) ||
+                        [null, text];
+      const parsed = JSON.parse((jsonMatch[1] || text).trim());
+      return parsed.classifications || [];
+    };
 
-        for (const c of parsed.classifications || []) {
-          if (c.classification === 'important') {
-            allImportantIds.add(c.id);
+    // Process batches in parallel groups
+    for (let i = 0; i < batches.length; i += PARALLEL_CONCURRENCY) {
+      const group = batches.slice(i, i + PARALLEL_CONCURRENCY);
+
+      const results = await Promise.allSettled(group.map(classifyBatch));
+
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        if (result.status === 'fulfilled') {
+          for (const c of result.value) {
+            if (c.classification === 'important') {
+              allImportantIds.add(c.id);
+            }
           }
+        } else {
+          // Fallback: include all emails in failed batch
+          batches[i + j].forEach(e => allImportantIds.add(e.id));
         }
-      } catch {
-        batch.forEach(e => allImportantIds.add(e.id));
+      }
+
+      if (i + PARALLEL_CONCURRENCY < batches.length) {
+        await new Promise(resolve => setTimeout(resolve, GROUP_DELAY_MS));
       }
     }
 
@@ -318,17 +341,10 @@ const generateProfile = createStep({
       .slice(0, 20)
       .map(([email, data]) => ({ email, name: data.name, count: data.count }));
 
-    const MAX_EMAILS_FOR_PROFILE = 300;
-    const emailsForProfile = inputData.importantEmails.slice(0, MAX_EMAILS_FOR_PROFILE);
-
-    const emailData = emailsForProfile.map(e => ({
-      subject: e.subject,
-      from: e.from,
-      to: e.to,
-      snippet: e.snippet,
-      date: e.date,
-      categories: e.categories,
-    }));
+    const CHUNK_SIZE = 40;
+    const PARALLEL_CONCURRENCY = 2;
+    const CHUNK_DELAY_MS = 500;
+    const MAX_EMAILS_FOR_PROFILE = 200;
 
     const stats = {
       totalEmailsFetched: inputData.totalProcessed,
@@ -338,18 +354,54 @@ const generateProfile = createStep({
       topSenders,
     };
 
-    const prompt = `Build a comprehensive user profile from these ${emailData.length} important emails.
+    const emailsForProfile = inputData.importantEmails.slice(0, MAX_EMAILS_FOR_PROFILE);
+
+    // Split into chunks
+    const chunks: (typeof emailsForProfile)[] = [];
+    for (let i = 0; i < emailsForProfile.length; i += CHUNK_SIZE) {
+      chunks.push(emailsForProfile.slice(i, i + CHUNK_SIZE));
+    }
+
+    const generateChunk = async (chunk: typeof emailsForProfile, chunkIndex: number) => {
+      const emailData = chunk.map(e => ({
+        subject: e.subject,
+        from: e.from,
+        to: e.to,
+        snippet: e.snippet.substring(0, 100),
+        date: e.date,
+        categories: e.categories,
+      }));
+
+      const isFirst = chunkIndex === 0;
+      const prompt = `${isFirst ? `Build a comprehensive user profile from these emails.\n\nSTATISTICS:\n${JSON.stringify(stats)}\n\n` : ''}Analyze these ${emailData.length} emails (batch ${chunkIndex + 1} of ${chunks.length}) and extract all profile-relevant information as markdown sections.
 
 EMAIL DATA:
-${JSON.stringify(emailData)}
+${JSON.stringify(emailData)}`;
 
-STATISTICS:
-${JSON.stringify(stats)}
+      const response = await agent.generate(prompt);
+      return response.text || response.toString();
+    };
 
-Analyze all emails thoroughly and extract every piece of profile-relevant information. Write the profile as a rich markdown document.`;
+    // Process chunks in parallel groups
+    const profileParts: string[] = [];
+    for (let i = 0; i < chunks.length; i += PARALLEL_CONCURRENCY) {
+      const group = chunks.slice(i, i + PARALLEL_CONCURRENCY);
+      const results = await Promise.allSettled(
+        group.map((chunk, j) => generateChunk(chunk, i + j))
+      );
 
-    const response = await agent.generate(prompt);
-    const profileMarkdown = response.text || response.toString();
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          profileParts.push(result.value);
+        }
+      }
+
+      if (i + PARALLEL_CONCURRENCY < chunks.length) {
+        await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY_MS));
+      }
+    }
+
+    const profileMarkdown = profileParts.join('\n\n---\n\n');
 
     const initData = getInitData<{ accessToken: string; emailAddress?: string }>();
 

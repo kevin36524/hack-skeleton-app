@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw, User, Users, Tag, Bell, MessageSquare, MailOpen } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { setAccessToken } from '@/lib/services/gmail-client';
@@ -36,6 +37,7 @@ export function FolderSidebar({
   onCollapsedChange
 }: FolderSidebarProps) {
   const { getValidAccessToken } = useAuth();
+  const router = useRouter();
   const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -374,6 +376,23 @@ export function FolderSidebar({
         ))}
       </div>
     </ScrollArea>
+
+    {/* User Profile link */}
+    <div className="border-t border-gray-200 dark:border-gray-700 p-2 flex-shrink-0">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push('/mail/profile')}
+        className={cn(
+          'w-full text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+          isCollapsed ? 'justify-center px-2' : 'justify-start'
+        )}
+        title="User Profile"
+      >
+        <User className="h-4 w-4 flex-shrink-0" />
+        {!isCollapsed && <span className="ml-2 text-sm">User Profile</span>}
+      </Button>
+    </div>
     </div>
   );
 }
