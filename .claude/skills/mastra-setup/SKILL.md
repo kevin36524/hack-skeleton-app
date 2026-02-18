@@ -96,7 +96,7 @@ import { mastra } from "@/src/mastra";
 After initialization, your `src/mastra/index.ts` should look similar to:
 
 ```typescript
-import { Mastra } from "@mastra/core";
+import { Mastra } from "@mastra/core/mastra";
 import { InMemoryStore } from "@mastra/core/storage";
 import { PinoLogger } from "@mastra/loggers";
 
@@ -116,11 +116,47 @@ export const mastra = new Mastra({
     name: 'Mastra',
     level: 'info',
   }),
-  // Optional: Enable observability
-  observability: {
-    default: { enabled: true }
-  },
 });
+```
+
+### Production Template with PostgreSQL + Supabase
+
+For production apps, use PostgresStore (e.g., with Supabase) instead of InMemoryStore:
+
+```typescript
+import { Mastra } from "@mastra/core/mastra";
+import { PostgresStore } from "@mastra/pg";
+import { PinoLogger } from "@mastra/loggers";
+
+// Import agents here
+// import { myAgent } from "./agents/my-agent";
+
+export const mastra = new Mastra({
+  agents: {
+    // myAgent,
+  },
+  storage: new PostgresStore({
+    id: 'mastra-storage',
+    connectionString: process.env.DATABASE_URL!,
+    // Format: postgresql://user:password@host:5432/dbname
+    // For Supabase: use SUPABASE_DB_URL (direct postgres connection)
+  }),
+  logger: new PinoLogger({
+    name: 'Mastra',
+    level: 'info',
+  }),
+});
+```
+
+Install the pg adapter:
+```bash
+npm install @mastra/pg@latest @mastra/loggers@latest
+```
+
+Required env variable:
+```bash
+DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+# For Supabase: use the "Direct connection" string from Project Settings → Database
 ```
 
 ### Updated next.config.ts
@@ -160,6 +196,37 @@ import { mastra } from "@/src/mastra";
 export async function POST(req: Request) {
   const agent = mastra.getAgent("agentName");
   const response = await agent.generate("user message");
+  return Response.json({ response: response.text });
+}
+```
+
+### Pattern 4: API Route with OAuth Token (requestContext)
+
+When tools need per-request OAuth tokens, use `RequestContext` to pass the token securely:
+
+```typescript
+// app/api/agent/route.ts
+import { NextRequest } from 'next/server';
+import { RequestContext } from '@mastra/core/request-context';
+import { mastra } from "@/src/mastra";
+
+export async function POST(req: NextRequest) {
+  // Extract OAuth token from Authorization header
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) return Response.json({ error: 'No auth token' }, { status: 401 });
+
+  const { message, userId, sessionId } = await req.json();
+
+  // Inject token into requestContext — Mastra passes it to every tool call
+  const requestContext = new RequestContext();
+  requestContext.set('token', token);
+
+  const agent = mastra.getAgent("myAgent");
+  const response = await agent.generate(message, {
+    requestContext,
+    memory: { resource: userId, thread: sessionId },
+  });
+
   return Response.json({ response: response.text });
 }
 ```
@@ -249,19 +316,23 @@ export const mastra = new Mastra({
 });
 ```
 
-**PgStore (Production)**
-For PostgreSQL databases with advanced features.
+**PostgresStore (Production with Supabase)**
+For PostgreSQL databases. Works with any Postgres provider including Supabase.
 
 ```typescript
-import { PgStore } from "@mastra/pg";
+import { PostgresStore } from "@mastra/pg";
 
 export const mastra = new Mastra({
-  storage: new PgStore({
-    connectionString: process.env.DATABASE_URL
+  storage: new PostgresStore({
+    id: 'mastra-storage',
+    connectionString: process.env.DATABASE_URL,
+    // Supabase: use the direct connection string from Project Settings → Database
   }),
   // ... other config
 });
 ```
+
+Install: `npm install @mastra/pg@latest`
 
 ### Agent-Level Memory
 
