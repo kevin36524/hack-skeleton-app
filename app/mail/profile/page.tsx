@@ -30,9 +30,13 @@ interface UserProfile {
   stats: {
     totalEmailsFetched: number;
     uniqueEmails: number;
-    importantEmails: number;
     categoryCounts: Record<string, number>;
     topSenders: { email: string; name?: string; count: number }[];
+  };
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
   };
 }
 
@@ -50,7 +54,6 @@ const INITIAL_STEPS: GenerationStep[] = [
   { id: 'fetch-all-categories', label: 'Fetching emails from categories', status: 'pending' },
   { id: 'deduplicate-and-annotate', label: 'Deduplicating and annotating emails', status: 'pending' },
   { id: 'fetch-all-metadata', label: 'Fetching email metadata', status: 'pending' },
-  { id: 'classify-importance', label: 'Classifying important emails', status: 'pending' },
   { id: 'generate-profile', label: 'Generating your profile', status: 'pending' },
 ];
 
@@ -298,6 +301,9 @@ function ProfilePageContent() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [maxResultsPerCategory, setMaxResultsPerCategory] = useState(20);
+  const [costPerMInput, setCostPerMInput] = useState(0.60);
+  const [costPerMOutput, setCostPerMOutput] = useState(2.50);
   const [steps, setSteps] = useState<GenerationStep[]>(
     INITIAL_STEPS.map((s) => ({ ...s }))
   );
@@ -350,6 +356,7 @@ function ProfilePageContent() {
           emailAddress: result.emailAddress,
           generatedAt: result.generatedAt,
           stats: result.stats,
+          usage: result.usage,
         };
         setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'done' as StepStatus })));
         setProfile(profileData);
@@ -382,7 +389,11 @@ function ProfilePageContent() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ maxResultsPerCategory: 200 }),
+        body: JSON.stringify({
+          maxResultsPerCategory,
+          maxPerSender: 20,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       });
 
       // On 401, refresh the access token via login.oath.email and retry once
@@ -397,7 +408,11 @@ function ProfilePageContent() {
               Authorization: `Bearer ${newToken}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ maxResultsPerCategory: 200 }),
+            body: JSON.stringify({
+              maxResultsPerCategory,
+              maxPerSender: 20,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            }),
           });
         }
       }
@@ -533,10 +548,27 @@ function ProfilePageContent() {
                   <h2 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">
                     Your Email Profile
                   </h2>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">
+                  <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm leading-relaxed">
                     Generate a comprehensive personal profile based on your Gmail emails. The AI
                     analyzes your email patterns, contacts, and activities to build a rich summary.
                   </p>
+
+                  <div className="mb-5 text-left">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                      Emails per category
+                    </label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={200}
+                      value={maxResultsPerCategory}
+                      onChange={e => setMaxResultsPerCategory(Math.max(5, Math.min(200, Number(e.target.value))))}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Fetches this many emails from each of the 5 categories (5–200)
+                    </p>
+                  </div>
 
                   {error && (
                     <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start space-x-2 text-red-600 dark:text-red-400 text-sm text-left">
@@ -553,7 +585,7 @@ function ProfilePageContent() {
                     Generate Profile
                   </Button>
                   <p className="text-xs text-gray-400 mt-3">
-                    Takes 1–3 minutes · analyzes up to 1,000 emails
+                    Analyzes top {maxResultsPerCategory} emails × 5 categories
                   </p>
                 </div>
               </div>
@@ -606,10 +638,51 @@ function ProfilePageContent() {
                         <span className="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full font-medium">
                           {profile.stats.uniqueEmails.toLocaleString()} emails analyzed
                         </span>
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full font-medium">
-                          {profile.stats.importantEmails.toLocaleString()} important
-                        </span>
                       </div>
+                      {profile.usage && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                            <span>
+                              <span className="font-medium text-gray-700 dark:text-gray-300">{profile.usage.promptTokens.toLocaleString()}</span> in
+                              {' · '}
+                              <span className="font-medium text-gray-700 dark:text-gray-300">{profile.usage.completionTokens.toLocaleString()}</span> out
+                              {' · '}
+                              <span className="font-medium text-gray-700 dark:text-gray-300">{profile.usage.totalTokens.toLocaleString()}</span> total tokens
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="text-gray-400 dark:text-gray-500">$/M tokens:</span>
+                            <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                              in
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={costPerMInput}
+                                onChange={e => setCostPerMInput(parseFloat(e.target.value) || 0)}
+                                className="w-16 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                              out
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={costPerMOutput}
+                                onChange={e => setCostPerMOutput(parseFloat(e.target.value) || 0)}
+                                className="w-16 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                              />
+                            </label>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              = ${(
+                                (profile.usage.promptTokens / 1_000_000) * costPerMInput +
+                                (profile.usage.completionTokens / 1_000_000) * costPerMOutput
+                              ).toFixed(4)} USD
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2 flex-shrink-0">
                       <Button

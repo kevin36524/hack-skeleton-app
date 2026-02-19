@@ -30,23 +30,13 @@ function summarizeInput(stepId: string, input: unknown): unknown {
           : d.annotatedMessages,
       };
 
-    case 'classify-importance':
+    case 'generate-profile':
       return {
         fetchErrors: d.fetchErrors,
         categoryCounts: d.categoryCounts,
         emailsWithMetadata: Array.isArray(d.emailsWithMetadata)
           ? `[${d.emailsWithMetadata.length} emails]`
           : d.emailsWithMetadata,
-      };
-
-    case 'generate-profile':
-      return {
-        skippedCount: d.skippedCount,
-        totalProcessed: d.totalProcessed,
-        categoryCounts: d.categoryCounts,
-        importantEmails: Array.isArray(d.importantEmails)
-          ? `[${d.importantEmails.length} emails]`
-          : d.importantEmails,
       };
 
     default:
@@ -91,20 +81,6 @@ function summarizeOutput(stepId: string, output: unknown): unknown {
       };
     }
 
-    case 'classify-importance': {
-      const important = Array.isArray(d.importantEmails) ? d.importantEmails : [];
-      return {
-        importantCount: important.length,
-        skippedCount: d.skippedCount,
-        totalProcessed: d.totalProcessed,
-        categoryCounts: d.categoryCounts,
-        sample: important.slice(0, 3).map((e: any) => ({
-          from: e.from,
-          subject: e.subject,
-        })),
-      };
-    }
-
     case 'generate-profile':
       return {
         emailAddress: d.emailAddress,
@@ -139,7 +115,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const maxResultsPerCategory = body.maxResultsPerCategory || 200;
+    const maxResultsPerCategory = body.maxResultsPerCategory || 20;
+    const maxPerSender = body.maxPerSender || 20;
+    const timezone = body.timezone || 'UTC';
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: timezone, dateStyle: 'full', timeStyle: 'short' });
 
     console.log('[API] Building user profile for:', emailAddress);
 
@@ -150,7 +129,10 @@ export async function POST(request: NextRequest) {
       inputData: {
         accessToken: token,
         maxResultsPerCategory,
+        maxPerSender,
         emailAddress,
+        currentDate,
+        timezone,
       },
     });
 

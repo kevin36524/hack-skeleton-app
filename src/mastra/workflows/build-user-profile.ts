@@ -42,7 +42,6 @@ const profileOutputSchema = z.object({
   stats: z.object({
     totalEmailsFetched: z.number(),
     uniqueEmails: z.number(),
-    importantEmails: z.number(),
     categoryCounts: z.record(z.string(), z.number()),
     topSenders: z.array(z.object({
       email: z.string(),
@@ -50,6 +49,11 @@ const profileOutputSchema = z.object({
       count: z.number(),
     })),
   }),
+  usage: z.object({
+    promptTokens: z.number(),
+    completionTokens: z.number(),
+    totalTokens: z.number(),
+  }).optional(),
 });
 
 const fetchAllCategories = createStep({
@@ -57,7 +61,7 @@ const fetchAllCategories = createStep({
   description: 'Fetch message IDs from all categories in parallel',
   inputSchema: z.object({
     accessToken: z.string(),
-    maxResultsPerCategory: z.number().default(200),
+    maxResultsPerCategory: z.number().default(20),
   }),
   outputSchema: z.object({
     results: z.array(categoryFetchResultSchema),
@@ -69,32 +73,23 @@ const fetchAllCategories = createStep({
 
     const categories = [
       { name: 'STARRED', labelIds: ['STARRED'] as string[], query: undefined as string | undefined },
-      { name: 'READ', labelIds: undefined as string[] | undefined, query: 'is:read' as string | undefined },
+      { name: 'READ_UPDATES', labelIds: ['CATEGORY_UPDATES'] as string[] | undefined, query: 'is:read' as string | undefined },
       { name: 'SENT', labelIds: ['SENT'] as string[], query: undefined as string | undefined },
       { name: 'IMPORTANT', labelIds: ['IMPORTANT'] as string[], query: undefined as string | undefined },
       { name: 'CATEGORY_PRIMARY', labelIds: ['CATEGORY_PRIMARY'] as string[], query: undefined as string | undefined },
     ];
 
     const fetchCategory = async (cat: typeof categories[0]) => {
-      let allMsgs: { id: string; threadId: string }[] = [];
-      let pageToken: string | undefined;
-
-      do {
-        const resp = await gmail.users.messages.list({
-          userId: 'me',
-          labelIds: cat.labelIds,
-          q: cat.query,
-          maxResults: Math.min(maxResultsPerCategory - allMsgs.length, 500),
-          pageToken,
-        });
-        const msgs = (resp.data.messages || []).map(m => ({
-          id: m.id!, threadId: m.threadId!,
-        }));
-        allMsgs.push(...msgs);
-        pageToken = resp.data.nextPageToken || undefined;
-      } while (pageToken && allMsgs.length < maxResultsPerCategory);
-
-      return { category: cat.name, messageIds: allMsgs.slice(0, maxResultsPerCategory) };
+      const resp = await gmail.users.messages.list({
+        userId: 'me',
+        labelIds: cat.labelIds,
+        q: cat.query,
+        maxResults: maxResultsPerCategory,
+      });
+      const msgs = (resp.data.messages || []).map(m => ({
+        id: m.id!, threadId: m.threadId!,
+      }));
+      return { category: cat.name, messageIds: msgs.slice(0, maxResultsPerCategory) };
     };
 
     const results = await Promise.allSettled(categories.map(fetchCategory));
@@ -150,7 +145,7 @@ const deduplicateAndAnnotate = createStep({
 
 const fetchAllMetadata = createStep({
   id: 'fetch-all-metadata',
-  description: 'Fetch metadata for all unique messages in batches',
+  description: 'Fetch metadata for all unique messages in batches, then cap per sender',
   inputSchema: z.object({
     annotatedMessages: z.array(annotatedMessageSchema),
     categoryCounts: z.record(z.string(), z.number()),
@@ -162,12 +157,12 @@ const fetchAllMetadata = createStep({
     fetchErrors: z.number(),
   }),
   execute: async ({ inputData, getInitData }) => {
-    const { accessToken } = getInitData<{ accessToken: string }>();
+    const { accessToken, maxPerSender = 20 } = getInitData<{ accessToken: string; maxPerSender?: number }>();
     const gmail = createGmailClient(accessToken);
 
     const BATCH_SIZE = 50;
     const DELAY_MS = 100;
-    const emailsWithMetadata: z.infer<typeof emailMetadataSchema>[] = [];
+    const allEmails: z.infer<typeof emailMetadataSchema>[] = [];
     let fetchErrors = 0;
 
     const categoryLookup = new Map<string, string[]>();
@@ -198,7 +193,7 @@ const fetchAllMetadata = createStep({
           const getH = (name: string) =>
             headers.find((h: { name?: string | null; value?: string | null }) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
 
-          emailsWithMetadata.push({
+          allEmails.push({
             id: msg.id!,
             threadId: msg.threadId!,
             labelIds: msg.labelIds || [],
@@ -220,94 +215,17 @@ const fetchAllMetadata = createStep({
       }
     }
 
+    // Cap emails per sender
+    const senderCounts = new Map<string, number>();
+    const emailsWithMetadata = allEmails.filter(email => {
+      const senderEmail = email.from.match(/<(.+?)>/)?.[1]?.toLowerCase() || email.from.toLowerCase();
+      const count = senderCounts.get(senderEmail) || 0;
+      if (count >= maxPerSender) return false;
+      senderCounts.set(senderEmail, count + 1);
+      return true;
+    });
+
     return { emailsWithMetadata, categoryCounts: inputData.categoryCounts, fetchErrors };
-  },
-});
-
-const classifyImportance = createStep({
-  id: 'classify-importance',
-  description: 'Use agent to classify which emails are important for profiling',
-  inputSchema: z.object({
-    emailsWithMetadata: z.array(emailMetadataSchema),
-    categoryCounts: z.record(z.string(), z.number()),
-    fetchErrors: z.number(),
-  }),
-  outputSchema: z.object({
-    importantEmails: z.array(emailMetadataSchema),
-    skippedCount: z.number(),
-    categoryCounts: z.record(z.string(), z.number()),
-    totalProcessed: z.number(),
-  }),
-  execute: async ({ inputData, mastra }) => {
-    const agent = mastra.getAgent('emailClassifierAgent');
-    const BATCH_SIZE = 20;
-    const PARALLEL_CONCURRENCY = 3;
-    const GROUP_DELAY_MS = 500;
-    const allImportantIds = new Set<string>();
-    const emails = inputData.emailsWithMetadata;
-
-    // Split into small batches
-    const batches: (typeof emails)[] = [];
-    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-      batches.push(emails.slice(i, i + BATCH_SIZE));
-    }
-
-    const classifyBatch = async (batch: typeof emails) => {
-      const batchData = batch.map(e => ({
-        id: e.id,
-        subject: e.subject,
-        from: e.from,
-        to: e.to,
-        snippet: e.snippet.substring(0, 80),
-        categories: e.categories,
-        date: e.date,
-      }));
-
-      const response = await agent.generate(
-        `Classify these emails for user profile building. Here are ${batchData.length} emails:\n\n${JSON.stringify(batchData)}`
-      );
-
-      const text = response.text || response.toString();
-      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) ||
-                        text.match(/```\s*([\s\S]*?)\s*```/) ||
-                        [null, text];
-      const parsed = JSON.parse((jsonMatch[1] || text).trim());
-      return parsed.classifications || [];
-    };
-
-    // Process batches in parallel groups
-    for (let i = 0; i < batches.length; i += PARALLEL_CONCURRENCY) {
-      const group = batches.slice(i, i + PARALLEL_CONCURRENCY);
-
-      const results = await Promise.allSettled(group.map(classifyBatch));
-
-      for (let j = 0; j < results.length; j++) {
-        const result = results[j];
-        if (result.status === 'fulfilled') {
-          for (const c of result.value) {
-            if (c.classification === 'important') {
-              allImportantIds.add(c.id);
-            }
-          }
-        } else {
-          // Fallback: include all emails in failed batch
-          batches[i + j].forEach(e => allImportantIds.add(e.id));
-        }
-      }
-
-      if (i + PARALLEL_CONCURRENCY < batches.length) {
-        await new Promise(resolve => setTimeout(resolve, GROUP_DELAY_MS));
-      }
-    }
-
-    const importantEmails = emails.filter(e => allImportantIds.has(e.id));
-
-    return {
-      importantEmails,
-      skippedCount: emails.length - importantEmails.length,
-      categoryCounts: inputData.categoryCounts,
-      totalProcessed: emails.length,
-    };
   },
 });
 
@@ -315,17 +233,16 @@ const generateProfile = createStep({
   id: 'generate-profile',
   description: 'Use agent to generate comprehensive markdown user profile',
   inputSchema: z.object({
-    importantEmails: z.array(emailMetadataSchema),
-    skippedCount: z.number(),
+    emailsWithMetadata: z.array(emailMetadataSchema),
     categoryCounts: z.record(z.string(), z.number()),
-    totalProcessed: z.number(),
+    fetchErrors: z.number(),
   }),
   outputSchema: profileOutputSchema,
   execute: async ({ inputData, mastra, getInitData }) => {
     const agent = mastra.getAgent('profileGeneratorAgent');
 
     const senderFrequency = new Map<string, { name: string; count: number }>();
-    for (const email of inputData.importantEmails) {
+    for (const email of inputData.emailsWithMetadata) {
       const fromEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
       const fromName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || fromEmail;
       const existing = senderFrequency.get(fromEmail);
@@ -341,75 +258,53 @@ const generateProfile = createStep({
       .slice(0, 20)
       .map(([email, data]) => ({ email, name: data.name, count: data.count }));
 
-    const CHUNK_SIZE = 40;
-    const PARALLEL_CONCURRENCY = 2;
-    const CHUNK_DELAY_MS = 500;
-    const MAX_EMAILS_FOR_PROFILE = 200;
-
     const stats = {
-      totalEmailsFetched: inputData.totalProcessed,
-      uniqueEmails: inputData.totalProcessed,
-      importantEmails: inputData.importantEmails.length,
+      totalEmailsFetched: inputData.emailsWithMetadata.length,
+      uniqueEmails: inputData.emailsWithMetadata.length,
       categoryCounts: inputData.categoryCounts,
       topSenders,
     };
 
-    const emailsForProfile = inputData.importantEmails.slice(0, MAX_EMAILS_FOR_PROFILE);
+    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string }>();
 
-    // Split into chunks
-    const chunks: (typeof emailsForProfile)[] = [];
-    for (let i = 0; i < emailsForProfile.length; i += CHUNK_SIZE) {
-      chunks.push(emailsForProfile.slice(i, i + CHUNK_SIZE));
-    }
+    // Build CSV payload
+    const escape = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, ' ').trim()}"`;
+    const csvRows = inputData.emailsWithMetadata.map(e =>
+      [escape(e.date), escape(e.from), escape(e.subject), escape(e.snippet.substring(0, 120))].join(',')
+    );
+    const csv = `date,from,subject,snippet\n${csvRows.join('\n')}`;
 
-    const generateChunk = async (chunk: typeof emailsForProfile, chunkIndex: number) => {
-      const emailData = chunk.map(e => ({
-        subject: e.subject,
-        from: e.from,
-        to: e.to,
-        snippet: e.snippet.substring(0, 100),
-        date: e.date,
-        categories: e.categories,
-      }));
+    const dateContext = initData.currentDate
+      ? `Current date: ${initData.currentDate}${initData.timezone ? ` (${initData.timezone})` : ''}`
+      : '';
 
-      const isFirst = chunkIndex === 0;
-      const prompt = `${isFirst ? `Build a comprehensive user profile from these emails.\n\nSTATISTICS:\n${JSON.stringify(stats)}\n\n` : ''}Analyze these ${emailData.length} emails (batch ${chunkIndex + 1} of ${chunks.length}) and extract all profile-relevant information as markdown sections.
+    const prompt = `Build a comprehensive user profile from these emails.
 
-EMAIL DATA:
-${JSON.stringify(emailData)}`;
+${dateContext}
 
-      const response = await agent.generate(prompt);
-      return response.text || response.toString();
-    };
+STATISTICS:
+- Total emails: ${stats.totalEmailsFetched}
+- Categories: ${JSON.stringify(stats.categoryCounts)}
+- Top senders: ${topSenders.slice(0, 10).map(s => `${s.name} (${s.count})`).join(', ')}
 
-    // Process chunks in parallel groups
-    const profileParts: string[] = [];
-    for (let i = 0; i < chunks.length; i += PARALLEL_CONCURRENCY) {
-      const group = chunks.slice(i, i + PARALLEL_CONCURRENCY);
-      const results = await Promise.allSettled(
-        group.map((chunk, j) => generateChunk(chunk, i + j))
-      );
+EMAIL DATA (CSV):
+${csv}`;
 
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          profileParts.push(result.value);
-        }
-      }
+    const response = await agent.generate(prompt);
+    const profileMarkdown = response.text || response.toString();
 
-      if (i + PARALLEL_CONCURRENCY < chunks.length) {
-        await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY_MS));
-      }
-    }
-
-    const profileMarkdown = profileParts.join('\n\n---\n\n');
-
-    const initData = getInitData<{ accessToken: string; emailAddress?: string }>();
+    // AI SDK v5 uses inputTokens/outputTokens; v4 uses promptTokens/completionTokens
+    const rawUsage = response.usage as any;
+    const promptTokens = rawUsage?.promptTokens ?? rawUsage?.inputTokens ?? 0;
+    const completionTokens = rawUsage?.completionTokens ?? rawUsage?.outputTokens ?? 0;
+    const totalTokens = rawUsage?.totalTokens ?? (promptTokens + completionTokens);
 
     return {
       profile: profileMarkdown,
       emailAddress: initData.emailAddress || 'unknown',
       generatedAt: new Date().toISOString(),
       stats,
+      usage: { promptTokens, completionTokens, totalTokens },
     };
   },
 });
@@ -419,14 +314,16 @@ export const buildUserProfileWorkflow = createWorkflow({
   description: 'Builds a comprehensive user profile by analyzing Gmail email data',
   inputSchema: z.object({
     accessToken: z.string(),
-    maxResultsPerCategory: z.number().default(200),
+    maxResultsPerCategory: z.number().default(20),
+    maxPerSender: z.number().default(20),
     emailAddress: z.string().optional(),
+    currentDate: z.string().optional(),
+    timezone: z.string().optional(),
   }),
   outputSchema: profileOutputSchema,
 })
   .then(fetchAllCategories)
   .then(deduplicateAndAnnotate)
   .then(fetchAllMetadata)
-  .then(classifyImportance)
   .then(generateProfile)
   .commit();
