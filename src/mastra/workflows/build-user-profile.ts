@@ -1,6 +1,7 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { google } from 'googleapis';
 import { z } from 'zod';
+import { profileStreamCallbacks } from '../profile-stream-bridge';
 
 function createGmailClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -265,7 +266,8 @@ const generateProfile = createStep({
       topSenders,
     };
 
-    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string }>();
+    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string; streamId?: string }>();
+    const emitToken = initData.streamId ? profileStreamCallbacks.get(initData.streamId) : undefined;
 
     // Build CSV payload
     const escape = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, ' ').trim()}"`;
@@ -290,11 +292,15 @@ STATISTICS:
 EMAIL DATA (CSV):
 ${csv}`;
 
-    const response = await agent.generate(prompt);
-    const profileMarkdown = response.text || response.toString();
+    const streamResult = await agent.stream(prompt);
+    let profileMarkdown = '';
+    for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
+      profileMarkdown += chunk;
+      emitToken?.(chunk);
+    }
 
     // AI SDK v5 uses inputTokens/outputTokens; v4 uses promptTokens/completionTokens
-    const rawUsage = response.usage as any;
+    const rawUsage = (await streamResult.usage) as any;
     const promptTokens = rawUsage?.promptTokens ?? rawUsage?.inputTokens ?? 0;
     const completionTokens = rawUsage?.completionTokens ?? rawUsage?.outputTokens ?? 0;
     const totalTokens = rawUsage?.totalTokens ?? (promptTokens + completionTokens);
@@ -319,6 +325,7 @@ export const buildUserProfileWorkflow = createWorkflow({
     emailAddress: z.string().optional(),
     currentDate: z.string().optional(),
     timezone: z.string().optional(),
+    streamId: z.string().optional(),
   }),
   outputSchema: profileOutputSchema,
 })

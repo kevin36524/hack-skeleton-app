@@ -301,6 +301,7 @@ function ProfilePageContent() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [streamingProfile, setStreamingProfile] = useState('');
   const [maxResultsPerCategory, setMaxResultsPerCategory] = useState(20);
   const [costPerMInput, setCostPerMInput] = useState(0.60);
   const [costPerMOutput, setCostPerMOutput] = useState(2.50);
@@ -325,6 +326,7 @@ function ProfilePageContent() {
   const resetSteps = () => {
     setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending' as StepStatus })));
     setExpandedSteps(new Set());
+    setStreamingProfile('');
   };
 
   const updateStep = (stepId: string, patch: Partial<GenerationStep>) =>
@@ -348,6 +350,9 @@ function ProfilePageContent() {
     } else if (eventType === 'step-error') {
       const { stepId } = data ?? {};
       if (stepId) updateStep(stepId, { status: 'error' });
+    } else if (eventType === 'profile-chunk') {
+      const { token } = data ?? {};
+      if (token) setStreamingProfile((prev) => prev + token);
     } else if (eventType === 'workflow-complete') {
       const result = data?.result;
       if (result?.profile) {
@@ -593,29 +598,66 @@ function ProfilePageContent() {
 
             {/* ── Generating state ──────────────────────────────────────── */}
             {generating && (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full">
-                  <div className="flex justify-center mb-6">
-                    <Loader2 className="h-12 w-12 text-purple-500 animate-spin" />
+              streamingProfile ? (
+                // Live preview: split layout — steps sidebar + streaming markdown
+                <div className="h-full flex gap-4">
+                  {/* Steps sidebar */}
+                  <div className="w-64 flex-shrink-0">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 sticky top-0">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Loader2 className="h-4 w-4 text-purple-500 animate-spin flex-shrink-0" />
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">Generating…</span>
+                      </div>
+                      <div className="space-y-3">
+                        {steps.map((step) => (
+                          <StepIndicator
+                            key={step.id}
+                            step={step}
+                            expanded={expandedSteps.has(step.id)}
+                            onToggle={() => toggleStep(step.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <h2 className="text-xl font-semibold text-center mb-6 text-gray-900 dark:text-white">
-                    Generating Your Profile
-                  </h2>
-                  <div className="space-y-3">
-                    {steps.map((step) => (
-                      <StepIndicator
-                        key={step.id}
-                        step={step}
-                        expanded={expandedSteps.has(step.id)}
-                        onToggle={() => toggleStep(step.id)}
-                      />
-                    ))}
+
+                  {/* Streaming profile content */}
+                  <div className="flex-1 overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <ScrollArea className="h-full">
+                      <div className="px-8 py-6">
+                        <MarkdownContent content={streamingProfile} />
+                        {/* Blinking cursor at the end */}
+                        <span className="inline-block w-0.5 h-4 bg-purple-500 animate-pulse ml-0.5 align-middle" />
+                      </div>
+                    </ScrollArea>
                   </div>
-                  <p className="text-xs text-center text-gray-400 mt-8">
-                    Please keep this page open — this can take 1–3 minutes
-                  </p>
                 </div>
-              </div>
+              ) : (
+                // Initial state before any streaming text arrives
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full">
+                    <div className="flex justify-center mb-6">
+                      <Loader2 className="h-12 w-12 text-purple-500 animate-spin" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-center mb-6 text-gray-900 dark:text-white">
+                      Generating Your Profile
+                    </h2>
+                    <div className="space-y-3">
+                      {steps.map((step) => (
+                        <StepIndicator
+                          key={step.id}
+                          step={step}
+                          expanded={expandedSteps.has(step.id)}
+                          onToggle={() => toggleStep(step.id)}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-center text-gray-400 mt-8">
+                      Please keep this page open — this can take 1–3 minutes
+                    </p>
+                  </div>
+                </div>
+              )
             )}
 
             {/* ── Profile display ───────────────────────────────────────── */}

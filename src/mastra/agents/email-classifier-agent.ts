@@ -1,5 +1,19 @@
 import { Agent } from "@mastra/core/agent";
 
+const groqModel = "groq/openai/gpt-oss-20b";
+
+const kimiModel = {
+  url: "https://api.kimi.com/coding/v1",
+  id: "kimi-for-coding/k2p5",
+  apiKey: process.env.KIMI_API_KEY,
+  headers: {
+    "X-Custom-Header": "value",
+    "User-Agent": "claude-cli/2.1.39 (external, cli)",
+    "Host": "api.anthropic.com",
+  },
+}
+
+
 export const emailClassifierAgent = new Agent({
   id: "email-classifier-agent",
   name: "Email Classifier Agent",
@@ -46,14 +60,5 @@ Return ONLY a JSON object with this structure:
 }
 
 Return ONLY the JSON, no markdown, no code blocks.`,
-  model: {
-    url: "https://api.kimi.com/coding/v1",
-    id: "kimi-for-coding/k2p5",
-    apiKey: process.env.KIMI_API_KEY,
-    headers: {
-      "X-Custom-Header": "value",
-      "User-Agent": "claude-cli/2.1.39 (external, cli)",
-      "Host": "api.anthropic.com",
-    },
-  },
+  model: groqModel,
 });

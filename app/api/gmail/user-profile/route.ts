@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { mastra } from '@/src/mastra';
+import { profileStreamCallbacks } from '@/src/mastra/profile-stream-bridge';
 
 // Summarize step INPUT to avoid sending huge arrays over SSE
 function summarizeInput(stepId: string, input: unknown): unknown {
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Building user profile for:', emailAddress);
 
+    const streamId = crypto.randomUUID();
     const workflow = mastra.getWorkflow('buildUserProfileWorkflow');
     const run = await workflow.createRun();
 
@@ -133,6 +135,7 @@ export async function POST(request: NextRequest) {
         emailAddress,
         currentDate,
         timezone,
+        streamId,
       },
     });
 
@@ -143,6 +146,11 @@ export async function POST(request: NextRequest) {
           const chunk = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
           controller.enqueue(encoder.encode(chunk));
         };
+
+        // Register the token callback before starting iteration so no tokens are missed.
+        profileStreamCallbacks.set(streamId, (token: string) => {
+          emit('profile-chunk', { token });
+        });
 
         try {
           let finalResult: unknown = null;
@@ -175,6 +183,8 @@ export async function POST(request: NextRequest) {
           controller.close();
         } catch (err) {
           controller.error(err);
+        } finally {
+          profileStreamCallbacks.delete(streamId);
         }
       },
     });
