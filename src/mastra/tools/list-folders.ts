@@ -23,12 +23,11 @@ export const listFolders = createTool({
       unreadCount: z.number(),
     })
   ),
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId } = params;
+  execute: async ({ mailboxId, accountId: inputAccountId }, context) => {
+    const token = getToken(context);
 
-    // Get accountId from params or requestContext
-    const accountId = params.accountId || getAccountId(params);
+    // Get accountId from input or requestContext
+    const accountId = inputAccountId || getAccountId(context);
 
     // Use server-side account filter when accountId is available
     const endpoint = accountId

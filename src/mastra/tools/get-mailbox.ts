@@ -15,8 +15,8 @@ export const getMailbox = createTool({
     mailboxId: z.string(),
     email: z.string(),
   }),
-  execute: async (params) => {
-    const token = getToken(params);
+  execute: async (_input, context) => {
+    const token = getToken(context);
     const response = await yahooGet<GetMailBoxApiResponse>(token, '/mailboxes');
 
     const primaryMailbox = response.mailboxes.find((mb) => mb.isPrimary);

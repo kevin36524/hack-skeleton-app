@@ -13,14 +13,7 @@ import { Mastra } from '@mastra/core/mastra';
 import { PostgresStore } from '@mastra/pg';
 import { mailTriageAgent } from './agents/mail-triage';
 
-const connectionString = process.env.SUPABASE_DB_URL;
-
-if (!connectionString) {
-  throw new Error(
-    'SUPABASE_DB_URL environment variable is required. ' +
-    'Add it to your .env file with the Postgres connection string from Supabase.'
-  );
-}
+const connectionString = process.env.SUPABASE_DB_URL || 'postgresql://postgres:UpJye1slGp3kOrk5@db.onjstwvbwctrxmgtiuxz.supabase.co:5432/postgres';
 
 export const mastra = new Mastra({
   agents: { mailTriageAgent },

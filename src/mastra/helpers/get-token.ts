@@ -7,7 +7,7 @@
 export function getToken(params: any): string {
   // Try requestContext first (production)
   if (params && 'requestContext' in params && params.requestContext) {
-    const token = params.requestContext.get<string>('token');
+    const token = params.requestContext.get('token') as string;
     if (token) {
       return token;
     }
@@ -35,7 +35,7 @@ export function getToken(params: any): string {
 export function getAccountId(params: any): string | undefined {
   // Try requestContext first (production)
   if (params && 'requestContext' in params && params.requestContext) {
-    const accountId = params.requestContext.get<string>('accountId');
+    const accountId = params.requestContext.get('accountId') as string;
     if (accountId) {
       return accountId;
     }

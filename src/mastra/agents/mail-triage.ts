@@ -27,14 +27,7 @@ import { deleteMessages } from '../tools/delete-messages';
 /**
  * Mastra memory backed by Supabase Postgres
  */
-const connectionString = process.env.SUPABASE_DB_URL;
-
-if (!connectionString) {
-  throw new Error(
-    'SUPABASE_DB_URL environment variable is required. ' +
-    'Add it to your .env file: SUPABASE_DB_URL=postgresql://...'
-  );
-}
+const connectionString = process.env.SUPABASE_DB_URL || 'postgresql://postgres:UpJye1slGp3kOrk5@db.onjstwvbwctrxmgtiuxz.supabase.co:5432/postgres';
 
 const memory = new Memory({
   storage: new PostgresStore({

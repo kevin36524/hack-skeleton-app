@@ -32,9 +32,8 @@ export const listMessages = createTool({
       folderName: z.string(),
     })
   ),
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, folderId, count = 30, offset = 0 } = params;
+  execute: async ({ mailboxId, folderId, count = 30, offset = 0 }, context) => {
+    const token = getToken(context);
 
     // Build query string matching frontend logic (message-service.ts)
     const query = `folderId:${folderId}+groupBy:conversationId+offset:${offset}+count:${count}`;

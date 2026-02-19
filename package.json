@@ -12,11 +12,14 @@
     "feature:quick": "tsx scripts/feature-assistant.ts --model claude-haiku-4-5-20251001",
     "feature:advanced": "tsx scripts/feature-assistant.ts --model claude-opus-4-1",
     "check:env": "tsx scripts/check-env.ts",
-    "test:agent": "tsx scripts/test-mail-agent.ts"
+    "test:agent": "tsx scripts/test-mail-agent.ts",
+    "deployCloudRun": "gcloud auth activate-service-account --key-file=twiliotest-admin-key.json && gcloud run deploy ymail-agent --source . --platform managed --region us-central1 --allow-unauthenticated --service-account calproxy-service-account@twiliotest-8d802.iam.gserviceaccount.com --project twiliotest-8d802 --env-vars-file env.yaml"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.44",
     "@anthropic-ai/claude-agent-sdk": "^0.1.55",
+    "@google-cloud/cloudbuild": "^5.4.0",
+    "@google-cloud/run": "^3.1.0",
     "@libsql/client": "^0.15.15",
     "@mastra/core": "^1.4.0",
     "@mastra/evals": "^1.1.1",

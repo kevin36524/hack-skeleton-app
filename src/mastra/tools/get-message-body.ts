@@ -18,9 +18,8 @@ export const getMessageBody = createTool({
     text: z.string(),
     html: z.string().optional(),
   }),
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, messageId } = params;
+  execute: async ({ mailboxId, messageId }, context) => {
+    const token = getToken(context);
 
     // Use the same endpoint as frontend (message-service.ts)
     const response = await yahooGet<FullMessageBodyResponse>(

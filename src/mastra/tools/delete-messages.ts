@@ -18,9 +18,8 @@ export const deleteMessages = createTool({
     deletedCount: z.number(),
   }),
   requireApproval: true,
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, messageIds } = params;
+  execute: async ({ mailboxId, messageIds }, context) => {
+    const token = getToken(context);
 
     // Delete messages one by one matching frontend logic (message-service.ts)
     for (const messageId of messageIds) {

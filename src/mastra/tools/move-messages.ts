@@ -20,9 +20,8 @@ export const moveMessages = createTool({
     movedCount: z.number(),
   }),
   requireApproval: true,
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, messageIds, targetFolderId } = params;
+  execute: async ({ mailboxId, messageIds, targetFolderId }, context) => {
+    const token = getToken(context);
 
     // Use batch API matching frontend logic (message-service.ts)
     const request: MoveMessagesRequest = {

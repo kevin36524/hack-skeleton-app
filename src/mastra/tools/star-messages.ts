@@ -20,9 +20,8 @@ export const starMessages = createTool({
     count: z.number(),
   }),
   requireApproval: true,
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, messageIds, starred } = params;
+  execute: async ({ mailboxId, messageIds, starred }, context) => {
+    const token = getToken(context);
 
     // Use batch API matching frontend logic (message-service.ts)
     const request: TriageRequest = {

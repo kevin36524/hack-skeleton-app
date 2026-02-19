@@ -32,9 +32,8 @@ export const searchMessages = createTool({
       folderName: z.string(),
     })
   ),
-  execute: async (params) => {
-    const token = getToken(params);
-    const { mailboxId, query, count = 30, offset = 0 } = params;
+  execute: async ({ mailboxId, query, count = 30, offset = 0 }, context) => {
+    const token = getToken(context);
 
     // Build query string matching frontend logic (message-service.ts)
     const fullQuery = `${query}+offset:${offset}+count:${count}`;
