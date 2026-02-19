@@ -1,12 +1,26 @@
+// Load environment variables (for non-Next.js contexts like test scripts)
+// Next.js loads .env automatically, but tsx/node scripts need explicit loading
+if (typeof window === 'undefined' && !process.env.NEXT_RUNTIME) {
+  try {
+    require('dotenv').config();
+  } catch (e) {
+    // dotenv not available or already loaded, continue
+  }
+}
+
 import { PinoLogger } from '@mastra/loggers';
 import { Mastra } from '@mastra/core/mastra';
+import { PostgresStore } from '@mastra/pg';
+import { mailTriageAgent } from './agents/mail-triage';
 
+const connectionString = process.env.SUPABASE_DB_URL || 'postgresql://postgres:UpJye1slGp3kOrk5@db.onjstwvbwctrxmgtiuxz.supabase.co:5432/postgres';
 
 export const mastra = new Mastra({
-  observability: {
-    default: { enabled: true }
-  },
-  agents: { },
+  agents: { mailTriageAgent },
+  storage: new PostgresStore({
+    id: 'mastra-storage',
+    connectionString,
+  }),
   logger: new PinoLogger({
     name: 'Mastra',
     level: 'info',
