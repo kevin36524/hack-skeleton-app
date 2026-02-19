@@ -303,8 +303,15 @@ function ProfilePageContent() {
   const [generating, setGenerating] = useState(false);
   const [streamingProfile, setStreamingProfile] = useState('');
   const [maxResultsPerCategory, setMaxResultsPerCategory] = useState(20);
-  const [costPerMInput, setCostPerMInput] = useState(0.60);
-  const [costPerMOutput, setCostPerMOutput] = useState(2.50);
+  const [selectedModel, setSelectedModel] = useState<'gemini-flash-lite' | 'groq' | 'kimi'>('gemini-flash-lite');
+  const [costPerMInput, setCostPerMInput] = useState(0.10);
+  const [costPerMOutput, setCostPerMOutput] = useState(0.40);
+
+  const MODEL_PRICING: Record<'gemini-flash-lite' | 'groq' | 'kimi', { input: number; output: number }> = {
+    'gemini-flash-lite': { input: 0.10, output: 0.40 },
+    'groq': { input: 0.15, output: 0.60 },
+    'kimi': { input: 0.60, output: 2.50 },
+  };
   const [steps, setSteps] = useState<GenerationStep[]>(
     INITIAL_STEPS.map((s) => ({ ...s }))
   );
@@ -398,6 +405,7 @@ function ProfilePageContent() {
           maxResultsPerCategory,
           maxPerSender: 20,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          model: selectedModel,
         }),
       });
 
@@ -573,6 +581,37 @@ function ProfilePageContent() {
                     <p className="text-xs text-gray-400 mt-1">
                       Fetches this many emails from each of the 5 categories (5–200)
                     </p>
+                  </div>
+
+                  <div className="mb-5 text-left">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                      Model
+                    </label>
+                    <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+                      {([
+                        { id: 'gemini-flash-lite', label: 'Gemini' },
+                        { id: 'groq', label: 'Groq' },
+                        { id: 'kimi', label: 'Kimi' },
+                      ] as const).map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedModel(id);
+                            setCostPerMInput(MODEL_PRICING[id].input);
+                            setCostPerMOutput(MODEL_PRICING[id].output);
+                          }}
+                          className={cn(
+                            'flex-1 py-2 text-sm font-medium transition-colors',
+                            selectedModel === id
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {error && (

@@ -266,7 +266,7 @@ const generateProfile = createStep({
       topSenders,
     };
 
-    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string; streamId?: string }>();
+    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string; streamId?: string; model?: string }>();
     const emitToken = initData.streamId ? profileStreamCallbacks.get(initData.streamId) : undefined;
 
     // Build CSV payload
@@ -292,7 +292,8 @@ STATISTICS:
 EMAIL DATA (CSV):
 ${csv}`;
 
-    const streamResult = await agent.stream(prompt);
+    const requestContext = new Map<string, unknown>([['model-id', initData.model || 'gemini-flash-lite']]);
+    const streamResult = await agent.stream(prompt, { requestContext });
     let profileMarkdown = '';
     for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
       profileMarkdown += chunk;
@@ -326,6 +327,7 @@ export const buildUserProfileWorkflow = createWorkflow({
     currentDate: z.string().optional(),
     timezone: z.string().optional(),
     streamId: z.string().optional(),
+    model: z.enum(['gemini-flash-lite', 'groq', 'kimi']).default('gemini-flash-lite'),
   }),
   outputSchema: profileOutputSchema,
 })

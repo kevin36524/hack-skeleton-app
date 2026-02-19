@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
     const maxResultsPerCategory = body.maxResultsPerCategory || 20;
     const maxPerSender = body.maxPerSender || 20;
     const timezone = body.timezone || 'UTC';
+    const model = body.model || 'gemini-flash-lite';
     const currentDate = new Date().toLocaleString('en-US', { timeZone: timezone, dateStyle: 'full', timeStyle: 'short' });
 
     console.log('[API] Building user profile for:', emailAddress);
@@ -136,6 +137,7 @@ export async function POST(request: NextRequest) {
         currentDate,
         timezone,
         streamId,
+        model,
       },
     });
 

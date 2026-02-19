@@ -1,9 +1,8 @@
 import { Agent } from "@mastra/core/agent";
 import { MastraModelConfig } from "@mastra/core/llm";
 
-//const groqModel = "groq/openai/gpt-oss-120b";
-
 const geminiFlashLiteModel = "google/gemini-2.5-flash-lite";
+const groqModel = "groq/openai/gpt-oss-120b";
 const kimiModel = {
   url: "https://api.kimi.com/coding/v1",
   id: "kimi-for-coding/k2p5",
@@ -15,10 +14,20 @@ const kimiModel = {
   },
 } as MastraModelConfig;
 
+export const SUPPORTED_MODELS = ['gemini-flash-lite', 'groq', 'kimi'] as const;
+export type SupportedModel = typeof SUPPORTED_MODELS[number];
 
 export const profileGeneratorAgent = new Agent({
   id: "profile-generator-agent",
   name: "Profile Generator Agent",
+  model: ({ requestContext }) => {
+    const modelId = requestContext?.get('model-id') as string | undefined;
+    switch (modelId) {
+      case 'groq': return groqModel;
+      case 'kimi': return kimiModel;
+      default: return geminiFlashLiteModel;
+    }
+  },
   instructions: `You are a user profile builder that analyzes email data to create a comprehensive personal profile as a markdown document.
 
 You will receive:
@@ -89,5 +98,4 @@ Your job is to analyze all emails and write a rich, detailed markdown profile do
 Write a well-organized markdown document using headings, bullet points, and sub-sections as appropriate. You have full freedom to structure and emphasize based on what you find. Include only sections where you found relevant data. Be thorough but concise. If you find something interesting or noteworthy, call it out.
 
 Do NOT wrap the output in code blocks. Output the raw markdown directly.`,
-  model: geminiFlashLiteModel ,
 });
