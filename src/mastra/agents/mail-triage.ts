@@ -9,7 +9,7 @@ if (typeof window === 'undefined' && !process.env.NEXT_RUNTIME) {
 
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
-import { PostgresStore } from '@mastra/pg';
+import { createStorage } from '../storage';
 
 // Import read tools
 import { getMailbox } from '../tools/get-mailbox';
@@ -25,15 +25,11 @@ import { moveMessages } from '../tools/move-messages';
 import { deleteMessages } from '../tools/delete-messages';
 
 /**
- * Mastra memory backed by Supabase Postgres
+ * Mastra memory with configurable storage backend
+ * Uses MASTRA_STORAGE_PROVIDER env var: 'libsql' (default) | 'postgres' | 'mysql'
  */
-const connectionString = process.env.SUPABASE_DB_URL || 'postgresql://postgres:UpJye1slGp3kOrk5@db.onjstwvbwctrxmgtiuxz.supabase.co:5432/postgres';
-
 const memory = new Memory({
-  storage: new PostgresStore({
-    id: 'mail-agent-memory',
-    connectionString,
-  }),
+  storage: createStorage('mail-agent-memory'),
   options: {
     lastMessages: 40, // keep last 40 messages in context
   },

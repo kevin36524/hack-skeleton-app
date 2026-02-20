@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     '@mastra/loggers',
     '@mastra/memory',
     '@mastra/pg',
+    '@mastra/mysql',
     '@mastra/evals',
     '@libsql/client',
     'pino',
