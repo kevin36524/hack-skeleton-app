@@ -94,7 +94,7 @@ importers:
         version: 0.555.0(react@19.2.0)
       next:
         specifier: 16.0.6
-        version: 16.0.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.0.6(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       openai:
         specifier: ^6.16.0
         version: 6.16.0(ws@8.18.3)(zod@3.25.76)
@@ -9108,7 +9108,7 @@ snapshots:
 
   negotiator@1.0.0: {}
 
-  next@16.0.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.0.6(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@next/env': 16.0.6
       '@swc/helpers': 0.5.15
@@ -9116,7 +9116,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.0)
+      styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.2.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.0.6
       '@next/swc-darwin-x64': 16.0.6
@@ -10035,12 +10035,12 @@ snapshots:
 
   stubs@3.0.0: {}
 
-  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.2.0):
+  styled-jsx@5.1.6(@babel/core@7.28.5)(react@19.2.0):
     dependencies:
       client-only: 0.0.1
       react: 19.2.0
     optionalDependencies:
-      '@babel/core': 7.29.0
+      '@babel/core': 7.28.5
 
   suffix-thumb@5.0.2: {}
 
