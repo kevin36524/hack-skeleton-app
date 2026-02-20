@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X, Search, User } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Search, User, Newspaper } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -194,6 +194,16 @@ function MailPageContent() {
                 >
                   <User className="h-4 w-4" />
                   <span className="hidden lg:inline">Profile</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/mail/digest')}
+                  className="flex items-center space-x-2"
+                  title="Daily Digest"
+                >
+                  <Newspaper className="h-4 w-4" />
+                  <span className="hidden lg:inline">Digest</span>
                 </Button>
                 <ThemeToggle />
                 <Button
