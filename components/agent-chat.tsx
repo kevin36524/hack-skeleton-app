@@ -122,7 +122,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: Agent
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // Auto-scroll to bottom when messages change
@@ -371,7 +371,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: Agent
     setSessionId(crypto.randomUUID());
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -543,14 +543,15 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: Agent
         {/* Input */}
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
           <div className="flex gap-2">
-            <Input
+            <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={inputPlaceholder}
               disabled={status !== 'idle'}
-              className="flex-1 text-sm"
+              rows={1}
+              className="flex-1 text-sm flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
             />
             <Button
               onClick={sendMessage}

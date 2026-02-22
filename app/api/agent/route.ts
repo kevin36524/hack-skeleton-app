@@ -30,7 +30,9 @@ export async function POST(req: NextRequest) {
     // Handle HITL approval
     if (action === 'approve' && runId) {
       console.log(`[HITL] Approving tool call for runId: ${runId}`);
-      const resumed = await mailTriageAgent.approveToolCall({ runId });
+      const requestContext = new RequestContext();
+      requestContext.set('token', token);
+      const resumed = await mailTriageAgent.approveToolCall({ runId, requestContext });
       return streamAgentResponse(resumed);
     }
 

@@ -5,25 +5,17 @@
  * For dev/test: token comes from TEST_YAHOO_OAUTH_TOKEN env variable
  */
 export function getToken(params: any): string {
-  // Try requestContext first (production)
   if (params && 'requestContext' in params && params.requestContext) {
     const token = params.requestContext.get('token') as string;
     if (token) {
       return token;
     }
+    console.warn('[getToken] requestContext present but token was empty/null');
+  } else {
+    console.warn('[getToken] no requestContext in params, keys:', params ? Object.keys(params) : null);
   }
 
-  // Fallback to test env variable (dev/test)
-  const envToken = process.env.TEST_YAHOO_OAUTH_TOKEN;
-  if (envToken) {
-    return envToken;
-  }
-
-  throw new Error(
-    'No auth token available. ' +
-    'In production, pass via requestContext. ' +
-    'In dev/test, set TEST_YAHOO_OAUTH_TOKEN env variable.'
-  );
+  throw new Error('No auth token available. Pass via requestContext.');
 }
 
 /**

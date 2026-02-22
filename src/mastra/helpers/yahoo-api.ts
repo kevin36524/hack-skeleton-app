@@ -55,13 +55,21 @@ export async function yahooPost<T>(
     'Content-Type': 'application/json',
   };
 
+  console.log(`[yahooPost] POST ${url}`);
+  console.log(`[yahooPost] token length: ${token?.length ?? 0}, token prefix: ${token?.slice(0, 10)}...`);
+  console.log(`[yahooPost] body:`, JSON.stringify(body));
+
   const response = await fetch(url, {
     method: 'POST',
     headers: headers as unknown as HeadersInit,
     body: JSON.stringify(body),
   });
 
+  console.log(`[yahooPost] response status: ${response.status} ${response.statusText}`);
+
   if (!response.ok) {
+    const errorText = await response.text().catch(() => '(could not read body)');
+    console.error(`[yahooPost] error body: ${errorText}`);
     throw new Error(`Yahoo API POST failed: ${response.status} ${response.statusText}`);
   }
 

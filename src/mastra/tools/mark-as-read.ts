@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooPost } from '../helpers/yahoo-api';
-import type { TriageRequest, TriageResponse } from '../../../lib/types/api';
+import type { TriageResponse } from '../../../lib/types/api';
 
 /**
  * Mark messages as read/unread (requires human approval)
@@ -23,21 +23,27 @@ export const markAsRead = createTool({
   execute: async ({ mailboxId, messageIds, read }, context) => {
     const token = getToken(context);
 
-    // Use batch API matching frontend logic (message-service.ts)
-    const request: TriageRequest = {
-      batch: messageIds.map((id, index) => ({
-        id: `mark-read-${index}`,
-        method: 'PUT',
-        uri: `/mailboxes/@.id==${mailboxId}/messages/@.id==${id}`,
-        entity: {
-          message: {
-            id,
-            flags: {
-              read: read ? 1 : 0
-            }
-          }
-        }
-      }))
+    // Combine all IDs into a single batch request using select query
+    const idsQuery = messageIds.join('%20');
+    const uri = `/ws/v3/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=id%3A(${idsQuery})`;
+
+    const request = {
+      requests: [
+        {
+          id: 'UnifiedUpdateMessage_0',
+          uri,
+          method: 'POST',
+          payloadType: 'embedded',
+          payload: {
+            message: {
+              flags: {
+                read,
+              },
+            },
+          },
+        },
+      ],
+      responseType: 'json',
     };
 
     await yahooPost<TriageResponse>(token, '/batch', request);

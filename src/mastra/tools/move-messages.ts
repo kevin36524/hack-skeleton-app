@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooPost } from '../helpers/yahoo-api';
-import type { MoveMessagesRequest, MoveMessagesResponse } from '../../../lib/types/api';
+import type { MoveMessagesResponse } from '../../../lib/types/api';
 
 /**
  * Move messages to another folder (requires human approval)
@@ -23,25 +23,26 @@ export const moveMessages = createTool({
   execute: async ({ mailboxId, messageIds, targetFolderId }, context) => {
     const token = getToken(context);
 
-    // Use batch API matching frontend logic (message-service.ts)
-    const request: MoveMessagesRequest = {
-      responseType: "json",
-      requests: messageIds.map((id, index) => ({
-        id: `UnifiedUpdateMessage_${index}`,
-        exportResponse: false,
-        uri: `/ws/v3/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=id%3A(${id})`,
-        method: "POST",
-        requests: [],
-        filters: {},
-        payload: {
-          message: {
-            folder: {
-              id: targetFolderId
-            }
-          }
+    const idsQuery = messageIds.join('%20');
+    const uri = `/ws/v3/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=id%3A(${idsQuery})`;
+
+    const request = {
+      requests: [
+        {
+          id: 'UnifiedUpdateMessage_0',
+          uri,
+          method: 'POST',
+          payloadType: 'embedded',
+          payload: {
+            message: {
+              folder: {
+                id: targetFolderId,
+              },
+            },
+          },
         },
-        suppressResponse: false
-      }))
+      ],
+      responseType: 'json',
     };
 
     await yahooPost<MoveMessagesResponse>(token, '/batch', request);
