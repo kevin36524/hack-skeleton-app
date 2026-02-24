@@ -12,9 +12,10 @@ import { PinoLogger } from '@mastra/loggers';
 import { Mastra } from '@mastra/core/mastra';
 import { createStorage } from './storage';
 import { mailTriageAgent } from './agents/mail-triage';
+import { emailSummarizerAgent } from './agents/email-summarizer';
 
 export const mastra = new Mastra({
-  agents: { mailTriageAgent },
+  agents: { mailTriageAgent, emailSummarizerAgent },
   storage: createStorage('mastra-storage'),
   logger: new PinoLogger({
     name: 'Mastra',

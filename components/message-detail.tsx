@@ -18,7 +18,9 @@ import {
   Download,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Sparkles,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,6 +58,9 @@ export function MessageDetail({
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Fetch full message body when message changes
   useEffect(() => {
@@ -80,6 +85,8 @@ export function MessageDetail({
     } else {
       setFullBody(null);
       setBodyError(null);
+      setSummary(null);
+      setSummaryError(null);
     }
   }, [message?.id, mailboxId]);
 
@@ -124,6 +131,41 @@ export function MessageDetail({
     console.log('Downloading attachment:', attachment);
   };
 
+  const handleSummarize = async () => {
+    if (!fullBody?.text && !fullBody?.html) return;
+
+    setLoadingSummary(true);
+    setSummaryError(null);
+
+    try {
+      const emailContent = fullBody.text || fullBody.html || '';
+      const response = await fetch('/api/summarize-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emailBody: emailContent }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to summarize email');
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (error) {
+      console.error('Failed to summarize email:', error);
+      setSummaryError('Failed to generate summary');
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const clearSummary = () => {
+    setSummary(null);
+    setSummaryError(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -146,6 +188,19 @@ export function MessageDetail({
                   message.flags.flagged && 'text-yellow-500 fill-current'
                 )}
               />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSummarize}
+              disabled={loadingSummary || !fullBody}
+              title="Summarize email"
+            >
+              {loadingSummary ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -226,6 +281,42 @@ export function MessageDetail({
           </div>
 
           <Separator />
+
+          {/* AI Summary */}
+          {(summary || summaryError || loadingSummary) && (
+            <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-sm text-blue-900 dark:text-blue-100">AI Summary</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                    onClick={clearSummary}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {loadingSummary ? (
+                  <div className="flex items-center space-x-2 text-sm text-blue-700 dark:text-blue-300">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Generating summary...</span>
+                  </div>
+                ) : summaryError ? (
+                  <p className="text-sm text-red-600 dark:text-red-400">{summaryError}</p>
+                ) : (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="whitespace-pre-wrap text-sm text-blue-800 dark:text-blue-200">
+                      {summary}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Message Body */}
           <div className="prose prose-sm dark:prose-invert max-w-none">
