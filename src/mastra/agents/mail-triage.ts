@@ -44,7 +44,7 @@ const memory = new Memory({
 export const mailTriageAgent = new Agent({
   id: 'mail-triage-agent',
   name: 'Mail Triage Agent',
-  model: 'google/gemini-2.0-flash',
+  model: 'google/gemini-2.5-flash-lite',
   memory,
   instructions: `You are a mail triage assistant. You help users manage their inbox efficiently.
 
