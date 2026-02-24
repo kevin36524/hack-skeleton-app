@@ -73,12 +73,15 @@ const fetchAllCategories = createStep({
     const { accessToken, maxResultsPerCategory } = inputData;
     const gmail = createGmailClient(accessToken);
 
+    // Categories to fetch: starred, read, sent, important, primary, archive, and deleted emails
     const categories = [
       { name: 'STARRED', labelIds: ['STARRED'] as string[], query: undefined as string | undefined },
-      { name: 'READ_UPDATES', labelIds: ['CATEGORY_UPDATES'] as string[] | undefined, query: 'is:read' as string | undefined },
+      { name: 'READ', labelIds: undefined as string[] | undefined, query: 'is:read' as string | undefined },
       { name: 'SENT', labelIds: ['SENT'] as string[], query: undefined as string | undefined },
       { name: 'IMPORTANT', labelIds: ['IMPORTANT'] as string[], query: undefined as string | undefined },
-      { name: 'CATEGORY_PRIMARY', labelIds: ['CATEGORY_PRIMARY'] as string[], query: undefined as string | undefined },
+      { name: 'PRIMARY', labelIds: ['CATEGORY_PRIMARY'] as string[], query: undefined as string | undefined },
+      { name: 'ARCHIVE', labelIds: undefined as string[] | undefined, query: '-in:inbox -in:trash -in:spam' as string | undefined },
+      { name: 'DELETED', labelIds: ['TRASH'] as string[], query: undefined as string | undefined },
     ];
 
     const fetchCategory = async (cat: typeof categories[0]) => {

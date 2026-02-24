@@ -124,6 +124,17 @@ Write a structured markdown document with these sections:
 ### Executive Summary
 Brief overview of the user's triage style (aggressive deleter, careful reviewer, star-heavy archiver, etc.)
 
+### User Persona & Priorities
+**What kind of user is this?**
+- Describe the user's professional/personal context (e.g., busy executive, developer, freelancer, parent, student, sales professional)
+- Identify their communication style and inbox management philosophy
+- Note any time constraints or workflow patterns evident from their triage behavior
+
+**What matters most for them?**
+- List the top 3-5 priorities that drive their email decisions (e.g., client responsiveness, family communication, project deadlines, financial security, networking)
+- Identify what they protect/optimize for (time, relationships, opportunities, peace of mind)
+- Note any trade-offs they make (e.g., deleting newsletters to focus on client emails)
+
 ### Sender Hierarchy
 Group senders into tiers with action rules:
 - **Tier 1: Immediate Read** (list patterns)
@@ -148,6 +159,37 @@ Write 10-15 specific rules like:
 
 ### Confidence Levels
 For each pattern, indicate confidence (High/Medium/Low) based on sample size
+
+### Decision Framework for New Emails
+Provide a step-by-step guide for evaluating any new incoming email:
+
+**Step 1: Sender Assessment**
+- Check if sender matches any known VIP, auto-delete, or starred sender patterns
+- Consider sender domain, name, and historical treatment
+- Decision point: Immediate action or continue to Step 2?
+
+**Step 2: Subject Line Scan**
+- Look for urgency markers, meeting patterns, transactional keywords, promotional language
+- Match against known triggers for READ/DELETE/STAR
+- Decision point: Clear action identified or continue to Step 3?
+
+**Step 3: Snippet Evaluation**
+- Scan for actionable language, personal mentions, financial/legal references, automated fluff
+- Confirm or override initial assessment from sender/subject
+- Decision point: Final action determination
+
+**Step 4: Priority Check**
+- Does this align with what matters most to the user?
+- Is this time-sensitive based on user's patterns?
+- Would this user want to be interrupted for this email?
+
+**Quick Reference: Default Actions by Category**
+- **VIP/Important Senders + Urgent Subject** → READ IMMEDIATELY
+- **Known Newsletters/Digests** → READ LATER or DELETE (based on user's pattern)
+- **Transactional (receipts, invoices)** → STAR for records
+- **Promotional/Notification Noise** → DELETE
+- **Unknown Sender + Vague Subject** → IGNORE/LEAVE UNREAD (or flag for manual review)
+- **Uncertain** → When in doubt, don't delete; leave unread or star for later
 
 ## Important Notes
 - Base patterns on actual evidence in the email data
