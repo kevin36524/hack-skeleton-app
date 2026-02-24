@@ -1,4 +1,5 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
+import { RequestContext } from '@mastra/core/request-context';
 import { google } from 'googleapis';
 import { z } from 'zod';
 import { profileStreamCallbacks } from '../profile-stream-bridge';
@@ -292,7 +293,8 @@ STATISTICS:
 EMAIL DATA (CSV):
 ${csv}`;
 
-    const requestContext = new Map<string, unknown>([['model-id', initData.model || 'gemini-flash-lite']]);
+    const requestContext = new RequestContext();
+    requestContext.set('model-id', initData.model || 'gemini-flash-lite');
     const streamResult = await agent.stream(prompt, { requestContext });
     let profileMarkdown = '';
     for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
