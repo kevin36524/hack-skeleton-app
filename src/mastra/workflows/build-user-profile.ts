@@ -2,7 +2,7 @@ import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { RequestContext } from '@mastra/core/request-context';
 import { google } from 'googleapis';
 import { z } from 'zod';
-import { profileStreamCallbacks } from '../profile-stream-bridge';
+import { profileStreamCallbacks, isWorkflowKilled } from '../profile-stream-bridge';
 
 function createGmailClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
@@ -295,11 +295,45 @@ ${csv}`;
 
     const requestContext = new RequestContext();
     requestContext.set('model-id', initData.model || 'gemini-flash-lite');
-    const streamResult = await agent.stream(prompt, { requestContext });
+    
+    // Max tokens limit to prevent infinite/repeating responses
+    const MAX_TOKENS = 8000;
+    const MAX_CHARS_ESTIMATE = MAX_TOKENS * 4; // Rough estimate: ~4 chars per token
+    
+    const streamResult = await agent.stream(prompt, { 
+      requestContext,
+      // @ts-expect-error - maxTokens is supported by the underlying AI SDK but not in types
+      maxTokens: MAX_TOKENS,
+    });
+    
     let profileMarkdown = '';
+    let tokenCount = 0;
+    const streamId = initData.streamId;
+    
     for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
+      // Check kill switch
+      if (streamId && isWorkflowKilled(streamId)) {
+        console.log(`[Workflow] Stream ${streamId} killed by user`);
+        throw new Error('Workflow killed by user');
+      }
+      
       profileMarkdown += chunk;
+      tokenCount += chunk.length / 4; // Rough token estimate
       emitToken?.(chunk);
+      
+      // Safety check: if we exceed estimated max chars, stop
+      if (profileMarkdown.length > MAX_CHARS_ESTIMATE) {
+        console.warn(`[Workflow] Profile generation exceeded max length limit (${MAX_CHARS_ESTIMATE} chars), stopping`);
+        profileMarkdown += '\n\n*[Profile generation truncated due to length limit]*';
+        break;
+      }
+      
+      // Detect potential repetition (simple check: if content is getting too long without structure)
+      if (tokenCount > 6000 && !profileMarkdown.includes('##')) {
+        console.warn('[Workflow] Profile generation seems to be repeating, stopping');
+        profileMarkdown += '\n\n*[Profile generation stopped - possible repetition detected]*';
+        break;
+      }
     }
 
     // AI SDK v5 uses inputTokens/outputTokens; v4 uses promptTokens/completionTokens
