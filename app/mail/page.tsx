@@ -30,6 +30,7 @@ function MailPageContent() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [mobileActiveTab, setMobileActiveTab] = useState<'mail' | 'profile' | 'summary'>('mail');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,6 +147,15 @@ function MailPageContent() {
           mailboxId={mailboxId}
           onLogout={handleLogout}
           onRefresh={refreshData}
+          activeTab={mobileActiveTab}
+          onTabChange={(tab) => {
+            setMobileActiveTab(tab);
+            if (tab === 'profile') {
+              router.push('/mail/profile');
+            } else if (tab === 'summary') {
+              router.push('/mail/summary');
+            }
+          }}
         />
 
         {/* Desktop Header */}

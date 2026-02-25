@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, BarChart3, Bot } from 'lucide-react';
+import { Menu, Mail, LogOut, RefreshCw, X, User, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -16,8 +16,8 @@ interface MobileHeaderProps {
   mailboxId: string;
   onLogout: () => void;
   onRefresh: () => void;
-  activeTab?: 'mail' | 'digest' | 'autopilot';
-  onTabChange?: (tab: 'mail' | 'digest' | 'autopilot') => void;
+  activeTab?: 'mail' | 'profile' | 'summary';
+  onTabChange?: (tab: 'mail' | 'profile' | 'summary') => void;
 }
 
 export function MobileHeader({
@@ -95,22 +95,22 @@ export function MobileHeader({
             Mail
           </Button>
           <Button
-            variant={activeTab === 'digest' ? 'default' : 'ghost'}
+            variant={activeTab === 'profile' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onTabChange?.('digest')}
+            onClick={() => onTabChange?.('profile')}
             className="flex-1 py-1 h-8 text-xs"
           >
-            <BarChart3 className="h-3 w-3 mr-1" />
-            Digest
+            <User className="h-3 w-3 mr-1" />
+            Profile
           </Button>
           <Button
-            variant={activeTab === 'autopilot' ? 'default' : 'ghost'}
+            variant={activeTab === 'summary' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onTabChange?.('autopilot')}
+            onClick={() => onTabChange?.('summary')}
             className="flex-1 py-1 h-8 text-xs"
           >
-            <Bot className="h-3 w-3 mr-1" />
-            Autopilot
+            <ScrollText className="h-3 w-3 mr-1" />
+            Summary
           </Button>
         </div>
 
