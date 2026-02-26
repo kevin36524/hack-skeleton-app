@@ -1,27 +1,33 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { RequestContext } from '@mastra/core/request-context';
-import { google } from 'googleapis';
 import { z } from 'zod';
 import { profileStreamCallbacks, isWorkflowKilled } from '../profile-stream-bridge';
+import {
+  withImap,
+  encodeMessageId,
+  imapFlagsToLabelIds,
+  formatAddress,
+  IMAP_TO_GMAIL_LABEL,
+} from '@/lib/imap/client';
 
-function createGmailClient(accessToken: string) {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
-  return google.gmail({ version: 'v1', auth });
-}
+// ── Schemas ───────────────────────────────────────────────────────────────────
+
+const categoryMessageSchema = z.object({
+  id: z.string(),
+  threadId: z.string(),
+  labelIds: z.array(z.string()),
+  snippet: z.string(),
+  from: z.string(),
+  to: z.string(),
+  subject: z.string(),
+  date: z.string(),
+  internalDate: z.string(),
+  messageIdHeader: z.string(),
+});
 
 const categoryFetchResultSchema = z.object({
   category: z.string(),
-  messageIds: z.array(z.object({
-    id: z.string(),
-    threadId: z.string(),
-  })),
-});
-
-const annotatedMessageSchema = z.object({
-  id: z.string(),
-  threadId: z.string(),
-  categories: z.array(z.string()),
+  messages: z.array(categoryMessageSchema),
 });
 
 const emailMetadataSchema = z.object({
@@ -58,11 +64,14 @@ const profileOutputSchema = z.object({
   }).optional(),
 });
 
+// ── Step 1: fetch message IDs + envelope metadata from each category folder ──
+
 const fetchAllCategories = createStep({
   id: 'fetch-all-categories',
-  description: 'Fetch message IDs from all categories in parallel',
+  description: 'Fetch message metadata from all category folders via IMAP',
   inputSchema: z.object({
-    accessToken: z.string(),
+    email: z.string(),
+    appPassword: z.string(),
     maxResultsPerCategory: z.number().default(20),
   }),
   outputSchema: z.object({
@@ -70,89 +79,118 @@ const fetchAllCategories = createStep({
     totalFetched: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { accessToken, maxResultsPerCategory } = inputData;
-    const gmail = createGmailClient(accessToken);
+    const { email, appPassword, maxResultsPerCategory } = inputData;
 
-    // Categories to fetch: starred, read, sent, important, primary, archive, and deleted emails
     const categories = [
-      { name: 'STARRED', labelIds: ['STARRED'] as string[], query: undefined as string | undefined },
-      { name: 'READ', labelIds: undefined as string[] | undefined, query: 'is:read' as string | undefined },
-      { name: 'SENT', labelIds: ['SENT'] as string[], query: undefined as string | undefined },
-      { name: 'IMPORTANT', labelIds: ['IMPORTANT'] as string[], query: undefined as string | undefined },
-      { name: 'PRIMARY', labelIds: ['CATEGORY_PRIMARY'] as string[], query: undefined as string | undefined },
-      { name: 'ARCHIVE', labelIds: undefined as string[] | undefined, query: '-in:inbox -in:trash -in:spam' as string | undefined },
-      { name: 'DELETED', labelIds: ['TRASH'] as string[], query: undefined as string | undefined },
+      { name: 'STARRED',   folder: '[Gmail]/Starred',   criteria: { all: true } as Record<string, any> },
+      { name: 'READ',      folder: 'INBOX',              criteria: { seen: true } as Record<string, any> },
+      { name: 'SENT',      folder: '[Gmail]/Sent Mail',  criteria: { all: true } as Record<string, any> },
+      { name: 'IMPORTANT', folder: '[Gmail]/Important',  criteria: { all: true } as Record<string, any> },
+      { name: 'PRIMARY',   folder: 'INBOX',              criteria: { all: true } as Record<string, any> },
+      { name: 'ARCHIVE',   folder: '[Gmail]/All Mail',   criteria: { all: true } as Record<string, any> },
+      { name: 'DELETED',   folder: '[Gmail]/Trash',      criteria: { all: true } as Record<string, any> },
     ];
 
-    const fetchCategory = async (cat: typeof categories[0]) => {
-      const resp = await gmail.users.messages.list({
-        userId: 'me',
-        labelIds: cat.labelIds,
-        q: cat.query,
-        maxResults: maxResultsPerCategory,
-      });
-      const msgs = (resp.data.messages || []).map(m => ({
-        id: m.id!, threadId: m.threadId!,
-      }));
-      return { category: cat.name, messageIds: msgs.slice(0, maxResultsPerCategory) };
-    };
+    const results = await withImap(email, appPassword, async (client) => {
+      const allResults: z.infer<typeof categoryFetchResultSchema>[] = [];
 
-    const results = await Promise.allSettled(categories.map(fetchCategory));
-    const successResults = results
-      .filter((r): r is PromiseFulfilledResult<{ category: string; messageIds: { id: string; threadId: string }[] }> => r.status === 'fulfilled')
-      .map(r => r.value);
+      for (const cat of categories) {
+        try {
+          const lock = await client.getMailboxLock(cat.folder, { readonly: true });
+          try {
+            const uids = (await client.search(cat.criteria, { uid: true })) as number[];
+            const recentUids = uids.slice(-maxResultsPerCategory).reverse();
 
-    const totalFetched = successResults.reduce((sum, r) => sum + r.messageIds.length, 0);
-    return { results: successResults, totalFetched };
+            const messages: z.infer<typeof categoryMessageSchema>[] = [];
+            if (recentUids.length > 0) {
+              const folderLabel = IMAP_TO_GMAIL_LABEL[cat.folder] ?? cat.name;
+              for await (const msg of client.fetch(
+                recentUids,
+                { uid: true, envelope: true, flags: true, internalDate: true },
+                { uid: true }
+              )) {
+                const encodedId = encodeMessageId(cat.folder, msg.uid);
+                const labelIds = imapFlagsToLabelIds(msg.flags ?? new Set(), folderLabel);
+                messages.push({
+                  id: encodedId,
+                  threadId: encodedId,
+                  labelIds,
+                  snippet: msg.envelope?.subject || '',
+                  from: formatAddress(msg.envelope?.from),
+                  to: formatAddress(msg.envelope?.to),
+                  subject: msg.envelope?.subject || '',
+                  date: msg.envelope?.date?.toUTCString() || '',
+                  internalDate: msg.internalDate ? msg.internalDate.getTime().toString() : Date.now().toString(),
+                  messageIdHeader: msg.envelope?.messageId || '',
+                });
+              }
+            }
+            allResults.push({ category: cat.name, messages });
+          } finally {
+            lock.release();
+          }
+        } catch (err) {
+          console.warn(`[build-user-profile] Failed to fetch category ${cat.name}:`, err);
+          allResults.push({ category: cat.name, messages: [] });
+        }
+      }
+
+      return allResults;
+    });
+
+    const totalFetched = results.reduce((sum, r) => sum + r.messages.length, 0);
+    return { results, totalFetched };
   },
 });
 
+// ── Step 2: deduplicate by Message-ID header, annotate with categories ────────
+
 const deduplicateAndAnnotate = createStep({
   id: 'deduplicate-and-annotate',
-  description: 'Merge all message IDs, deduplicate, annotate with categories',
+  description: 'Deduplicate messages by Message-ID header and annotate with categories',
   inputSchema: z.object({
     results: z.array(categoryFetchResultSchema),
     totalFetched: z.number(),
   }),
   outputSchema: z.object({
-    annotatedMessages: z.array(annotatedMessageSchema),
+    emailsWithMetadata: z.array(emailMetadataSchema),
     categoryCounts: z.record(z.string(), z.number()),
     totalUnique: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const messageMap = new Map<string, { threadId: string; categories: Set<string> }>();
+    // Deduplicate by messageIdHeader (RFC 2822 Message-ID), fall back to encoded id
+    const messageMap = new Map<string, { data: z.infer<typeof categoryMessageSchema>; categories: Set<string> }>();
     const categoryCounts: Record<string, number> = {};
 
     for (const result of inputData.results) {
-      categoryCounts[result.category] = result.messageIds.length;
-      for (const msg of result.messageIds) {
-        const existing = messageMap.get(msg.id);
+      categoryCounts[result.category] = result.messages.length;
+      for (const msg of result.messages) {
+        const key = msg.messageIdHeader || msg.id;
+        const existing = messageMap.get(key);
         if (existing) {
           existing.categories.add(result.category);
         } else {
-          messageMap.set(msg.id, {
-            threadId: msg.threadId,
-            categories: new Set([result.category]),
-          });
+          messageMap.set(key, { data: msg, categories: new Set([result.category]) });
         }
       }
     }
 
-    const annotatedMessages = Array.from(messageMap.entries()).map(([id, data]) => ({
-      id,
-      threadId: data.threadId,
-      categories: Array.from(data.categories),
+    const emailsWithMetadata = Array.from(messageMap.values()).map(({ data, categories }) => ({
+      ...data,
+      categories: Array.from(categories),
     }));
 
-    return { annotatedMessages, categoryCounts, totalUnique: annotatedMessages.length };
+    return { emailsWithMetadata, categoryCounts, totalUnique: emailsWithMetadata.length };
   },
 });
 
+// ── Step 3: cap emails per sender ─────────────────────────────────────────────
+
 const fetchAllMetadata = createStep({
   id: 'fetch-all-metadata',
-  description: 'Fetch metadata for all unique messages in batches, then cap per sender',
+  description: 'Cap emails per sender from the deduplicated set',
   inputSchema: z.object({
-    annotatedMessages: z.array(annotatedMessageSchema),
+    emailsWithMetadata: z.array(emailMetadataSchema),
     categoryCounts: z.record(z.string(), z.number()),
     totalUnique: z.number(),
   }),
@@ -162,67 +200,10 @@ const fetchAllMetadata = createStep({
     fetchErrors: z.number(),
   }),
   execute: async ({ inputData, getInitData }) => {
-    const { accessToken, maxPerSender = 20 } = getInitData<{ accessToken: string; maxPerSender?: number }>();
-    const gmail = createGmailClient(accessToken);
+    const { maxPerSender = 20 } = getInitData<{ email: string; appPassword: string; maxPerSender?: number }>();
 
-    const BATCH_SIZE = 50;
-    const DELAY_MS = 100;
-    const allEmails: z.infer<typeof emailMetadataSchema>[] = [];
-    let fetchErrors = 0;
-
-    const categoryLookup = new Map<string, string[]>();
-    for (const msg of inputData.annotatedMessages) {
-      categoryLookup.set(msg.id, msg.categories);
-    }
-
-    const messageIds = inputData.annotatedMessages.map(m => m.id);
-
-    for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
-      const batch = messageIds.slice(i, i + BATCH_SIZE);
-
-      const results = await Promise.allSettled(
-        batch.map(id =>
-          gmail.users.messages.get({
-            userId: 'me',
-            id,
-            format: 'metadata',
-            metadataHeaders: ['From', 'To', 'Subject', 'Date'],
-          })
-        )
-      );
-
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          const msg = result.value.data;
-          const headers = msg.payload?.headers || [];
-          const getH = (name: string) =>
-            headers.find((h: { name?: string | null; value?: string | null }) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
-
-          allEmails.push({
-            id: msg.id!,
-            threadId: msg.threadId!,
-            labelIds: msg.labelIds || [],
-            snippet: msg.snippet || '',
-            from: getH('From'),
-            to: getH('To'),
-            subject: getH('Subject'),
-            date: getH('Date'),
-            internalDate: msg.internalDate || '',
-            categories: categoryLookup.get(msg.id!) || [],
-          });
-        } else {
-          fetchErrors++;
-        }
-      }
-
-      if (i + BATCH_SIZE < messageIds.length) {
-        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-      }
-    }
-
-    // Cap emails per sender
     const senderCounts = new Map<string, number>();
-    const emailsWithMetadata = allEmails.filter(email => {
+    const emailsWithMetadata = inputData.emailsWithMetadata.filter(email => {
       const senderEmail = email.from.match(/<(.+?)>/)?.[1]?.toLowerCase() || email.from.toLowerCase();
       const count = senderCounts.get(senderEmail) || 0;
       if (count >= maxPerSender) return false;
@@ -230,9 +211,11 @@ const fetchAllMetadata = createStep({
       return true;
     });
 
-    return { emailsWithMetadata, categoryCounts: inputData.categoryCounts, fetchErrors };
+    return { emailsWithMetadata, categoryCounts: inputData.categoryCounts, fetchErrors: 0 };
   },
 });
+
+// ── Step 4: generate profile with AI ─────────────────────────────────────────
 
 const generateProfile = createStep({
   id: 'generate-profile',
@@ -270,10 +253,17 @@ const generateProfile = createStep({
       topSenders,
     };
 
-    const initData = getInitData<{ accessToken: string; emailAddress?: string; currentDate?: string; timezone?: string; streamId?: string; model?: string }>();
+    const initData = getInitData<{
+      email: string;
+      appPassword: string;
+      emailAddress?: string;
+      currentDate?: string;
+      timezone?: string;
+      streamId?: string;
+      model?: string;
+    }>();
     const emitToken = initData.streamId ? profileStreamCallbacks.get(initData.streamId) : undefined;
 
-    // Build CSV payload
     const escape = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, ' ').trim()}"`;
     const csvRows = inputData.emailsWithMetadata.map(e =>
       [escape(e.date), escape(e.from), escape(e.subject), escape(e.snippet.substring(0, 120))].join(',')
@@ -298,40 +288,36 @@ ${csv}`;
 
     const requestContext = new RequestContext();
     requestContext.set('model-id', initData.model || 'gemini-flash-lite');
-    
-    // Max tokens limit to prevent infinite/repeating responses
+
     const MAX_TOKENS = 8000;
-    const MAX_CHARS_ESTIMATE = MAX_TOKENS * 4; // Rough estimate: ~4 chars per token
-    
-    const streamResult = await agent.stream(prompt, { 
+    const MAX_CHARS_ESTIMATE = MAX_TOKENS * 4;
+
+    const streamResult = await agent.stream(prompt, {
       requestContext,
       // @ts-expect-error - maxTokens is supported by the underlying AI SDK but not in types
       maxTokens: MAX_TOKENS,
     });
-    
+
     let profileMarkdown = '';
     let tokenCount = 0;
     const streamId = initData.streamId;
-    
+
     for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
-      // Check kill switch
       if (streamId && isWorkflowKilled(streamId)) {
         console.log(`[Workflow] Stream ${streamId} killed by user`);
         throw new Error('Workflow killed by user');
       }
-      
+
       profileMarkdown += chunk;
-      tokenCount += chunk.length / 4; // Rough token estimate
+      tokenCount += chunk.length / 4;
       emitToken?.(chunk);
-      
-      // Safety check: if we exceed estimated max chars, stop
+
       if (profileMarkdown.length > MAX_CHARS_ESTIMATE) {
-        console.warn(`[Workflow] Profile generation exceeded max length limit (${MAX_CHARS_ESTIMATE} chars), stopping`);
+        console.warn(`[Workflow] Profile generation exceeded max length limit, stopping`);
         profileMarkdown += '\n\n*[Profile generation truncated due to length limit]*';
         break;
       }
-      
-      // Detect potential repetition (simple check: if content is getting too long without structure)
+
       if (tokenCount > 6000 && !profileMarkdown.includes('##')) {
         console.warn('[Workflow] Profile generation seems to be repeating, stopping');
         profileMarkdown += '\n\n*[Profile generation stopped - possible repetition detected]*';
@@ -339,7 +325,6 @@ ${csv}`;
       }
     }
 
-    // AI SDK v5 uses inputTokens/outputTokens; v4 uses promptTokens/completionTokens
     const rawUsage = (await streamResult.usage) as any;
     const promptTokens = rawUsage?.promptTokens ?? rawUsage?.inputTokens ?? 0;
     const completionTokens = rawUsage?.completionTokens ?? rawUsage?.outputTokens ?? 0;
@@ -347,7 +332,7 @@ ${csv}`;
 
     return {
       profile: profileMarkdown,
-      emailAddress: initData.emailAddress || 'unknown',
+      emailAddress: initData.emailAddress || initData.email || 'unknown',
       generatedAt: new Date().toISOString(),
       stats,
       usage: { promptTokens, completionTokens, totalTokens },
@@ -355,11 +340,14 @@ ${csv}`;
   },
 });
 
+// ── Workflow ──────────────────────────────────────────────────────────────────
+
 export const buildUserProfileWorkflow = createWorkflow({
   id: 'build-user-profile',
-  description: 'Builds a comprehensive user profile by analyzing Gmail email data',
+  description: 'Builds a comprehensive user profile by analyzing Gmail email data via IMAP',
   inputSchema: z.object({
-    accessToken: z.string(),
+    email: z.string(),
+    appPassword: z.string(),
     maxResultsPerCategory: z.number().default(20),
     maxPerSender: z.number().default(20),
     emailAddress: z.string().optional(),

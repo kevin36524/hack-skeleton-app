@@ -1,14 +1,14 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { RequestContext } from '@mastra/core/request-context';
-import { google } from 'googleapis';
 import { z } from 'zod';
 import { profileStreamCallbacks, isWorkflowKilled } from '../profile-stream-bridge';
-
-function createGmailClient(accessToken: string) {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
-  return google.gmail({ version: 'v1', auth });
-}
+import {
+  withImap,
+  encodeMessageId,
+  imapFlagsToLabelIds,
+  formatAddress,
+  parseEmailSource,
+} from '@/lib/imap/client';
 
 const emailDataSchema = z.object({
   id: z.string(),
@@ -46,9 +46,10 @@ const summaryOutputSchema = z.object({
 
 const fetchInboxEmails = createStep({
   id: 'fetch-inbox-emails',
-  description: 'Fetch top 50 emails from inbox folder',
+  description: 'Fetch top 50 emails from inbox folder via IMAP',
   inputSchema: z.object({
-    accessToken: z.string(),
+    email: z.string(),
+    appPassword: z.string(),
     maxResults: z.number().default(50),
   }),
   outputSchema: z.object({
@@ -57,87 +58,48 @@ const fetchInboxEmails = createStep({
     fetchErrors: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { accessToken, maxResults } = inputData;
-    const gmail = createGmailClient(accessToken);
-
-    // Fetch message list from inbox
-    const listResponse = await gmail.users.messages.list({
-      userId: 'me',
-      labelIds: ['INBOX'],
-      maxResults,
-    });
-
-    const messages = listResponse.data.messages || [];
-    const messageIds = messages.map(m => m.id!).filter(Boolean);
-
-    // Fetch full message data for each email
-    const BATCH_SIZE = 25;
-    const DELAY_MS = 100;
+    const { email, appPassword, maxResults } = inputData;
     const emails: z.infer<typeof emailDataSchema>[] = [];
     let fetchErrors = 0;
 
-    for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
-      const batch = messageIds.slice(i, i + BATCH_SIZE);
+    await withImap(email, appPassword, async (client) => {
+      const lock = await client.getMailboxLock('INBOX', { readonly: true });
+      try {
+        const uids = (await client.search({ all: true }, { uid: true })) as number[];
+        const recentUids = uids.slice(-maxResults).reverse();
+        if (recentUids.length === 0) return;
 
-      const results = await Promise.allSettled(
-        batch.map(id =>
-          gmail.users.messages.get({
-            userId: 'me',
-            id,
-            format: 'full',
-          })
-        )
-      );
+        for await (const msg of client.fetch(
+          recentUids,
+          { uid: true, envelope: true, flags: true, internalDate: true, source: true },
+          { uid: true }
+        )) {
+          try {
+            const parsed = parseEmailSource(msg.source ?? '');
+            const msgId = encodeMessageId('INBOX', msg.uid);
+            const labelIds = imapFlagsToLabelIds(msg.flags ?? new Set(), 'INBOX');
 
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          const msg = result.value.data;
-          const headers = msg.payload?.headers || [];
-          const getH = (name: string) =>
-            headers.find((h: { name?: string | null; value?: string | null }) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
-
-          // Extract body content
-          let bodyText = '';
-          let bodyHtml = '';
-
-          const extractBody = (part: any): void => {
-            if (!part) return;
-            
-            if (part.mimeType === 'text/plain' && part.body?.data) {
-              bodyText = Buffer.from(part.body.data, 'base64').toString('utf-8');
-            } else if (part.mimeType === 'text/html' && part.body?.data) {
-              bodyHtml = Buffer.from(part.body.data, 'base64').toString('utf-8');
-            } else if (part.parts) {
-              part.parts.forEach(extractBody);
-            }
-          };
-
-          if (msg.payload) {
-            extractBody(msg.payload);
+            emails.push({
+              id: msgId,
+              threadId: msgId,
+              labelIds,
+              snippet: parsed.snippet,
+              from: formatAddress(msg.envelope?.from),
+              to: formatAddress(msg.envelope?.to),
+              subject: msg.envelope?.subject || '',
+              date: msg.envelope?.date?.toUTCString() || '',
+              internalDate: msg.internalDate ? msg.internalDate.getTime().toString() : Date.now().toString(),
+              bodyText: parsed.textBody.substring(0, 2000),
+              bodyHtml: parsed.htmlBody.substring(0, 2000),
+            });
+          } catch {
+            fetchErrors++;
           }
-
-          emails.push({
-            id: msg.id!,
-            threadId: msg.threadId!,
-            labelIds: msg.labelIds || [],
-            snippet: msg.snippet || '',
-            from: getH('From'),
-            to: getH('To'),
-            subject: getH('Subject'),
-            date: getH('Date'),
-            internalDate: msg.internalDate || '',
-            bodyText: bodyText.substring(0, 2000), // Limit body text
-            bodyHtml: bodyHtml.substring(0, 2000), // Limit HTML
-          });
-        } else {
-          fetchErrors++;
         }
+      } finally {
+        lock.release();
       }
-
-      if (i + BATCH_SIZE < messageIds.length) {
-        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-      }
-    }
+    });
 
     return { emails, totalFetched: emails.length, fetchErrors };
   },
@@ -154,14 +116,15 @@ const generateSummary = createStep({
   outputSchema: summaryOutputSchema,
   execute: async ({ inputData, mastra, getInitData }) => {
     const agent = mastra.getAgent('emailSummarizerAgent');
-    
-    const initData = getInitData<{ 
-      accessToken: string; 
-      emailAddress?: string; 
+
+    const initData = getInitData<{
+      email: string;
+      appPassword: string;
+      emailAddress?: string;
       userProfile?: string;
-      currentDate?: string; 
-      timezone?: string; 
-      streamId?: string; 
+      currentDate?: string;
+      timezone?: string;
+      streamId?: string;
       model?: string;
     }>();
 
@@ -189,9 +152,8 @@ const generateSummary = createStep({
       topSenders,
     };
 
-    // Build email data for the prompt
     const emailList = inputData.emails.map(e => {
-      const bodyPreview = e.bodyText 
+      const bodyPreview = e.bodyText
         ? e.bodyText.substring(0, 300).replace(/\n/g, ' ').trim()
         : e.snippet;
       return {
@@ -230,11 +192,10 @@ Please provide a comprehensive summary following your instructions.`;
 
     const emitToken = initData.streamId ? profileStreamCallbacks.get(initData.streamId) : undefined;
 
-    // Max tokens limit to prevent infinite/repeating responses
     const MAX_TOKENS = 8000;
     const MAX_CHARS_ESTIMATE = MAX_TOKENS * 4;
 
-    const streamResult = await agent.stream(prompt, { 
+    const streamResult = await agent.stream(prompt, {
       requestContext,
       // @ts-expect-error - maxTokens is supported by the underlying AI SDK but not in types
       maxTokens: MAX_TOKENS,
@@ -245,7 +206,6 @@ Please provide a comprehensive summary following your instructions.`;
     const streamId = initData.streamId;
 
     for await (const chunk of streamResult.textStream as AsyncIterable<string>) {
-      // Check kill switch
       if (streamId && isWorkflowKilled(streamId)) {
         console.log(`[Workflow] Stream ${streamId} killed by user`);
         throw new Error('Workflow killed by user');
@@ -255,14 +215,12 @@ Please provide a comprehensive summary following your instructions.`;
       tokenCount += chunk.length / 4;
       emitToken?.(chunk);
 
-      // Safety check: if we exceed estimated max chars, stop
       if (summaryMarkdown.length > MAX_CHARS_ESTIMATE) {
-        console.warn(`[Workflow] Summary generation exceeded max length limit (${MAX_CHARS_ESTIMATE} chars), stopping`);
+        console.warn(`[Workflow] Summary generation exceeded max length limit, stopping`);
         summaryMarkdown += '\n\n*[Summary generation truncated due to length limit]*';
         break;
       }
 
-      // Detect potential repetition
       if (tokenCount > 6000 && !summaryMarkdown.includes('##')) {
         console.warn('[Workflow] Summary generation seems to be repeating, stopping');
         summaryMarkdown += '\n\n*[Summary generation stopped - possible repetition detected]*';
@@ -270,7 +228,6 @@ Please provide a comprehensive summary following your instructions.`;
       }
     }
 
-    // AI SDK v5 uses inputTokens/outputTokens; v4 uses promptTokens/completionTokens
     const rawUsage = (await streamResult.usage) as any;
     const promptTokens = rawUsage?.promptTokens ?? rawUsage?.inputTokens ?? 0;
     const completionTokens = rawUsage?.completionTokens ?? rawUsage?.outputTokens ?? 0;
@@ -278,7 +235,7 @@ Please provide a comprehensive summary following your instructions.`;
 
     return {
       summary: summaryMarkdown,
-      emailAddress: initData.emailAddress || 'unknown',
+      emailAddress: initData.emailAddress || initData.email || 'unknown',
       generatedAt: new Date().toISOString(),
       stats,
       usage: { promptTokens, completionTokens, totalTokens },
@@ -290,7 +247,8 @@ export const generateSummaryWorkflow = createWorkflow({
   id: 'generate-summary',
   description: 'Generates a personalized inbox summary by analyzing top 50 emails with user profile context',
   inputSchema: z.object({
-    accessToken: z.string(),
+    email: z.string(),
+    appPassword: z.string(),
     maxResults: z.number().default(50),
     emailAddress: z.string().optional(),
     userProfile: z.string().optional(),

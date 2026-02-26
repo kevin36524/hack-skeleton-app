@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { getImapCredentials } from '@/lib/imap/client';
 import { mastra } from '@/src/mastra';
 import { 
   profileStreamCallbacks, 
@@ -13,7 +13,7 @@ function summarizeInput(stepId: string, input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
   const d = { ...(input as Record<string, unknown>) };
 
-  if ('accessToken' in d) d.accessToken = '[redacted]';
+  if ('appPassword' in d) d.appPassword = '[redacted]';
 
   switch (stepId) {
     case 'fetch-inbox-emails':
@@ -72,18 +72,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-
-    let emailAddress = 'unknown';
-    try {
-      const auth = new google.auth.OAuth2();
-      auth.setCredentials({ access_token: token });
-      const gmail = google.gmail({ version: 'v1', auth });
-      const profile = await gmail.users.getProfile({ userId: 'me' });
-      emailAddress = profile.data.emailAddress || 'unknown';
-    } catch (e) {
-      console.warn('[SUMMARY] Could not fetch email address:', e);
-    }
+    const { email, password } = getImapCredentials(authHeader);
+    const emailAddress = email;
 
     const body = await request.json().catch(() => ({}));
     const maxResults = body.maxResults || 50;
@@ -104,7 +94,8 @@ export async function POST(request: NextRequest) {
 
     const streamOutput = run.stream({
       inputData: {
-        accessToken: token,
+        email,
+        appPassword: password,
         maxResults,
         emailAddress,
         userProfile,

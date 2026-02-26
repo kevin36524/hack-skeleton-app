@@ -1,13 +1,20 @@
 import { mastra } from '@/src/mastra';
-import { google } from 'googleapis';
+import {
+  withImap,
+  GMAIL_LABEL_TO_IMAP,
+  IMAP_TO_GMAIL_LABEL,
+  encodeMessageId,
+  buildGmailMetadata,
+  gmailQueryToImapSearch,
+} from '@/lib/imap/client';
 
 /**
  * Intelligent Search Service
- * 
- * Uses the Gmail Search Agent to convert natural language queries into Gmail API queries
- * and then executes the search to return matching emails.
- * 
- * Note: This service runs server-side in API routes and uses the Google API client directly.
+ *
+ * Uses the Gmail Search Agent to convert natural language queries into IMAP
+ * search criteria and then executes the search using imapflow.
+ *
+ * Note: This service runs server-side in API routes.
  */
 
 export interface IntelligentSearchResult {
@@ -29,40 +36,45 @@ export interface IntelligentSearchResult {
 }
 
 class IntelligentSearchService {
-  private accessToken: string | null = null;
+  private email: string | null = null;
+  private password: string | null = null;
 
-  /**
-   * Set the access token for Gmail API calls
-   */
   setAccessToken(token: string) {
-    this.accessToken = token;
-  }
-
-  private getAccessToken(): string {
-    if (!this.accessToken) {
-      throw new Error('Access token not set. Call setAccessToken() first.');
+    // token is base64(email:password) — decode it
+    try {
+      const decoded = Buffer.from(token, 'base64').toString('utf-8');
+      const colonIdx = decoded.indexOf(':');
+      if (colonIdx !== -1) {
+        this.email = decoded.slice(0, colonIdx);
+        this.password = decoded.slice(colonIdx + 1);
+      }
+    } catch {
+      // If it's not base64, treat as a raw credential string (backward compat)
+      this.email = null;
+      this.password = null;
     }
-    return this.accessToken;
   }
 
-  /**
-   * Search emails using natural language query
-   * 
-   * Example:
-   * - "show me emails with birthday from niti in my primary inbox"
-   * - "unread emails from john with attachments"
-   * - "emails about project from last week"
-   */
+  setCredentials(email: string, password: string) {
+    this.email = email;
+    this.password = password;
+  }
+
+  private getCredentials(): { email: string; password: string } {
+    if (!this.email || !this.password) {
+      throw new Error('IMAP credentials not set. Call setCredentials() first.');
+    }
+    return { email: this.email, password: this.password };
+  }
+
   async search(naturalLanguageQuery: string, maxResults: number = 30): Promise<IntelligentSearchResult> {
     console.log('[INTELLIGENT SEARCH] Processing query:', naturalLanguageQuery);
 
-    // Get the Gmail Search Agent
     const agent = mastra.getAgent('gmailSearchAgent');
 
-    // Use the agent to generate the Gmail query
     const agentResponse = await agent.generate(
-      `Convert this natural language search request into a Gmail API query string. 
-      
+      `Convert this natural language search request into a Gmail API query string.
+
 User request: "${naturalLanguageQuery}"
 
 Return ONLY a JSON object with this exact structure:
@@ -92,7 +104,6 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       }
     );
 
-    // Parse the agent's response
     let searchConfig: {
       query: string;
       labelIds?: string[];
@@ -101,20 +112,18 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
     };
 
     try {
-      // Try to parse JSON from the response
       const responseText = agentResponse.text || agentResponse.toString();
-      // Extract JSON if it's wrapped in markdown code blocks
-      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
-                        responseText.match(/```\s*([\s\S]*?)\s*```/) ||
-                        [null, responseText];
+      const jsonMatch =
+        responseText.match(/```json\s*([\s\S]*?)\s*```/) ||
+        responseText.match(/```\s*([\s\S]*?)\s*```/) ||
+        [null, responseText];
       const jsonStr = jsonMatch[1] || responseText;
       searchConfig = JSON.parse(jsonStr.trim());
     } catch (error) {
       console.error('[INTELLIGENT SEARCH] Failed to parse agent response:', error);
-      console.log('[INTELLIGENT SEARCH] Raw response:', agentResponse);
-      
-      // Fallback: try to extract query from response text
-      const fallbackQuery = this.extractQueryFromText(agentResponse.text || agentResponse.toString());
+      const fallbackQuery = this.extractQueryFromText(
+        agentResponse.text || agentResponse.toString()
+      );
       searchConfig = {
         query: fallbackQuery,
         labelIds: [],
@@ -124,14 +133,14 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
     }
 
     console.log('[INTELLIGENT SEARCH] Generated query:', searchConfig.query);
-    console.log('[INTELLIGENT SEARCH] Label IDs:', searchConfig.labelIds);
 
-    // Execute the search using the Gmail client
+    const { email, password } = this.getCredentials();
     const messages = await this.executeSearch(
       searchConfig.query,
       searchConfig.labelIds || [],
       maxResults,
-      this.getAccessToken()
+      email,
+      password
     );
 
     return {
@@ -143,64 +152,42 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
     };
   }
 
-  /**
-   * Execute the Gmail search with the generated query
-   * Uses Google API client directly (server-side)
-   */
-  private async executeSearch(query: string, labelIds: string[], maxResults: number, accessToken: string): Promise<any[]> {
-    try {
-      // Create OAuth2 client and set credentials
-      const auth = new google.auth.OAuth2();
-      auth.setCredentials({ access_token: accessToken });
+  private async executeSearch(
+    query: string,
+    labelIds: string[],
+    maxResults: number,
+    email: string,
+    password: string
+  ): Promise<any[]> {
+    const labelId = labelIds[0] || 'INBOX';
+    const folderPath = GMAIL_LABEL_TO_IMAP[labelId] ?? 'INBOX';
+    const folderLabel = IMAP_TO_GMAIL_LABEL[folderPath] ?? labelId;
+    const criteria = gmailQueryToImapSearch(query);
 
-      // Create Gmail API client
-      const gmail = google.gmail({ version: 'v1', auth });
+    return withImap(email, password, async (client) => {
+      const lock = await client.getMailboxLock(folderPath, { readonly: true });
+      try {
+        const uids = (await client.search(criteria, { uid: true })) as number[];
+        const recentUids = uids.slice(-maxResults).reverse();
+        if (recentUids.length === 0) return [];
 
-      // First, get the list of message IDs
-      const listResponse = await gmail.users.messages.list({
-        userId: 'me',
-        q: query,
-        labelIds: labelIds.length > 0 ? labelIds : undefined,
-        maxResults,
-      });
-
-      const messageList = listResponse.data.messages || [];
-      console.log('[INTELLIGENT SEARCH] Found messages:', messageList.length);
-
-      if (messageList.length === 0) {
-        return [];
+        const messages: any[] = [];
+        for await (const msg of client.fetch(
+          recentUids,
+          { uid: true, envelope: true, flags: true, internalDate: true },
+          { uid: true }
+        )) {
+          messages.push(
+            buildGmailMetadata(msg.uid, msg.envelope, msg.flags, msg.internalDate, folderPath, folderLabel)
+          );
+        }
+        return messages;
+      } finally {
+        lock.release();
       }
-
-      // Fetch full message details for each message
-      const messages = await Promise.all(
-        messageList.map(async (msg: any) => {
-          try {
-            const fullMessage = await gmail.users.messages.get({
-              userId: 'me',
-              id: msg.id!,
-              format: 'metadata',
-              metadataHeaders: ['From', 'To', 'Subject', 'Date'],
-            });
-            return fullMessage.data;
-          } catch (error) {
-            console.error(`[INTELLIGENT SEARCH] Failed to fetch message ${msg.id}:`, error);
-            return null;
-          }
-        })
-      );
-
-      return messages.filter((m): m is any => m !== null);
-    } catch (error) {
-      console.error('[INTELLIGENT SEARCH] Search execution failed:', error);
-      throw error;
-    }
+    });
   }
 
-  /**
-   * Quick rule-based search without AI agent
-   * Uses regex patterns to extract query components for simple queries
-   * Faster execution (no LLM call)
-   */
   async quickSearch(naturalLanguageQuery: string, maxResults: number = 30): Promise<IntelligentSearchResult> {
     console.log('[INTELLIGENT SEARCH] Quick search for:', naturalLanguageQuery);
 
@@ -210,7 +197,6 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
 
     const query = naturalLanguageQuery.toLowerCase();
 
-    // Extract sender (from:)
     const fromMatch = query.match(/from\s+([\w.@]+)|emails?\s+(?:from|by)\s+([\w.@]+)/i);
     if (fromMatch) {
       const sender = fromMatch[1] || fromMatch[2];
@@ -218,7 +204,6 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       queryParts.push(`from:${sender}`);
     }
 
-    // Extract recipient (to:)
     const toMatch = query.match(/to\s+([\w.@]+)|sent\s+to\s+([\w.@]+)/i);
     if (toMatch) {
       const recipient = toMatch[1] || toMatch[2];
@@ -226,16 +211,18 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       queryParts.push(`to:${recipient}`);
     }
 
-    // Extract subject keywords
-    const subjectMatch = query.match(/(?:about|subject|regarding)\s+["']?([^"']+?)["']?(?:\s+(?:from|in|with|has|is)\s+|\s*$)/i);
+    const subjectMatch = query.match(
+      /(?:about|subject|regarding)\s+["']?([^"']+?)["']?(?:\s+(?:from|in|with|has|is)\s+|\s*$)/i
+    );
     if (subjectMatch) {
       const subject = subjectMatch[1].trim();
       detectedParams.subject = subject;
       queryParts.push(`subject:${subject}`);
     }
 
-    // Extract folder/label
-    const folderMatch = query.match(/in\s+(?:my\s+)?(?:primary\s+)?(inbox|sent|drafts?|spam|trash|important|starred|archive)/i);
+    const folderMatch = query.match(
+      /in\s+(?:my\s+)?(?:primary\s+)?(inbox|sent|drafts?|spam|trash|important|starred|archive)/i
+    );
     if (folderMatch) {
       const folder = folderMatch[1].toLowerCase();
       detectedParams.folder = folder;
@@ -259,36 +246,22 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       }
     }
 
-    // Check for unread status
     if (query.includes('unread')) {
       queryParts.push('is:unread');
       detectedParams.isUnread = true;
     }
 
-    // Check for starred status
     if (query.includes('starred') || query.includes('favorite')) {
       queryParts.push('is:starred');
       detectedParams.isStarred = true;
     }
 
-    // Check for attachments
     const attachmentMatch = query.match(/(?:with|has|have)\s+(?:an?\s+)?attachment|attached/i);
     if (attachmentMatch) {
       queryParts.push('has:attachment');
       detectedParams.hasAttachment = true;
-
-      // Check for specific file types
-      const pdfMatch = query.match(/pdf|\.pdf/i);
-      if (pdfMatch) {
-        queryParts.push('filename:pdf');
-      }
-      const imageMatch = query.match(/image|picture|photo|\.jpg|\.png|\.gif/i);
-      if (imageMatch) {
-        queryParts.push('filename:jpg OR filename:png OR filename:gif');
-      }
     }
 
-    // Extract date ranges
     const lastWeekMatch = query.match(/last\s+week/i);
     if (lastWeekMatch) {
       queryParts.push('newer_than:7d');
@@ -300,34 +273,33 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
       detectedParams.dateRange = 'last 30 days';
     }
 
-    // Extract remaining keywords (not already captured)
     const keywords: string[] = [];
-    const words = query.split(/\s+/);
-    const stopWords = ['emails', 'email', 'from', 'to', 'in', 'my', 'with', 'has', 'have', 'is', 'are', 'the', 'a', 'an', 'about', 'show', 'me', 'search', 'find', 'get', 'all', 'any'];
-    
-    for (const word of words) {
+    const stopWords = [
+      'emails', 'email', 'from', 'to', 'in', 'my', 'with', 'has', 'have', 'is', 'are',
+      'the', 'a', 'an', 'about', 'show', 'me', 'search', 'find', 'get', 'all', 'any',
+    ];
+    for (const word of query.split(/\s+/)) {
       const cleanWord = word.replace(/[^\w]/g, '');
-      if (cleanWord.length > 2 && !stopWords.includes(cleanWord) && !queryParts.some(part => part.includes(cleanWord))) {
+      if (
+        cleanWord.length > 2 &&
+        !stopWords.includes(cleanWord) &&
+        !queryParts.some((p) => p.includes(cleanWord))
+      ) {
         keywords.push(cleanWord);
       }
     }
-    
     if (keywords.length > 0) {
       detectedParams.keywords = keywords;
-      // Add keywords that aren't already in the query
-      const uniqueKeywords = keywords.filter(kw => !queryParts.some(part => part.toLowerCase().includes(kw.toLowerCase())));
-      if (uniqueKeywords.length > 0) {
-        queryParts.push(uniqueKeywords.join(' '));
-      }
+      const uniqueKw = keywords.filter(
+        (kw) => !queryParts.some((p) => p.toLowerCase().includes(kw.toLowerCase()))
+      );
+      if (uniqueKw.length > 0) queryParts.push(uniqueKw.join(' '));
     }
 
-    // Build final query
     const finalQuery = queryParts.join(' ') || naturalLanguageQuery;
 
-    console.log('[INTELLIGENT SEARCH] Quick generated query:', finalQuery);
-
-    // Execute the search
-    const messages = await this.executeSearch(finalQuery, labelIds, maxResults, this.getAccessToken());
+    const { email, password } = this.getCredentials();
+    const messages = await this.executeSearch(finalQuery, labelIds, maxResults, email, password);
 
     return {
       query: finalQuery,
@@ -338,29 +310,21 @@ Return ONLY the JSON object, no markdown, no code blocks.`,
     };
   }
 
-  /**
-   * Fallback method to extract query from plain text response
-   */
   private extractQueryFromText(text: string): string {
-    // Look for patterns like "query: ..." or the query operators
     const queryMatch = text.match(/query[:\s]+([^\n]+)/i);
-    if (queryMatch) {
-      return queryMatch[1].trim();
-    }
+    if (queryMatch) return queryMatch[1].trim();
 
-    // Look for Gmail query operators in the text
-    const operators = ['from:', 'to:', 'subject:', 'in:', 'is:', 'has:', 'filename:', 'after:', 'before:', 'newer_than:', 'older_than:'];
+    const operators = [
+      'from:', 'to:', 'subject:', 'in:', 'is:', 'has:', 'filename:',
+      'after:', 'before:', 'newer_than:', 'older_than:',
+    ];
     for (const op of operators) {
       if (text.includes(op)) {
-        // Extract the part that looks like a query
         const opMatch = text.match(new RegExp(`(?:^|[\\s"'])(${op}[^\\s"'\n]+)`, 'i'));
-        if (opMatch) {
-          return opMatch[1].trim();
-        }
+        if (opMatch) return opMatch[1].trim();
       }
     }
 
-    // Last resort: return the whole text as the query
     return text.trim().substring(0, 200);
   }
 }

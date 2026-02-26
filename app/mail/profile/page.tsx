@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, refreshTokenStandalone } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -395,7 +395,7 @@ function ProfilePageContent() {
         return;
       }
 
-      let response = await fetch('/api/gmail/user-profile', {
+      const response = await fetch('/api/gmail/user-profile', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -408,27 +408,6 @@ function ProfilePageContent() {
           model: selectedModel,
         }),
       });
-
-      // On 401, refresh the access token via login.oath.email and retry once
-      if (response.status === 401) {
-        console.log('[PROFILE] Got 401, attempting token refresh...');
-        const newToken = await refreshTokenStandalone();
-        if (newToken) {
-          console.log('[PROFILE] Token refreshed, retrying...');
-          response = await fetch('/api/gmail/user-profile', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              maxResultsPerCategory,
-              maxPerSender: 20,
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            }),
-          });
-        }
-      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to generate profile' }));

@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type TestAccount = {
   id: string;
   email: string;
-  oauth_token: string;
+  app_password: string;
   created_at: string;
   is_active: boolean;
 };

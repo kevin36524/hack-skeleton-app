@@ -3,15 +3,12 @@
  * Routes all calls through Next.js API proxy
  */
 
-import { refreshTokenStandalone } from '@/lib/auth-context';
-
 let accessToken: string | null = null;
 
 /**
  * Set access token
  */
 export function setAccessToken(token: string) {
-  console.log('[GMAIL CLIENT] Setting new access token:', token ? `${token.substring(0, 20)}...` : 'null');
   accessToken = token;
 }
 
@@ -26,32 +23,11 @@ export function getAccessToken(): string {
 }
 
 /**
- * Check if error is due to insufficient scope/permissions
- */
-export function isInsufficientScopeError(error: any): boolean {
-  // Check for 403 with insufficient permissions
-  if (error.status === 403 || error.message?.includes('403')) {
-    const errorMessage = error.message || '';
-    const errorBody = error.body || '';
-
-    return (
-      errorMessage.toLowerCase().includes('insufficient') ||
-      errorMessage.toLowerCase().includes('permission') ||
-      errorMessage.toLowerCase().includes('scope') ||
-      errorBody.includes('PERMISSION_DENIED') ||
-      errorBody.includes('insufficient authentication scopes')
-    );
-  }
-  return false;
-}
-
-/**
- * Make authenticated request to our API proxy with automatic 401 retry
+ * Make authenticated request to our API proxy
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
-  isRetry: boolean = false
+  options: RequestInit = {}
 ): Promise<T> {
   const token = getAccessToken();
 
@@ -64,45 +40,14 @@ async function apiRequest<T>(
     },
   });
 
-  // Handle 401 Unauthorized with automatic token refresh and retry
-  if (response.status === 401 && !isRetry) {
-    console.log('[GMAIL CLIENT] Got 401, attempting token refresh and retry...');
-
-    try {
-      const newToken = await refreshTokenStandalone();
-      if (newToken) {
-        console.log('[GMAIL CLIENT] Token refreshed, retrying request...');
-        setAccessToken(newToken);
-        // Retry the request once with the new token
-        return apiRequest<T>(endpoint, options, true);
-      }
-    } catch (refreshError) {
-      console.error('[GMAIL CLIENT] Token refresh failed:', refreshError);
-    }
-
-    // If refresh fails or no new token, fall through to error handling
-  }
-
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     console.error('API Error:', response.status, errorData);
 
-    // Create detailed error object
     const error: any = new Error(errorData.error || errorData.message || `API Error: ${response.status}`);
     error.status = response.status;
     error.statusText = response.statusText;
     error.body = errorData;
-
-    // Special handling for 403 errors (insufficient scope)
-    if (response.status === 403) {
-      console.warn('[GMAIL CLIENT] 403 Forbidden - may require additional OAuth scopes');
-
-      // Check if it's a scope error
-      if (isInsufficientScopeError(error)) {
-        console.error('[GMAIL CLIENT] Insufficient scope detected. User needs to grant additional permissions.');
-        error.needsScopeUpgrade = true;
-      }
-    }
 
     throw error;
   }
@@ -164,14 +109,11 @@ export const gmail = {
 
       /**
        * Intelligent search using natural language
-       * Converts natural language queries into Gmail API queries using AI
-       * 
-       * Example: "emails from niti about birthday in inbox"
        */
-      intelligentSearch: async (params: { 
-        query: string; 
-        maxResults?: number; 
-        useAgent?: boolean 
+      intelligentSearch: async (params: {
+        query: string;
+        maxResults?: number;
+        useAgent?: boolean
       }) => {
         const { query, maxResults = 30, useAgent = true } = params;
         return apiRequest<{

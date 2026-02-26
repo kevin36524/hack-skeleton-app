@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { getImapCredentials } from '@/lib/imap/client';
 import { mastra } from '@/src/mastra';
 import { 
   profileStreamCallbacks, 
@@ -13,7 +13,7 @@ function summarizeInput(stepId: string, input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
   const d = { ...(input as Record<string, unknown>) };
 
-  if ('accessToken' in d) d.accessToken = '[redacted]';
+  if ('appPassword' in d) d.appPassword = '[redacted]';
 
   switch (stepId) {
     case 'fetch-all-categories':
@@ -23,7 +23,7 @@ function summarizeInput(stepId: string, input: unknown): unknown {
       return {
         totalFetched: d.totalFetched,
         categoryBreakdown: Array.isArray(d.results)
-          ? d.results.map((r: any) => ({ category: r.category, count: r.messageIds?.length ?? 0 }))
+          ? d.results.map((r: any) => ({ category: r.category, count: r.messages?.length ?? 0 }))
           : d.results,
       };
 
@@ -31,9 +31,9 @@ function summarizeInput(stepId: string, input: unknown): unknown {
       return {
         totalUnique: d.totalUnique,
         categoryCounts: d.categoryCounts,
-        annotatedMessages: Array.isArray(d.annotatedMessages)
-          ? `[${d.annotatedMessages.length} messages]`
-          : d.annotatedMessages,
+        emailsWithMetadata: Array.isArray(d.emailsWithMetadata)
+          ? `[${d.emailsWithMetadata.length} messages]`
+          : d.emailsWithMetadata,
       };
 
     case 'generate-profile':
@@ -60,7 +60,7 @@ function summarizeOutput(stepId: string, output: unknown): unknown {
       return {
         totalFetched: d.totalFetched,
         categoryBreakdown: Array.isArray(d.results)
-          ? d.results.map((r: any) => ({ category: r.category, count: r.messageIds?.length ?? 0 }))
+          ? d.results.map((r: any) => ({ category: r.category, count: r.messages?.length ?? 0 }))
           : d.results,
       };
 
@@ -68,9 +68,9 @@ function summarizeOutput(stepId: string, output: unknown): unknown {
       return {
         totalUnique: d.totalUnique,
         categoryCounts: d.categoryCounts,
-        annotatedMessages: Array.isArray(d.annotatedMessages)
-          ? `[${d.annotatedMessages.length} messages deduplicated]`
-          : d.annotatedMessages,
+        emailsWithMetadata: Array.isArray(d.emailsWithMetadata)
+          ? `[${d.emailsWithMetadata.length} messages deduplicated]`
+          : d.emailsWithMetadata,
       };
 
     case 'fetch-all-metadata': {
@@ -107,18 +107,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-
-    let emailAddress = 'unknown';
-    try {
-      const auth = new google.auth.OAuth2();
-      auth.setCredentials({ access_token: token });
-      const gmail = google.gmail({ version: 'v1', auth });
-      const profile = await gmail.users.getProfile({ userId: 'me' });
-      emailAddress = profile.data.emailAddress || 'unknown';
-    } catch (e) {
-      console.warn('[USER PROFILE] Could not fetch email address:', e);
-    }
+    const { email, password } = getImapCredentials(authHeader);
+    const emailAddress = email;
 
     const body = await request.json().catch(() => ({}));
     const maxResultsPerCategory = body.maxResultsPerCategory || 20;
@@ -139,7 +129,8 @@ export async function POST(request: NextRequest) {
 
     const streamOutput = run.stream({
       inputData: {
-        accessToken: token,
+        email,
+        appPassword: password,
         maxResultsPerCategory,
         maxPerSender,
         emailAddress,

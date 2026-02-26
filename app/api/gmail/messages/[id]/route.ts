@@ -1,5 +1,13 @@
-import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  getImapCredentials,
+  withImap,
+  decodeMessageId,
+  IMAP_TO_GMAIL_LABEL,
+  buildGmailMetadata,
+  buildGmailFull,
+  parseEmailSource,
+} from '@/lib/imap/client';
 
 export async function GET(
   request: NextRequest,
@@ -11,25 +19,51 @@ export async function GET(
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const { email, password } = getImapCredentials(authHeader);
     const { id } = await params;
 
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'full';
-    const metadataHeaders = searchParams.getAll('metadataHeaders');
 
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: token });
+    const { folder, uid } = decodeMessageId(id);
+    if (!uid) {
+      return NextResponse.json({ error: 'Invalid message ID' }, { status: 400 });
+    }
 
-    const gmail = google.gmail({ version: 'v1', auth });
-    const response = await gmail.users.messages.get({
-      userId: 'me',
-      id,
-      format: format as any,
-      metadataHeaders: metadataHeaders.length > 0 ? metadataHeaders : undefined,
+    const folderLabel = IMAP_TO_GMAIL_LABEL[folder] ?? folder.toUpperCase();
+
+    const message = await withImap(email, password, async (client) => {
+      const lock = await client.getMailboxLock(folder, { readonly: true });
+      try {
+        const fetchOptions: any = {
+          uid: true,
+          envelope: true,
+          flags: true,
+          internalDate: true,
+        };
+        if (format === 'full') {
+          fetchOptions.source = true;
+        }
+
+        const msg = await client.fetchOne(uid.toString(), fetchOptions, { uid: true });
+        if (!msg) return null;
+
+        if (format === 'full' && msg.source) {
+          const parsed = parseEmailSource(msg.source);
+          return buildGmailFull(msg.uid, msg.envelope, msg.flags, msg.internalDate, folder, folderLabel, parsed);
+        }
+
+        return buildGmailMetadata(msg.uid, msg.envelope, msg.flags, msg.internalDate, folder, folderLabel);
+      } finally {
+        lock.release();
+      }
     });
 
-    return NextResponse.json(response.data);
+    if (!message) {
+      return NextResponse.json({ error: 'Message not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(message);
   } catch (error: any) {
     console.error('Message detail API error:', error);
     return NextResponse.json(

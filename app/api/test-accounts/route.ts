@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('test_accounts')
-      .select('id, email, oauth_token, created_at, is_active')
+      .select('id, email, app_password, created_at, is_active')
       .eq('is_active', true)
       .order('created_at', { ascending: true });
 

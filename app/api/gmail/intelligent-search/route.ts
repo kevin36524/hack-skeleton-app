@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { intelligentSearchService } from '@/lib/services/intelligent-search-service';
+import { getImapCredentials } from '@/lib/imap/client';
 
 /**
  * POST /api/gmail/intelligent-search
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
+    const { email, password } = getImapCredentials(authHeader);
+
     const body = await request.json();
     const { query, maxResults = 30, useAgent = true } = body;
 
@@ -44,8 +45,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Intelligent search request:', query);
 
-    // Set the access token for the Gmail client
-    intelligentSearchService.setAccessToken(token);
+    intelligentSearchService.setCredentials(email, password);
 
     // Perform the intelligent search
     let result;
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const { email, password } = getImapCredentials(authHeader);
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
@@ -96,8 +96,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[API] Intelligent search GET request:', query);
 
-    // Set the access token for the Gmail client
-    intelligentSearchService.setAccessToken(token);
+    intelligentSearchService.setCredentials(email, password);
 
     // Perform the intelligent search
     let result;

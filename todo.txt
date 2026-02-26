@@ -1,0 +1,8 @@
+Make the prompt of the profile  to get the important emails and make it 
+You are just looking at these emails senders and subjects and creating instructions on which emails belong to which groups
+like should they be in read now should they be in worthy reads or should they be noisy emails
+You are just looking at senders and subjects to identify the instructions to be given to an assistant later.
+
+Make the digest to split the messages into Read now, worth a read and noisy emails.
+
+

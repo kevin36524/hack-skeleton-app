@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, refreshTokenStandalone } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -399,7 +399,7 @@ function SummaryPageContent() {
         return;
       }
 
-      let response = await fetch('/api/gmail/summary', {
+      const response = await fetch('/api/gmail/summary', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -412,28 +412,6 @@ function SummaryPageContent() {
           userProfile,
         }),
       });
-
-      // On 401, refresh the access token via login.oath.email and retry once
-      if (response.status === 401) {
-        console.log('[SUMMARY] Got 401, attempting token refresh...');
-        const newToken = await refreshTokenStandalone();
-        if (newToken) {
-          console.log('[SUMMARY] Token refreshed, retrying...');
-          response = await fetch('/api/gmail/summary', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              maxResults,
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              model: selectedModel,
-              userProfile,
-            }),
-          });
-        }
-      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to generate summary' }));

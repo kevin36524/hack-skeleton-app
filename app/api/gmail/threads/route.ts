@@ -1,5 +1,13 @@
-import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  getImapCredentials,
+  withImap,
+  GMAIL_LABEL_TO_IMAP,
+  IMAP_TO_GMAIL_LABEL,
+  encodeMessageId,
+  gmailQueryToImapSearch,
+  buildGmailMetadata,
+} from '@/lib/imap/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,23 +16,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const { email, password } = getImapCredentials(authHeader);
 
     const { searchParams } = new URL(request.url);
-    const labelIds = searchParams.get('labelIds')?.split(',');
+    const labelIds = searchParams.get('labelIds')?.split(',') || ['INBOX'];
     const maxResults = parseInt(searchParams.get('maxResults') || '30');
 
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: token });
+    const labelId = labelIds[0] || 'INBOX';
+    const folderPath = GMAIL_LABEL_TO_IMAP[labelId] ?? 'INBOX';
+    const folderLabel = IMAP_TO_GMAIL_LABEL[folderPath] ?? labelId;
 
-    const gmail = google.gmail({ version: 'v1', auth });
-    const response = await gmail.users.threads.list({
-      userId: 'me',
-      labelIds,
-      maxResults,
+    const threads = await withImap(email, password, async (client) => {
+      const lock = await client.getMailboxLock(folderPath, { readonly: true });
+      try {
+        const uids = (await client.search({ all: true }, { uid: true })) as number[];
+        const recentUids = uids.slice(-maxResults).reverse();
+        if (recentUids.length === 0) return [];
+
+        const result: Array<{ id: string; snippet: string; historyId: string }> = [];
+        for await (const msg of client.fetch(
+          recentUids,
+          { uid: true, envelope: true, flags: true, internalDate: true },
+          { uid: true }
+        )) {
+          const encodedId = encodeMessageId(folderPath, msg.uid);
+          result.push({
+            id: encodedId,
+            snippet: msg.envelope?.subject || '',
+            historyId: msg.uid.toString(),
+          });
+        }
+        return result;
+      } finally {
+        lock.release();
+      }
     });
 
-    return NextResponse.json(response.data);
+    return NextResponse.json({ threads, resultSizeEstimate: threads.length });
   } catch (error: any) {
     console.error('Threads API error:', error);
     return NextResponse.json(

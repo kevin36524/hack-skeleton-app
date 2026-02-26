@@ -1,5 +1,5 @@
-import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { getImapCredentials, withImap } from '@/lib/imap/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,15 +8,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const { email, password } = getImapCredentials(authHeader);
 
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: token });
+    const profile = await withImap(email, password, async (client) => {
+      // Open INBOX to get message count
+      const status = await client.status('INBOX', { messages: true, unseen: true });
+      return {
+        emailAddress: email,
+        messagesTotal: status.messages ?? 0,
+        threadsTotal: status.messages ?? 0,
+        historyId: '0',
+      };
+    });
 
-    const gmail = google.gmail({ version: 'v1', auth });
-    const response = await gmail.users.getProfile({ userId: 'me' });
-
-    return NextResponse.json(response.data);
+    return NextResponse.json(profile);
   } catch (error: any) {
     console.error('Profile API error:', error);
     return NextResponse.json(
