@@ -11,6 +11,7 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
+  ChevronsRight,
   ChevronDown,
   Mail,
   Eye,
@@ -163,67 +164,60 @@ function StepIndicator({
 
 // ── Section Card Components ───────────────────────────────────────────────────
 
-function SectionHeader({
-  title,
-  count,
-  icon: Icon,
-  colorClass,
+const AVATAR_COLORS = [
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-pink-500',
+  'bg-teal-500',
+  'bg-red-500',
+  'bg-amber-500',
+];
+
+const SUBSECTION_DESCRIPTIONS: Record<string, string> = {
+  newsletters: 'Here are the latest newsletter updates',
+  transactions: 'Here are your recent transactions',
+  social: 'Your social media updates',
+  updates: 'Your recent updates',
+  promotions: 'Your promotional emails',
+  forums: 'Your forum updates',
+};
+
+function SimpleEmailItem({
+  email,
+  onEmailSelected,
+  isLast,
 }: {
-  title: string;
-  count: number;
-  icon: React.ElementType;
-  colorClass: string;
+  email: ClassifiedEmail;
+  onEmailSelected?: (email: ClassifiedEmail) => void;
+  isLast?: boolean;
 }) {
+  const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", colorClass)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{count} emails</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className={cn(
-          "text-lg font-bold",
-          colorClass.replace('bg-', 'text-').replace('/10', '')
-        )}>
-          {count}
-        </span>
-        <ChevronDown className="h-5 w-5 text-gray-400" />
-      </div>
+    <div
+      className={cn(
+        'py-3 cursor-pointer',
+        !isLast && 'border-b border-gray-100 dark:border-gray-700'
+      )}
+      onClick={() => onEmailSelected?.(email)}
+    >
+      <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{senderName}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{email.subject}</p>
     </div>
   );
 }
 
-function EmailItem({ email, onEmailSelected }: { email: ClassifiedEmail; onEmailSelected?: (email: ClassifiedEmail) => void }) {
-  // Extract sender name from "Name <email>" format
-  const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
-  const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
-
-  // Get initials for avatar
-  const initials = senderName
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
+function MarkAsDoneButton({ onClick }: { onClick: () => void }) {
   return (
-    <div
-      className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg px-2 -mx-2 transition-colors"
-      onClick={() => onEmailSelected?.(email)}
+    <button
+      onClick={onClick}
+      className="w-full mt-4 py-2.5 px-4 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium text-sm hover:border-purple-400 hover:text-purple-600 dark:hover:border-purple-500 dark:hover:text-purple-400 transition-colors flex items-center justify-center gap-2"
     >
-      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
-        {initials}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{senderName}</p>
-        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{email.subject}</p>
-      </div>
-    </div>
+      Mark as done
+      <ChevronsRight className="h-4 w-4" />
+    </button>
   );
 }
 
@@ -237,52 +231,75 @@ function SubsectionGroup({
   onEmailSelected?: (email: ClassifiedEmail) => void;
 }) {
   const [isOpen, setIsOpen] = useState(true);
-  
-  // Get unique sender initials for the avatar stack
-  const uniqueSenders = [...new Set(emails.map(e => e.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || e.from))].slice(0, 4);
+  const [done, setDone] = useState(false);
+
+  if (done) return null;
+
+  // Get unique sender names for avatar row
+  const uniqueSenders = [...new Map(
+    emails.map(e => {
+      const name = e.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || e.from;
+      return [name, name] as [string, string];
+    })
+  ).values()].slice(0, 4);
+
+  const description = SUBSECTION_DESCRIPTIONS[subsection.toLowerCase()] || `Your ${subsection} emails`;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="w-full">
-        <div className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg px-2 -mx-2 transition-colors">
-          <div className="flex items-center gap-3">
-            {/* Avatar stack */}
-            <div className="flex -space-x-2">
-              {uniqueSenders.map((sender, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-medium text-white",
-                    i === 0 && "bg-blue-500",
-                    i === 1 && "bg-green-500",
-                    i === 2 && "bg-purple-500",
-                    i === 3 && "bg-orange-500"
-                  )}
-                >
-                  {sender.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 1)}
-                </div>
-              ))}
+      <div className="flex items-center justify-between">
+        <div className="flex -space-x-2">
+          {uniqueSenders.map((sender, i) => (
+            <div
+              key={i}
+              className={cn(
+                'w-9 h-9 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-bold text-white',
+                AVATAR_COLORS[i % AVATAR_COLORS.length]
+              )}
+            >
+              {sender.charAt(0).toUpperCase()}
             </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900 dark:text-gray-100 capitalize">{subsection}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{emails.length} emails</p>
-            </div>
-          </div>
-          <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", isOpen && "rotate-180")} />
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="pl-4 mt-2">
-          {emails.map((email) => (
-            <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
           ))}
         </div>
+        <CollapsibleTrigger>
+          <ChevronDown
+            className={cn(
+              'h-5 w-5 text-gray-400 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
+        </CollapsibleTrigger>
+      </div>
+
+      <div className="mt-3 mb-1">
+        <h4 className="font-bold text-lg text-gray-900 dark:text-gray-100 capitalize">{subsection}</h4>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+      </div>
+
+      <CollapsibleContent>
+        <div className="mt-2 border-t border-dashed border-gray-300 dark:border-gray-600 pt-1">
+          {emails.map((email, index) => (
+            <SimpleEmailItem
+              key={email.id}
+              email={email}
+              onEmailSelected={onEmailSelected}
+              isLast={true}
+            />
+          ))}
+        </div>
+        <MarkAsDoneButton onClick={() => setDone(true)} />
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-function ReadNowSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
+function ReadNowSection({
+  emails,
+  onEmailSelected,
+}: {
+  emails: ClassifiedEmail[];
+  onEmailSelected?: (email: ClassifiedEmail) => void;
+}) {
   const [isOpen, setIsOpen] = useState(true);
   const [done, setDone] = useState(false);
 
@@ -292,34 +309,51 @@ function ReadNowSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="w-full">
-          <SectionHeader
-            title="Read now"
-            count={emails.length}
-            icon={Mail}
-            colorClass="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-          />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Read now</h3>
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">
+                {emails.length}
+              </span>
+            </div>
+            <ChevronDown
+              className={cn(
+                'h-5 w-5 text-gray-400 transition-transform duration-200',
+                isOpen && 'rotate-180'
+              )}
+            />
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-4 space-y-1">
-            {emails.map((email) => (
-              <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
+          <div className="mt-4">
+            {emails.map((email, index) => (
+              <SimpleEmailItem
+                key={email.id}
+                email={email}
+                onEmailSelected={onEmailSelected}
+                isLast={index === emails.length - 1}
+              />
             ))}
           </div>
+          <MarkAsDoneButton
+            onClick={() => {
+              console.log('[ReadNow] Mark as done tapped');
+              setDone(true);
+            }}
+          />
         </CollapsibleContent>
       </Collapsible>
-      {isOpen && (
-        <button onClick={() => { console.log('[ReadNow] Mark as done tapped'); setDone(true); }} className="w-full mt-4 py-2.5 px-4 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2">
-          Mark as done
-          <Check className="h-4 w-4" />
-        </button>
-      )}
     </div>
   );
 }
 
-function WorthAGlanceSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
-  const [isOpen, setIsOpen] = useState(true);
-
+function WorthAGlanceSection({
+  emails,
+  onEmailSelected,
+}: {
+  emails: ClassifiedEmail[];
+  onEmailSelected?: (email: ClassifiedEmail) => void;
+}) {
   if (emails.length === 0) return null;
 
   // Group by subsection
@@ -332,33 +366,34 @@ function WorthAGlanceSection({ emails, onEmailSelected }: { emails: ClassifiedEm
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger className="w-full">
-          <SectionHeader
-            title="Worth a glance"
-            count={emails.length}
-            icon={Eye}
-            colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+      <div className="flex items-center gap-2">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Worth a glance</h3>
+        <span className="min-w-6 h-6 px-1.5 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center">
+          {emails.length}
+        </span>
+      </div>
+      <div className="border-b border-gray-200 dark:border-gray-700 mt-3 mb-4" />
+      <div className="space-y-6">
+        {Object.entries(grouped).map(([subsection, subsectionEmails]) => (
+          <SubsectionGroup
+            key={subsection}
+            subsection={subsection}
+            emails={subsectionEmails}
+            onEmailSelected={onEmailSelected}
           />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-4 space-y-2">
-            {Object.entries(grouped).map(([subsection, subsectionEmails]) => (
-              <SubsectionGroup
-                key={subsection}
-                subsection={subsection}
-                emails={subsectionEmails}
-                onEmailSelected={onEmailSelected}
-              />
-            ))}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+        ))}
+      </div>
     </div>
   );
 }
 
-function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
+function LowPrioritySection({
+  emails,
+  onEmailSelected,
+}: {
+  emails: ClassifiedEmail[];
+  onEmailSelected?: (email: ClassifiedEmail) => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -372,13 +407,13 @@ function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEma
   const senders = Object.values(senderMap);
 
   const [selectedSenders, setSelectedSenders] = useState<Set<string>>(
-    () => new Set(senders.map(s => s.email))
+    () => new Set(senders.map((s) => s.email))
   );
 
   const allSelected = senders.length > 0 && selectedSenders.size === senders.length;
 
   const toggleSender = (email: string) => {
-    setSelectedSenders(prev => {
+    setSelectedSenders((prev) => {
       const next = new Set(prev);
       if (next.has(email)) next.delete(email);
       else next.add(email);
@@ -388,7 +423,7 @@ function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEma
 
   const toggleAll = () => {
     if (allSelected) setSelectedSenders(new Set());
-    else setSelectedSenders(new Set(senders.map(s => s.email)));
+    else setSelectedSenders(new Set(senders.map((s) => s.email)));
   };
 
   if (emails.length === 0 || done) return null;
@@ -397,37 +432,38 @@ function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEma
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="w-full">
-          {/* Mobile header */}
-          <div className="flex items-center justify-between md:hidden">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">Low priority</span>
-              <span className="min-w-6 h-6 px-1 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Low priority</h3>
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center">
                 {emails.length}
               </span>
             </div>
-            <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform duration-200", isOpen && "rotate-180")} />
-          </div>
-          {/* Desktop header */}
-          <div className="hidden md:block">
-            <SectionHeader
-              title="Low priority"
-              count={emails.length}
-              icon={Archive}
-              colorClass="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+            <ChevronDown
+              className={cn(
+                'h-5 w-5 text-gray-400 transition-transform duration-200',
+                isOpen && 'rotate-180'
+              )}
             />
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          {/* Mobile: 2-column sender grid */}
-          <div className="mt-4 md:hidden">
+          <div className="mt-4">
             <button
               className="flex items-center gap-2 mb-4"
-              onClick={(e) => { e.stopPropagation(); toggleAll(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleAll();
+              }}
             >
-              <div className={cn(
-                "w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors",
-                allSelected ? "bg-violet-600" : "border-2 border-gray-300 dark:border-gray-600"
-              )}>
+              <div
+                className={cn(
+                  'w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors',
+                  allSelected
+                    ? 'bg-violet-600'
+                    : 'border-2 border-gray-300 dark:border-gray-600'
+                )}
+              >
                 {allSelected && <Check className="h-3.5 w-3.5 text-white" />}
               </div>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -445,7 +481,9 @@ function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEma
                     className="flex items-center gap-2 px-3 py-2.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-left"
                   >
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      {isSelected && <Check className="h-4 w-4 text-gray-500 dark:text-gray-300" />}
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-gray-500 dark:text-gray-300" />
+                      )}
                     </div>
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
                       {sender.name}
@@ -462,13 +500,6 @@ function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEma
             >
               Delete all
             </button>
-          </div>
-
-          {/* Desktop: regular email list */}
-          <div className="hidden md:block mt-4 space-y-1">
-            {emails.map((email) => (
-              <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
-            ))}
           </div>
         </CollapsibleContent>
       </Collapsible>
