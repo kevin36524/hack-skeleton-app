@@ -60,10 +60,19 @@ interface GenerationStep {
   output?: unknown;
 }
 
-const INITIAL_STEPS: GenerationStep[] = [
+const PROFILE_STEPS: GenerationStep[] = [
+  { id: 'fetch-all-categories', label: 'Fetching email categories', status: 'pending' },
+  { id: 'deduplicate-and-annotate', label: 'Deduplicating emails', status: 'pending' },
+  { id: 'fetch-all-metadata', label: 'Processing metadata', status: 'pending' },
+  { id: 'generate-profile', label: 'Building your profile', status: 'pending' },
+];
+
+const SUMMARY_STEPS: GenerationStep[] = [
   { id: 'fetch-inbox-emails', label: 'Fetching inbox emails', status: 'pending' },
   { id: 'generate-summary', label: 'Generating summary', status: 'pending' },
 ];
+
+const INITIAL_STEPS = SUMMARY_STEPS;
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -384,11 +393,12 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
   const [generating, setGenerating] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [maxResults, setMaxResults] = useState(50);
-  const [selectedModel, setSelectedModel] = useState<'gemini-flash-lite' | 'groq' | 'kimi'>('gemini-flash-lite');
+  const [selectedModel, setSelectedModel] = useState<'gemini-flash' | 'gemini-flash-lite' | 'groq' | 'kimi'>('gemini-flash');
   const [costPerMInput, setCostPerMInput] = useState(0.10);
   const [costPerMOutput, setCostPerMOutput] = useState(0.40);
 
-  const MODEL_PRICING: Record<'gemini-flash-lite' | 'groq' | 'kimi', { input: number; output: number }> = {
+  const MODEL_PRICING: Record<'gemini-flash' | 'gemini-flash-lite' | 'groq' | 'kimi', { input: number; output: number }> = {
+    'gemini-flash': { input: 0.30, output: 2.50 },
     'gemini-flash-lite': { input: 0.10, output: 0.40 },
     'groq': { input: 0.15, output: 0.60 },
     'kimi': { input: 0.60, output: 2.50 },
@@ -417,12 +427,23 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
       console.error('[SUMMARY] Error loading from localStorage:', e);
     }
     if (!summaryData) {
-      generateSummary();
+      // Pass profile read directly from storage to avoid state race condition
+      let cachedProfile = '';
+      try {
+        const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (storedProfile) {
+          cachedProfile = JSON.parse(storedProfile)?.profile || '';
+        }
+      } catch (e) { /* ignore */ }
+      generateSummary(cachedProfile);
     }
   }, []);
 
-  const resetSteps = () => {
-    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending' as StepStatus })));
+  const resetSteps = (includeProfile = false) => {
+    const base = includeProfile
+      ? [...PROFILE_STEPS, ...SUMMARY_STEPS]
+      : SUMMARY_STEPS;
+    setSteps(base.map((s) => ({ ...s, status: 'pending' as StepStatus })));
     setExpandedSteps(new Set());
     setStreamingText('');
   };
@@ -448,6 +469,16 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
     } else if (eventType === 'step-error') {
       const { stepId } = data ?? {};
       if (stepId) updateStep(stepId, { status: 'error' });
+    } else if (eventType === 'profile-complete') {
+      const { profile } = data ?? {};
+      if (profile) {
+        setUserProfile(profile);
+        try {
+          localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({ profile }));
+        } catch (e) {
+          console.error('[SUMMARY] Error saving profile to localStorage:', e);
+        }
+      }
     } else if (eventType === 'summary-chunk') {
       const { token } = data ?? {};
       if (token) setStreamingText((prev) => prev + token);
@@ -462,7 +493,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
           stats: result.stats,
           usage: result.usage,
         };
-        setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'done' as StepStatus })));
+        setSteps((prev) => prev.map((s) => ({ ...s, status: 'done' as StepStatus })));
         setSummary(summaryData);
         try {
           localStorage.setItem(SUMMARY_STORAGE_KEY, JSON.stringify(summaryData));
@@ -474,10 +505,25 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
     }
   };
 
-  const generateSummary = async () => {
+  const generateSummary = async (profileOverride?: string) => {
     setGenerating(true);
     setError(null);
-    resetSteps();
+
+    // Resolve the profile to send: use override (from mount-time localStorage read),
+    // or current state, or read fresh from localStorage to avoid state race conditions
+    let currentProfile = profileOverride !== undefined ? profileOverride : userProfile;
+    if (!currentProfile) {
+      try {
+        const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (storedProfile) {
+          currentProfile = JSON.parse(storedProfile)?.profile || '';
+          if (currentProfile) setUserProfile(currentProfile);
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    const needsProfile = !currentProfile;
+    resetSteps(needsProfile);
 
     try {
       const token = await getValidAccessToken();
@@ -498,7 +544,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
           maxResults,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           model: selectedModel,
-          userProfile,
+          userProfile: currentProfile,
         }),
       });
 
@@ -592,7 +638,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
               </div>
             )}
             <Button
-              onClick={generateSummary}
+              onClick={() => generateSummary()}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               <FileText className="h-4 w-4 mr-2" />
@@ -703,7 +749,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={generateSummary}
+                onClick={() => generateSummary()}
                 className="flex items-center space-x-2"
               >
                 <RefreshCw className="h-4 w-4" />

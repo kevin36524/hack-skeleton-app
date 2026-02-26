@@ -401,7 +401,7 @@ export const generateSummaryWorkflow = createWorkflow({
     currentDate: z.string().optional(),
     timezone: z.string().optional(),
     streamId: z.string().optional(),
-    model: z.enum(['gemini-flash-lite', 'groq', 'kimi']).default('gemini-flash-lite'),
+    model: z.enum(['gemini-flash', 'gemini-flash-lite', 'groq', 'kimi']).default('gemini-flash'),
   }),
   outputSchema: summaryOutputSchema,
 })

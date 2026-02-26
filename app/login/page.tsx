@@ -12,16 +12,16 @@ import Image from 'next/image';
 
 const PROVIDERS: { id: MailProvider; label: string; placeholder: string; domain: string }[] = [
   {
-    id: 'gmail',
-    label: 'Google',
-    placeholder: 'you@gmail.com',
-    domain: 'gmail.com',
-  },
-  {
     id: 'yahoo',
     label: 'Yahoo',
     placeholder: 'you@yahoo.com',
     domain: 'yahoo.com',
+  },
+  {
+    id: 'gmail',
+    label: 'Google',
+    placeholder: 'you@gmail.com',
+    domain: 'gmail.com',
   },
 ];
 
@@ -47,7 +47,7 @@ const APP_PASSWORD_INSTRUCTIONS: Record<MailProvider, { title: string; steps: st
 };
 
 function LoginForm() {
-  const [provider, setProvider] = useState<MailProvider>('gmail');
+  const [provider, setProvider] = useState<MailProvider>('yahoo');
   const [email, setEmail] = useState('');
   const [appPassword, setAppPassword] = useState('');
   const [error, setError] = useState('');

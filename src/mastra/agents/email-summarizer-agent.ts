@@ -1,6 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import { MastraModelConfig } from "@mastra/core/llm";
 
+const geminiFlashModel = "google/gemini-2.5-flash";
 const geminiFlashLiteModel = "google/gemini-2.5-flash-lite";
 const groqModel = "groq/openai/gpt-oss-120b";
 const kimiModel = {
@@ -20,9 +21,10 @@ export const emailSummarizerAgent = new Agent({
   model: ({ requestContext }) => {
     const modelId = requestContext?.get('model-id') as string | undefined;
     switch (modelId) {
+      case 'gemini-flash-lite': return geminiFlashLiteModel;
       case 'groq': return groqModel;
       case 'kimi': return kimiModel;
-      default: return geminiFlashLiteModel;
+      default: return geminiFlashModel;
     }
   },
   instructions: `You are an email triage assistant. Your job is to help users quickly process their emails by providing a summary and classifying each email into appropriate sections based on the user's profile.

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, User, ScrollText } from 'lucide-react';
+import { Menu, Mail, LogOut, RefreshCw, X, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -84,44 +84,36 @@ export function MobileHeader({
           </div>
         </div>
 
-        <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mb-3">
-          <Button
-            variant={activeTab === 'mail' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onTabChange?.('mail')}
-            className="flex-1 py-1 h-8 text-xs"
-          >
-            <Mail className="h-3 w-3 mr-1" />
-            Mail
-          </Button>
-          <Button
-            variant={activeTab === 'profile' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onTabChange?.('profile')}
-            className="flex-1 py-1 h-8 text-xs"
-          >
-            <User className="h-3 w-3 mr-1" />
-            Profile
-          </Button>
-          <Button
-            variant={activeTab === 'summary' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onTabChange?.('summary')}
-            className="flex-1 py-1 h-8 text-xs"
-          >
-            <ScrollText className="h-3 w-3 mr-1" />
-            Summary
-          </Button>
-        </div>
-
-        <div className="space-y-2">
+        <div className="space-y-2 mb-3">
           <MailboxSelector onMailboxSelected={onMailboxSelected} />
           {mailboxId && (
-            <AccountSwitcher 
-              mailboxId={mailboxId} 
+            <AccountSwitcher
+              mailboxId={mailboxId}
               onAccountSelected={onAccountSelected}
             />
           )}
+        </div>
+
+        <div className="relative flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          {/* Sliding pill indicator */}
+          <div
+            className="absolute top-1 bottom-1 w-1/2 bg-white dark:bg-gray-900 rounded-md shadow-sm transition-transform duration-300 ease-in-out"
+            style={{ transform: `translateX(${['mail', 'summary'].indexOf(activeTab === 'profile' ? 'mail' : activeTab) * 100}%)` }}
+          />
+          <button
+            onClick={() => onTabChange?.('mail')}
+            className="relative z-10 flex-1 flex items-center justify-center py-1 h-8 text-xs font-medium text-gray-700 dark:text-gray-200"
+          >
+            <Mail className="h-3 w-3 mr-1" />
+            Mail
+          </button>
+          <button
+            onClick={() => onTabChange?.('summary')}
+            className="relative z-10 flex-1 flex items-center justify-center py-1 h-8 text-xs font-medium text-gray-700 dark:text-gray-200"
+          >
+            <ScrollText className="h-3 w-3 mr-1" />
+            Summary
+          </button>
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,6 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { ProfileContent } from '@/components/profile-content';
-import { SummaryContent } from '@/components/summary-content';
 import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText, ChevronLeft } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -22,7 +20,16 @@ import { ResizablePanels } from '@/components/ui/resizable-panels';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
+const ProfileContent = lazy(() =>
+  import('@/components/profile-content').then((m) => ({ default: m.ProfileContent }))
+);
+const SummaryContent = lazy(() =>
+  import('@/components/summary-content').then((m) => ({ default: m.SummaryContent }))
+);
+
 type ViewTab = 'mail' | 'profile' | 'summary';
+
+const MOBILE_TAB_ORDER: ViewTab[] = ['mail', 'summary'];
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -37,6 +44,7 @@ function MailPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [activeTab, setActiveTab] = useState<ViewTab>('mail');
+  const [visitedTabs, setVisitedTabs] = useState<Set<ViewTab>>(new Set(['mail']));
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,6 +149,7 @@ function MailPageContent() {
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
     setSummarySelectedMessage(null);
+    setVisitedTabs((prev) => prev.has(tab) ? prev : new Set([...prev, tab]));
   };
 
   const handleSummaryEmailSelected = (email: ClassifiedEmail) => {
@@ -334,14 +343,18 @@ function MailPageContent() {
               </div>
             </aside>
 
-            {/* Mobile Main Content Area */}
-            <div className="flex-1 flex">
-              {activeTab === 'mail' && (
-                <>
+            {/* Mobile Main Content Area — sliding panels */}
+            <div className="flex-1 overflow-hidden relative">
+              <div
+                className="flex h-full transition-transform duration-300 ease-in-out"
+                style={{ transform: `translateX(-${MOBILE_TAB_ORDER.indexOf(activeTab === 'profile' ? 'mail' : activeTab) * 100}%)` }}
+              >
+                {/* Mail Panel */}
+                <div className="w-full flex-shrink-0 flex h-full">
                   {/* Message List */}
                   <div className={`
-                    w-full md:w-96 border-r flex flex-col
-                    ${mobileView === 'list' ? 'block' : 'hidden md:block'}
+                    w-full border-r flex flex-col
+                    ${mobileView === 'list' ? 'flex' : 'hidden'}
                   `}>
                     <div className="p-4 border-b">
                       <h2 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -365,8 +378,7 @@ function MailPageContent() {
                   {/* Message Detail */}
                   <div className={`
                     flex-1 flex flex-col
-                    ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
-                    ${!selectedMessage && 'md:block'}
+                    ${mobileView === 'detail' ? 'flex' : 'hidden'}
                   `}>
                     <div className="p-4 border-b flex justify-between items-center">
                       <h2 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -376,7 +388,6 @@ function MailPageContent() {
                         variant="ghost"
                         size="sm"
                         onClick={handleBackToList}
-                        className="md:hidden"
                       >
                         Back to list
                       </Button>
@@ -388,41 +399,38 @@ function MailPageContent() {
                       />
                     </div>
                   </div>
-                </>
-              )}
-              
-              {activeTab === 'profile' && (
-                <div className="flex-1 overflow-auto">
-                  <ProfileContent />
                 </div>
-              )}
-              
-              {activeTab === 'summary' && (
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {summarySelectedMessage ? (
-                    <>
-                      <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSummarySelectedMessage(null)}
-                          className="flex items-center gap-1 -ml-2"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Summary
-                        </Button>
+
+                {/* Summary Panel */}
+                <div className="w-full flex-shrink-0 flex flex-col h-full overflow-hidden">
+                  {visitedTabs.has('summary') && (
+                    summarySelectedMessage ? (
+                      <>
+                        <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSummarySelectedMessage(null)}
+                            className="flex items-center gap-1 -ml-2"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Summary
+                          </Button>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 overflow-auto">
+                        <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
+                          <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                        </Suspense>
                       </div>
-                      <div className="flex-1 overflow-hidden">
-                        <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 overflow-auto">
-                      <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
-                    </div>
+                    )
                   )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
@@ -490,10 +498,12 @@ function MailPageContent() {
             
             {activeTab === 'profile' && (
               <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-900">
-                <ProfileContent />
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
+                  <ProfileContent />
+                </Suspense>
               </div>
             )}
-            
+
             {activeTab === 'summary' && (
               <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
                 {summarySelectedMessage ? (
@@ -515,7 +525,9 @@ function MailPageContent() {
                   </>
                 ) : (
                   <div className="h-full overflow-auto">
-                    <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
+                      <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                    </Suspense>
                   </div>
                 )}
               </div>

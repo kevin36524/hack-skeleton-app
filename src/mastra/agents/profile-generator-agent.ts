@@ -1,6 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import { MastraModelConfig } from "@mastra/core/llm";
 
+const geminiFlashModel = "google/gemini-2.5-flash";
 const geminiFlashLiteModel = "google/gemini-2.5-flash-lite";
 const groqModel = "groq/openai/gpt-oss-120b";
 const kimiModel = {
@@ -14,7 +15,7 @@ const kimiModel = {
   },
 } as MastraModelConfig;
 
-export const SUPPORTED_MODELS = ['gemini-flash-lite', 'groq', 'kimi'] as const;
+export const SUPPORTED_MODELS = ['gemini-flash', 'gemini-flash-lite', 'groq', 'kimi'] as const;
 export type SupportedModel = typeof SUPPORTED_MODELS[number];
 
 export const profileGeneratorAgent = new Agent({
@@ -23,9 +24,10 @@ export const profileGeneratorAgent = new Agent({
   model: ({ requestContext }) => {
     const modelId = requestContext?.get('model-id') as string | undefined;
     switch (modelId) {
+      case 'gemini-flash-lite': return geminiFlashLiteModel;
       case 'groq': return groqModel;
       case 'kimi': return kimiModel;
-      default: return geminiFlashLiteModel;
+      default: return geminiFlashModel;
     }
   },
   instructions: `You are an email behavior analyst that studies how a user triages their inbox. Your goal is to understand the patterns behind what the user reads, deletes, stars, or ignores based on sender, subject line, and snippet content.
