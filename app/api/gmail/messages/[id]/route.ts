@@ -36,7 +36,7 @@ export async function GET(
     const folderLabel = imapToLabel[folder] ?? folder.toUpperCase();
 
     const message = await withImap(email, password, async (client) => {
-      const lock = await client.getMailboxLock(folder, { readonly: true });
+      const lock = await client.getMailboxLock(folder, { readOnly: true });
       try {
         const fetchOptions: any = {
           uid: true,

@@ -9,6 +9,8 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
+import { ProfileContent } from '@/components/profile-content';
+import { SummaryContent } from '@/components/summary-content';
 import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -17,7 +19,9 @@ import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
+type ViewTab = 'mail' | 'profile' | 'summary';
 
 function MailPageContent() {
   const { logout } = useAuth();
@@ -30,7 +34,7 @@ function MailPageContent() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
-  const [mobileActiveTab, setMobileActiveTab] = useState<'mail' | 'profile' | 'summary'>('mail');
+  const [activeTab, setActiveTab] = useState<ViewTab>('mail');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,6 +136,10 @@ function MailPageContent() {
     }
   };
 
+  const handleTabChange = (tab: ViewTab) => {
+    setActiveTab(tab);
+  };
+
   const isReady = mailboxId;
 
   return (
@@ -147,15 +155,8 @@ function MailPageContent() {
           mailboxId={mailboxId}
           onLogout={handleLogout}
           onRefresh={refreshData}
-          activeTab={mobileActiveTab}
-          onTabChange={(tab) => {
-            setMobileActiveTab(tab);
-            if (tab === 'profile') {
-              router.push('/mail/profile');
-            } else if (tab === 'summary') {
-              router.push('/mail/summary');
-            }
-          }}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
         />
 
         {/* Desktop Header */}
@@ -195,11 +196,29 @@ function MailPageContent() {
                   mailboxId={mailboxId}
                   onAccountSelected={handleAccountSelected}
                 />
+                
+                {/* Tab Navigation Buttons */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => router.push('/mail/profile')}
-                  className="flex items-center space-x-2"
+                  onClick={() => handleTabChange('mail')}
+                  className={cn(
+                    "flex items-center space-x-2",
+                    activeTab === 'mail' && "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                  )}
+                  title="Mail"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span className="hidden lg:inline">Mail</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleTabChange('profile')}
+                  className={cn(
+                    "flex items-center space-x-2",
+                    activeTab === 'profile' && "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
+                  )}
                   title="User Profile"
                 >
                   <User className="h-4 w-4" />
@@ -208,13 +227,17 @@ function MailPageContent() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => router.push('/mail/summary')}
-                  className="flex items-center space-x-2"
+                  onClick={() => handleTabChange('summary')}
+                  className={cn(
+                    "flex items-center space-x-2",
+                    activeTab === 'summary' && "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                  )}
                   title="Inbox Summary"
                 >
                   <ScrollText className="h-4 w-4" />
                   <span className="hidden lg:inline">Summary</span>
                 </Button>
+                
                 <ThemeToggle />
                 <Button
                   variant="ghost"
@@ -287,119 +310,148 @@ function MailPageContent() {
 
             {/* Mobile Main Content Area */}
             <div className="flex-1 flex">
+              {activeTab === 'mail' && (
+                <>
+                  {/* Message List */}
+                  <div className={`
+                    w-full md:w-96 border-r flex flex-col
+                    ${mobileView === 'list' ? 'block' : 'hidden md:block'}
+                  `}>
+                    <div className="p-4 border-b">
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Messages
+                      </h2>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      {isReady ? (
+                        <MessageList
+                          mailboxId={mailboxId}
+                          folderId={folderId}
+                          onMessageSelected={handleMessageSelected}
+                          selectedMessageId={selectedMessage?.id}
+                        />
+                      ) : (
+                        <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Message List */}
-              <div className={`
-                w-full md:w-96 border-r flex flex-col
-                ${mobileView === 'list' ? 'block' : 'hidden md:block'}
-              `}>
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
+                  {/* Message Detail */}
+                  <div className={`
+                    flex-1 flex flex-col
+                    ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
+                    ${!selectedMessage && 'md:block'}
+                  `}>
+                    <div className="p-4 border-b flex justify-between items-center">
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Message Details
+                      </h2>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBackToList}
+                        className="md:hidden"
+                      >
+                        Back to list
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <MessageDetail
+                        message={selectedMessage}
+                        mailboxId={mailboxId}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {activeTab === 'profile' && (
+                <div className="flex-1 overflow-auto">
+                  <ProfileContent />
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  {isReady ? (
-                    <MessageList
-                      mailboxId={mailboxId}
-                      folderId={folderId}
-                      onMessageSelected={handleMessageSelected}
-                      selectedMessageId={selectedMessage?.id}
-                    />
-                  ) : (
-                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
-                  )}
+              )}
+              
+              {activeTab === 'summary' && (
+                <div className="flex-1 overflow-auto">
+                  <SummaryContent />
                 </div>
-              </div>
-
-              {/* Message Detail */}
-              <div className={`
-                flex-1 flex flex-col
-                ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
-                ${!selectedMessage && 'md:block'}
-              `}>
-                <div className="p-4 border-b flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Message Details
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToList}
-                    className="md:hidden"
-                  >
-                    Back to list
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <MessageDetail
-                    message={selectedMessage}
-                    mailboxId={mailboxId}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* Desktop Layout with Resizable Panels */}
           <div className="hidden md:block h-full w-full">
-            <ResizablePanels
-              defaultSizes={panelSizes}
-              minSizes={[15, 20, 30]}
-              onResize={handlePanelResize}
-            >
-              {/* Sidebar Panel */}
-              <aside className="h-full bg-white dark:bg-gray-800 border-r flex flex-col">
-                {isReady ? (
-                  <FolderSidebar
-                    mailboxId={mailboxId}
-                    accountId={accountId}
-                    selectedFolderId={folderId}
-                    onFolderSelected={handleFolderSelected}
-                    isCollapsed={desktopSidebarCollapsed}
-                    onCollapsedChange={setDesktopSidebarCollapsed}
-                  />
-                ) : (
-                  <div className="p-4 text-sm text-gray-500">Loading folders...</div>
-                )}
-              </aside>
-
-              {/* Message List Panel */}
-              <div className="h-full flex flex-col border-r bg-white dark:bg-gray-800">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
-                </div>
-                <div className="flex-1 overflow-hidden">
+            {activeTab === 'mail' && (
+              <ResizablePanels
+                defaultSizes={panelSizes}
+                minSizes={[15, 20, 30]}
+                onResize={handlePanelResize}
+              >
+                {/* Sidebar Panel */}
+                <aside className="h-full bg-white dark:bg-gray-800 border-r flex flex-col">
                   {isReady ? (
-                    <MessageList
+                    <FolderSidebar
                       mailboxId={mailboxId}
-                      folderId={folderId}
-                      onMessageSelected={handleMessageSelected}
-                      selectedMessageId={selectedMessage?.id}
+                      accountId={accountId}
+                      selectedFolderId={folderId}
+                      onFolderSelected={handleFolderSelected}
+                      isCollapsed={desktopSidebarCollapsed}
+                      onCollapsedChange={setDesktopSidebarCollapsed}
                     />
                   ) : (
-                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                    <div className="p-4 text-sm text-gray-500">Loading folders...</div>
                   )}
-                </div>
-              </div>
+                </aside>
 
-              {/* Message Detail Panel */}
-              <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Message Details
-                  </h2>
+                {/* Message List Panel */}
+                <div className="h-full flex flex-col border-r bg-white dark:bg-gray-800">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Messages
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    {isReady ? (
+                      <MessageList
+                        mailboxId={mailboxId}
+                        folderId={folderId}
+                        onMessageSelected={handleMessageSelected}
+                        selectedMessageId={selectedMessage?.id}
+                      />
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <MessageDetail
-                    message={selectedMessage}
-                    mailboxId={mailboxId}
-                  />
+
+                {/* Message Detail Panel */}
+                <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                      Message Details
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <MessageDetail
+                      message={selectedMessage}
+                      mailboxId={mailboxId}
+                    />
+                  </div>
                 </div>
+              </ResizablePanels>
+            )}
+            
+            {activeTab === 'profile' && (
+              <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-900">
+                <ProfileContent />
               </div>
-            </ResizablePanels>
+            )}
+            
+            {activeTab === 'summary' && (
+              <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-900">
+                <SummaryContent />
+              </div>
+            )}
           </div>
         </div>
       </div>
