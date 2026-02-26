@@ -723,10 +723,10 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
   const lowPriorityEmails = summary?.emails.filter(e => e.section === 'low_priority') || [];
 
   return (
-    <div className="h-full max-w-2xl mx-auto px-4 py-6">
+    <div className="min-h-full max-w-2xl mx-auto px-4 py-6">
       {/* ── Empty state (error / retry) ───────────────────────────── */}
       {!summary && !generating && (
-        <div className="flex flex-col items-center justify-center h-full">
+        <div className="flex flex-col items-center pt-12">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full text-center">
             {error && (
               <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start space-x-2 text-red-600 dark:text-red-400 text-sm text-left">
@@ -784,7 +784,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
           </div>
         ) : (
           // Initial state before any streaming text arrives
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col items-center pt-12">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full">
               <div className="flex justify-center mb-6">
                 <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
