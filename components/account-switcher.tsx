@@ -20,7 +20,7 @@ export function AccountSwitcher({
   selectedAccountId,
   onAccountSelected
 }: AccountSwitcherProps) {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export function AccountSwitcher({
       }
 
       // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
 
       console.log('AccountSwitcher: Calling accountService.getEnabledAccounts for mailboxId:', mailboxId);
       const enabledAccounts = await accountService.getEnabledAccounts();

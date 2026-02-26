@@ -9,6 +9,7 @@ import {
   formatAddress,
   IMAP_TO_GMAIL_LABEL,
 } from '@/lib/imap/client';
+import { getProviderConfig, type MailProvider } from '@/lib/imap/providers';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -73,32 +74,43 @@ const fetchAllCategories = createStep({
     email: z.string(),
     appPassword: z.string(),
     maxResultsPerCategory: z.number().default(20),
+    provider: z.string().default('gmail'),
   }),
   outputSchema: z.object({
     results: z.array(categoryFetchResultSchema),
     totalFetched: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { email, appPassword, maxResultsPerCategory } = inputData;
+    const { email, appPassword, maxResultsPerCategory, provider = 'gmail' } = inputData;
+    const providerConfig = getProviderConfig(provider);
+    const l2i = providerConfig.labelToImap;
 
-    const categories = [
-      { name: 'STARRED',   folder: '[Gmail]/Starred',   criteria: { all: true } as Record<string, any> },
-      { name: 'READ',      folder: 'INBOX',              criteria: { seen: true } as Record<string, any> },
-      { name: 'SENT',      folder: '[Gmail]/Sent Mail',  criteria: { all: true } as Record<string, any> },
-      { name: 'IMPORTANT', folder: '[Gmail]/Important',  criteria: { all: true } as Record<string, any> },
-      { name: 'PRIMARY',   folder: 'INBOX',              criteria: { all: true } as Record<string, any> },
-      { name: 'ARCHIVE',   folder: '[Gmail]/All Mail',   criteria: { all: true } as Record<string, any> },
-      { name: 'DELETED',   folder: '[Gmail]/Trash',      criteria: { all: true } as Record<string, any> },
-    ];
+    console.log(`[fetch-all-categories] provider=${provider} host=${providerConfig.host} email=${email}`);
+
+    const categories = ([
+      l2i.STARRED   ? { name: 'STARRED',   folder: l2i.STARRED,   criteria: { all: true }  } : null,
+      l2i.INBOX     ? { name: 'READ',       folder: l2i.INBOX,     criteria: { seen: true } } : null,
+      l2i.SENT      ? { name: 'SENT',       folder: l2i.SENT,      criteria: { all: true }  } : null,
+      l2i.IMPORTANT ? { name: 'IMPORTANT',  folder: l2i.IMPORTANT, criteria: { all: true }  } : null,
+      l2i.INBOX     ? { name: 'PRIMARY',    folder: l2i.INBOX,     criteria: { all: true }  } : null,
+      l2i.ALL       ? { name: 'ARCHIVE',    folder: l2i.ALL,       criteria: { all: true }  } : null,
+      l2i.TRASH     ? { name: 'DELETED',    folder: l2i.TRASH,     criteria: { all: true }  } : null,
+      l2i.SPAM      ? { name: 'SPAM',       folder: l2i.SPAM,      criteria: { all: true }  } : null,
+    ] as Array<{ name: string; folder: string; criteria: Record<string, any> } | null>).filter(Boolean) as Array<{ name: string; folder: string; criteria: Record<string, any> }>;
+
+    console.log(`[fetch-all-categories] categories to fetch:`, categories.map(c => `${c.name}(${c.folder})`).join(', '));
 
     const results = await withImap(email, appPassword, async (client) => {
       const allResults: z.infer<typeof categoryFetchResultSchema>[] = [];
 
       for (const cat of categories) {
+        console.log(`[fetch-all-categories] attempting folder: ${cat.name} → "${cat.folder}"`);
         try {
           const lock = await client.getMailboxLock(cat.folder, { readonly: true });
+          console.log(`[fetch-all-categories] locked: ${cat.folder}`);
           try {
             const uids = (await client.search(cat.criteria, { uid: true })) as number[];
+            console.log(`[fetch-all-categories] ${cat.name}: found ${uids.length} UIDs`);
             const recentUids = uids.slice(-maxResultsPerCategory).reverse();
 
             const messages: z.infer<typeof categoryMessageSchema>[] = [];
@@ -125,19 +137,24 @@ const fetchAllCategories = createStep({
                 });
               }
             }
+            console.log(`[fetch-all-categories] ${cat.name}: fetched ${messages.length} messages`);
             allResults.push({ category: cat.name, messages });
           } finally {
             lock.release();
           }
         } catch (err) {
-          console.warn(`[build-user-profile] Failed to fetch category ${cat.name}:`, err);
+          console.warn(`[fetch-all-categories] FAILED category ${cat.name} folder="${cat.folder}":`, (err as Error).message);
           allResults.push({ category: cat.name, messages: [] });
         }
       }
 
       return allResults;
+    }, provider as MailProvider).catch((err: Error) => {
+      console.error(`[fetch-all-categories] withImap threw (uncaught):`, err.message, err.stack);
+      throw err;
     });
 
+    console.log(`[fetch-all-categories] done, totalFetched=${results.reduce((s, r) => s + r.messages.length, 0)}`);
     const totalFetched = results.reduce((sum, r) => sum + r.messages.length, 0);
     return { results, totalFetched };
   },
@@ -348,6 +365,7 @@ export const buildUserProfileWorkflow = createWorkflow({
   inputSchema: z.object({
     email: z.string(),
     appPassword: z.string(),
+    provider: z.string().default('gmail'),
     maxResultsPerCategory: z.number().default(20),
     maxPerSender: z.number().default(20),
     emailAddress: z.string().optional(),

@@ -1,4 +1,9 @@
 import { ImapFlow } from 'imapflow';
+import { type MailProvider, getProviderConfig } from './providers';
+
+// Re-export for consumers that import from this file
+export type { MailProvider };
+export { getProviderConfig };
 
 // ── Credentials ──────────────────────────────────────────────────────────────
 
@@ -22,10 +27,15 @@ export function getImapCredentials(authHeader: string): { email: string; passwor
 
 // ── IMAP connection ───────────────────────────────────────────────────────────
 
-export async function createImapClient(email: string, password: string): Promise<ImapFlow> {
+export async function createImapClient(
+  email: string,
+  password: string,
+  provider: MailProvider = 'gmail'
+): Promise<ImapFlow> {
+  const config = getProviderConfig(provider);
   const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
+    host: config.host,
+    port: config.port,
     secure: true,
     auth: { user: email, pass: password },
     logger: false,
@@ -52,9 +62,10 @@ export async function createImapClient(email: string, password: string): Promise
 export async function withImap<T>(
   email: string,
   password: string,
-  fn: (client: ImapFlow) => Promise<T>
+  fn: (client: ImapFlow) => Promise<T>,
+  provider: MailProvider = 'gmail'
 ): Promise<T> {
-  const client = await createImapClient(email, password);
+  const client = await createImapClient(email, password, provider);
   try {
     return await fn(client);
   } finally {
@@ -62,29 +73,17 @@ export async function withImap<T>(
   }
 }
 
+/** Read the mail provider from the X-Mail-Provider request header. */
+export function getProviderFromHeader(request: { headers: { get(name: string): string | null } }): MailProvider {
+  const h = request.headers.get('x-mail-provider');
+  return (h === 'yahoo' ? 'yahoo' : 'gmail') as MailProvider;
+}
+
 // ── Folder mappings ───────────────────────────────────────────────────────────
 
-export const GMAIL_LABEL_TO_IMAP: Record<string, string> = {
-  INBOX: 'INBOX',
-  SENT: '[Gmail]/Sent Mail',
-  DRAFT: '[Gmail]/Drafts',
-  DRAFTS: '[Gmail]/Drafts',
-  TRASH: '[Gmail]/Trash',
-  SPAM: '[Gmail]/Spam',
-  STARRED: '[Gmail]/Starred',
-  IMPORTANT: '[Gmail]/Important',
-  ALL: '[Gmail]/All Mail',
-  CATEGORY_PRIMARY: 'INBOX',
-  CATEGORY_SOCIAL: '[Gmail]/Social',
-  CATEGORY_PROMOTIONS: '[Gmail]/Promotions',
-  CATEGORY_UPDATES: '[Gmail]/Updates',
-  CATEGORY_FORUMS: '[Gmail]/Forums',
-};
-
-export const IMAP_TO_GMAIL_LABEL: Record<string, string> = {};
-for (const [label, path] of Object.entries(GMAIL_LABEL_TO_IMAP)) {
-  if (!IMAP_TO_GMAIL_LABEL[path]) IMAP_TO_GMAIL_LABEL[path] = label;
-}
+// Kept for backward compatibility – prefer getProviderConfig(provider).labelToImap
+export const GMAIL_LABEL_TO_IMAP = getProviderConfig('gmail').labelToImap;
+export const IMAP_TO_GMAIL_LABEL = getProviderConfig('gmail').imapToLabel;
 
 // ── Message ID encoding ───────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { intelligentSearchService } from '@/lib/services/intelligent-search-service';
-import { getImapCredentials } from '@/lib/imap/client';
+import { search, quickSearch } from '@/lib/services/intelligent-search-service';
+import { getImapCredentials, getProviderFromHeader } from '@/lib/imap/client';
 
 /**
  * POST /api/gmail/intelligent-search
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
 
     const body = await request.json();
     const { query, maxResults = 30, useAgent = true } = body;
@@ -45,14 +46,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] Intelligent search request:', query);
 
-    intelligentSearchService.setCredentials(email, password);
-
-    // Perform the intelligent search
     let result;
     if (useAgent) {
-      result = await intelligentSearchService.search(query, maxResults);
+      result = await search(query, maxResults, email, password, provider);
     } else {
-      result = await intelligentSearchService.quickSearch(query, maxResults);
+      result = await quickSearch(query, maxResults, email, password, provider);
     }
 
     return NextResponse.json(result);
@@ -81,6 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
@@ -96,14 +95,11 @@ export async function GET(request: NextRequest) {
 
     console.log('[API] Intelligent search GET request:', query);
 
-    intelligentSearchService.setCredentials(email, password);
-
-    // Perform the intelligent search
     let result;
     if (useAgent) {
-      result = await intelligentSearchService.search(query, maxResults);
+      result = await search(query, maxResults, email, password, provider);
     } else {
-      result = await intelligentSearchService.quickSearch(query, maxResults);
+      result = await quickSearch(query, maxResults, email, password, provider);
     }
 
     return NextResponse.json(result);

@@ -1,15 +1,19 @@
 /**
- * Gmail API Client for Browser
+ * Mail API Client for Browser
  * Routes all calls through Next.js API proxy
  */
 
+import type { MailProvider } from '@/lib/imap/providers';
+
 let accessToken: string | null = null;
+let mailProvider: MailProvider = 'gmail';
 
 /**
- * Set access token
+ * Set access token and mail provider
  */
-export function setAccessToken(token: string) {
+export function setAccessToken(token: string, provider: MailProvider = 'gmail') {
   accessToken = token;
+  mailProvider = provider;
 }
 
 /**
@@ -17,9 +21,16 @@ export function setAccessToken(token: string) {
  */
 export function getAccessToken(): string {
   if (!accessToken) {
-    throw new Error('Gmail client not initialized. Please authenticate first.');
+    throw new Error('Mail client not initialized. Please authenticate first.');
   }
   return accessToken;
+}
+
+/**
+ * Get current mail provider
+ */
+export function getMailProvider(): MailProvider {
+  return mailProvider;
 }
 
 /**
@@ -36,6 +47,7 @@ async function apiRequest<T>(
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Mail-Provider': mailProvider,
       ...options.headers,
     },
   });

@@ -36,7 +36,7 @@ export function FolderSidebar({
   isCollapsed = false,
   onCollapsedChange
 }: FolderSidebarProps) {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
   const router = useRouter();
   const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export function FolderSidebar({
       }
 
       // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
 
       console.log('FolderSidebar: Calling folderService.getFolders');
       const labels = await folderService.getFolders();
@@ -142,7 +142,7 @@ export function FolderSidebar({
 
   const groupFolders = (): FolderGroup[] => {
     // Core system labels that should appear first
-    const coreSystemLabelIds = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH', 'IMPORTANT'];
+    const coreSystemLabelIds = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'ARCHIVE', 'SPAM', 'TRASH', 'IMPORTANT'];
     // Category labels (Primary, Social, Promotions, Updates, Forums)
     const categoryLabelIds = ['CATEGORY_PERSONAL', 'CATEGORY_SOCIAL', 'CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'];
     // Other system labels like UNREAD
@@ -174,7 +174,7 @@ export function FolderSidebar({
       groups.push({
         name: 'System Folders',
         folders: coreSystemFolders.sort((a, b) => {
-          const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'SPAM', 'TRASH', 'IMPORTANT'];
+          const order = ['INBOX', 'STARRED', 'SENT', 'DRAFT', 'ARCHIVE', 'SPAM', 'TRASH', 'IMPORTANT'];
           const aIndex = order.indexOf(a.id);
           const bIndex = order.indexOf(b.id);
           return aIndex - bIndex;

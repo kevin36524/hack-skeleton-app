@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getImapCredentials, withImap } from '@/lib/imap/client';
+import { getImapCredentials, withImap, getProviderFromHeader } from '@/lib/imap/client';
+import { getProviderConfig } from '@/lib/imap/providers';
 
-// Map IMAP folder names to Gmail-style label objects
-function folderToLabel(path: string, delimiter: string, flags: Set<string>) {
+function folderToLabel(
+  path: string,
+  delimiter: string,
+  flags: Set<string>,
+  imapToLabel: Record<string, string>,
+  isSystemFolder: (p: string) => boolean
+) {
   const name = path.split(delimiter ?? '/').pop() || path;
-
-  // Derive a stable Gmail-like ID
-  const idMap: Record<string, string> = {
-    INBOX: 'INBOX',
-    '[Gmail]/Sent Mail': 'SENT',
-    '[Gmail]/Drafts': 'DRAFT',
-    '[Gmail]/Trash': 'TRASH',
-    '[Gmail]/Spam': 'SPAM',
-    '[Gmail]/Starred': 'STARRED',
-    '[Gmail]/Important': 'IMPORTANT',
-    '[Gmail]/All Mail': 'ALL',
-  };
-  const id = idMap[path] ?? path;
-  const type = path.startsWith('[Gmail]') || idMap[path] ? 'system' : 'user';
+  const id = imapToLabel[path] ?? path;
+  const type = isSystemFolder(path) ? 'system' : 'user';
   const labelListVisibility = flags.has('\\Noselect') ? 'labelHide' : 'labelShow';
 
   return {
@@ -37,11 +31,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
+    const { imapToLabel, isSystemFolder } = getProviderConfig(provider);
 
     const labels = await withImap(email, password, async (client) => {
       const tree = await client.list();
-      return tree.map((item) => folderToLabel(item.path, item.delimiter ?? '/', item.flags));
-    });
+      return tree.map((item) =>
+        folderToLabel(item.path, item.delimiter ?? '/', item.flags, imapToLabel, isSystemFolder)
+      );
+    }, provider);
 
     return NextResponse.json({ labels });
   } catch (error: any) {

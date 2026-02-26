@@ -62,7 +62,7 @@ interface IntelligentSearchResult {
 }
 
 function SearchPageContent() {
-  const { logout, getValidAccessToken } = useAuth();
+  const { logout, getValidAccessToken, tokenData } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: mailboxData } = useMailbox();
@@ -144,7 +144,7 @@ function SearchPageContent() {
       }
 
       // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
 
       let transformedMessages: SearchResultMessage[] = [];
 

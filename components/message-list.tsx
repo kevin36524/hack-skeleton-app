@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { messageService } from '@/lib/services/message-service';
-import { Message, Conversation } from '@/lib/types/api';
+import { Message } from '@/lib/types/api';
 import { formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,6 @@ interface GroupedMessage {
   conversationId: string;
   latestMessage: Message;
   messages: Message[];
-  conversation: Conversation | undefined;
 }
 
 export function MessageList({
@@ -34,37 +33,59 @@ export function MessageList({
   onMessageSelected,
   selectedMessageId
 }: MessageListProps) {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadMessages = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    // Cancel any in-flight stream from a previous folder
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      // Ensure we have a valid access token (auto-refreshes if expired)
+    setLoading(true);
+    setStreaming(false);
+    setError(null);
+    setMessages([]);
+
+    try {
       const token = await getValidAccessToken();
       if (!token) {
         setError('Authentication required');
         return;
       }
 
-      // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
 
-      const data = await messageService.getConversationsForFolder(mailboxId, folderId);
-      setMessages(data.messages);
-      setConversations(data.conversations);
+      let receivedFirst = false;
+
+      await messageService.streamConversationsForFolder(
+        mailboxId,
+        folderId,
+        (msg) => {
+          if (!receivedFirst) {
+            receivedFirst = true;
+            setLoading(false);
+            setStreaming(true);
+          }
+          setMessages((prev) => [...prev, msg]);
+        },
+        30,
+        controller.signal
+      );
     } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to load messages';
-      setError(errorMessage);
+      if (err?.name === 'AbortError') return; // folder changed, ignore
+      setError(err?.message || 'Failed to load messages');
       console.error('Error loading messages:', err);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setStreaming(false);
+      }
     }
   }, [mailboxId, folderId, getValidAccessToken]);
 
@@ -72,6 +93,7 @@ export function MessageList({
     if (mailboxId && folderId) {
       loadMessages();
     }
+    return () => { abortRef.current?.abort(); };
   }, [loadMessages]);
 
   const groupedMessages = useMemo(() => {
@@ -81,19 +103,16 @@ export function MessageList({
       const existing = grouped.get(message.conversationId);
       if (existing) {
         existing.messages.push(message);
-        // Keep the latest message based on internalDate
         const newDate = message.headers.internalDate ? parseInt(message.headers.internalDate) * 1000 : 0;
         const existingDate = existing.latestMessage.headers.internalDate ? parseInt(existing.latestMessage.headers.internalDate) * 1000 : 0;
         if (newDate > existingDate) {
           existing.latestMessage = message;
         }
       } else {
-        const conversation = conversations.find(c => c.id === message.conversationId);
         grouped.set(message.conversationId, {
           conversationId: message.conversationId,
           latestMessage: message,
           messages: [message],
-          conversation
         });
       }
     });
@@ -103,7 +122,7 @@ export function MessageList({
       const dateB = b.latestMessage.headers.internalDate ? parseInt(b.latestMessage.headers.internalDate) * 1000 : 0;
       return dateB - dateA;
     });
-  }, [messages, conversations]);
+  }, [messages]);
 
   const toggleMessageSelection = (messageId: string) => {
     const newSelection = new Set(selectedMessages);
@@ -174,7 +193,7 @@ export function MessageList({
     );
   }
 
-  if (groupedMessages.length === 0) {
+  if (!streaming && !loading && groupedMessages.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-gray-500">No messages in this folder</p>
@@ -262,6 +281,25 @@ export function MessageList({
           </div>
         );
       })}
+
+      {streaming && (
+        <div className="space-y-1 pt-1">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center space-x-3 p-3 border border-transparent rounded-lg animate-pulse">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+              <div className="space-y-1">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-8" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

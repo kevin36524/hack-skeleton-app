@@ -30,42 +30,38 @@ export function useAuthToken() {
 
 // Mailbox hooks
 export function useMailbox() {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
 
   return useQuery({
     queryKey: QUERY_KEYS.MAILBOX,
     queryFn: async () => {
-      // Ensure we have a valid access token (auto-refreshes if expired)
       const token = await getValidAccessToken();
       if (!token) {
         throw new Error('Authentication required');
       }
-      // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
       return mailboxService.getMailbox();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 }
 
 // Accounts hooks
 export function useAccounts(mailboxId: string) {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
 
   return useQuery({
     queryKey: [QUERY_KEYS.ACCOUNTS, mailboxId],
     queryFn: async () => {
-      // Ensure we have a valid access token (auto-refreshes if expired)
       const token = await getValidAccessToken();
       if (!token) {
         throw new Error('Authentication required');
       }
-      // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
       return accountService.getAccounts();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     enabled: !!mailboxId,
     select: (data) => ({
@@ -77,21 +73,19 @@ export function useAccounts(mailboxId: string) {
 
 // Folders hooks
 export function useFolders(mailboxId: string) {
-  const { getValidAccessToken } = useAuth();
+  const { getValidAccessToken, tokenData } = useAuth();
 
   return useQuery({
     queryKey: [QUERY_KEYS.FOLDERS, mailboxId],
     queryFn: async () => {
-      // Ensure we have a valid access token (auto-refreshes if expired)
       const token = await getValidAccessToken();
       if (!token) {
         throw new Error('Authentication required');
       }
-      // Update token in gmail client
-      setAccessToken(token);
+      setAccessToken(token, tokenData?.provider ?? 'gmail');
       return folderService.getFolders();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 1,
     enabled: !!mailboxId,
   });

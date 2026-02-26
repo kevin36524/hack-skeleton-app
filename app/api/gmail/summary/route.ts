@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getImapCredentials } from '@/lib/imap/client';
+import { getImapCredentials, getProviderFromHeader } from '@/lib/imap/client';
 import { mastra } from '@/src/mastra';
 import { 
   profileStreamCallbacks, 
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
     const emailAddress = email;
 
     const body = await request.json().catch(() => ({}));
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
       inputData: {
         email,
         appPassword: password,
+        provider,
         maxResults,
         emailAddress,
         userProfile,

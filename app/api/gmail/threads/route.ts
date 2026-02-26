@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getImapCredentials,
   withImap,
-  GMAIL_LABEL_TO_IMAP,
-  IMAP_TO_GMAIL_LABEL,
   encodeMessageId,
-  gmailQueryToImapSearch,
-  buildGmailMetadata,
+  getProviderFromHeader,
 } from '@/lib/imap/client';
+import { getProviderConfig } from '@/lib/imap/providers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,14 +15,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
+    const { labelToImap, imapToLabel } = getProviderConfig(provider);
 
     const { searchParams } = new URL(request.url);
     const labelIds = searchParams.get('labelIds')?.split(',') || ['INBOX'];
     const maxResults = parseInt(searchParams.get('maxResults') || '30');
 
     const labelId = labelIds[0] || 'INBOX';
-    const folderPath = GMAIL_LABEL_TO_IMAP[labelId] ?? 'INBOX';
-    const folderLabel = IMAP_TO_GMAIL_LABEL[folderPath] ?? labelId;
+    const folderPath = labelToImap[labelId] ?? labelToImap['INBOX'] ?? 'INBOX';
 
     const threads = await withImap(email, password, async (client) => {
       const lock = await client.getMailboxLock(folderPath, { readonly: true });
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
       } finally {
         lock.release();
       }
-    });
+    }, provider);
 
     return NextResponse.json({ threads, resultSizeEstimate: threads.length });
   } catch (error: any) {

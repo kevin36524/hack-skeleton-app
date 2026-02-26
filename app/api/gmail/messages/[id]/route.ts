@@ -3,11 +3,12 @@ import {
   getImapCredentials,
   withImap,
   decodeMessageId,
-  IMAP_TO_GMAIL_LABEL,
   buildGmailMetadata,
   buildGmailFull,
   parseEmailSource,
+  getProviderFromHeader,
 } from '@/lib/imap/client';
+import { getProviderConfig } from '@/lib/imap/providers';
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +21,8 @@ export async function GET(
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
+    const { imapToLabel } = getProviderConfig(provider);
     const { id } = await params;
 
     const { searchParams } = new URL(request.url);
@@ -30,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid message ID' }, { status: 400 });
     }
 
-    const folderLabel = IMAP_TO_GMAIL_LABEL[folder] ?? folder.toUpperCase();
+    const folderLabel = imapToLabel[folder] ?? folder.toUpperCase();
 
     const message = await withImap(email, password, async (client) => {
       const lock = await client.getMailboxLock(folder, { readonly: true });
@@ -57,7 +60,7 @@ export async function GET(
       } finally {
         lock.release();
       }
-    });
+    }, provider);
 
     if (!message) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });

@@ -1,4 +1,24 @@
-import { gmail } from './gmail-client';
+import { gmail, getAccessToken, getMailProvider } from './gmail-client';
+import type { Message } from '@/lib/types/api';
+
+/** Fetch with one automatic retry on failure. Returns null if both attempts fail. */
+async function fetchWithRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (retries > 0) {
+      console.warn('[MESSAGE SERVICE] Retrying failed fetch...', err);
+      try {
+        return await fn();
+      } catch (retryErr) {
+        console.error('[MESSAGE SERVICE] Retry also failed:', retryErr);
+        return null;
+      }
+    }
+    console.error('[MESSAGE SERVICE] Fetch failed (no retries left):', err);
+    return null;
+  }
+}
 
 class MessageService {
   /**
@@ -18,29 +38,32 @@ class MessageService {
     console.log('[MESSAGE SERVICE] Found messages:', messageList.length);
 
     if (messageList.length === 0) {
-      return {
-        messages: [],
-      };
+      return { messages: [] };
     }
 
-    // Fetch message metadata (headers only, no body) - much lighter than 'full'
-    // format=metadata gets: headers, labelIds, snippet, but NOT the full body
-    const messages = await Promise.all(
-      messageList.map(async (msg: any) => {
-        const response = await gmail.users.messages.get({
-          id: msg.id,
-          format: 'metadata', // Only headers, ~5-10KB vs ~50-500KB for 'full'
-          metadataHeaders: ['From', 'To', 'Subject', 'Date'], // Only fetch needed headers
-        });
-        return response;
-      })
+    // Fetch metadata for each message individually with retry on failure.
+    // Using Promise.allSettled so a single failure doesn't abort the whole batch.
+    const results = await Promise.allSettled(
+      messageList.map((msg: any) =>
+        fetchWithRetry(() =>
+          gmail.users.messages.get({
+            id: msg.id,
+            format: 'metadata',
+            metadataHeaders: ['From', 'To', 'Subject', 'Date'],
+          })
+        )
+      )
     );
 
-    console.log('[MESSAGE SERVICE] Fetched metadata for messages:', messages.length);
+    const messages = results
+      .map((r) => (r.status === 'fulfilled' ? r.value : null))
+      .filter(Boolean);
 
-    return {
-      messages,
-    };
+    console.log(
+      `[MESSAGE SERVICE] Fetched metadata: ${messages.length}/${messageList.length} succeeded`
+    );
+
+    return { messages };
   }
 
   /**
@@ -172,18 +195,18 @@ class MessageService {
       return [];
     }
 
-    // Fetch full message details
-    const messages = await Promise.all(
-      messageIds.map(async (msg: any) => {
-        const response = await gmail.users.messages.get({
-          id: msg.id,
-          format: 'full',
-        });
-        return response;
-      })
+    // Fetch full message details with retry on individual failures
+    const results = await Promise.allSettled(
+      messageIds.map((msg: any) =>
+        fetchWithRetry(() =>
+          gmail.users.messages.get({ id: msg.id, format: 'full' })
+        )
+      )
     );
 
-    return messages;
+    return results
+      .map((r) => (r.status === 'fulfilled' ? r.value : null))
+      .filter(Boolean);
   }
 
   /**
@@ -332,6 +355,138 @@ class MessageService {
         month: 'short',
         day: 'numeric',
       });
+    }
+  }
+
+  /**
+   * Transform a raw Gmail metadata object (from buildGmailMetadata) into the
+   * app's internal Message type. Shared between streaming and non-streaming paths.
+   */
+  private transformGmailMessage(msg: any, mailboxId: string, folderId: string): Message {
+    const headers = msg.payload?.headers || [];
+    const getHeader = (name: string) => {
+      const h = headers.find((h: any) => h.name?.toLowerCase() === name.toLowerCase());
+      return h?.value || '';
+    };
+
+    const fromHeader = getHeader('from');
+    const fromMatch = fromHeader.match(/^(.+?)\s*<(.+?)>$/) || [];
+    const fromName = fromMatch[1]?.trim().replace(/^["']|["']$/g, '') || '';
+    const fromEmail = fromMatch[2]?.trim() || fromHeader.trim();
+
+    const toHeader = getHeader('to');
+    const toEmails = toHeader.split(',').map((addr: string) => {
+      const match = addr.trim().match(/^(.+?)\s*<(.+?)>$/) || [];
+      return {
+        name: match[1]?.trim().replace(/^["']|["']$/g, '') || '',
+        email: match[2]?.trim() || addr.trim(),
+      };
+    });
+
+    const isUnread = (msg.labelIds || []).includes('UNREAD');
+    const isStarred = (msg.labelIds || []).includes('STARRED');
+    const hasAttachment = msg.snippet?.includes('attachment') || false;
+
+    return {
+      id: msg.id,
+      conversationId: msg.threadId,
+      headers: {
+        from: [{ name: fromName, email: fromEmail }],
+        to: toEmails,
+        subject: getHeader('subject'),
+        internalDate: Math.floor(parseInt(msg.internalDate || '0') / 1000).toString(),
+      },
+      flags: { read: !isUnread, flagged: isStarred },
+      snippet: msg.snippet || '',
+      attachments: [],
+      hasAttachment,
+      folder: {
+        id: folderId,
+        name: folderId,
+        types: [],
+        unread: 0,
+        total: 0,
+        acctId: mailboxId,
+        highestModSeq: 0,
+      },
+      decos: [],
+      dedupId: 0,
+      modSeq: 0,
+    } as unknown as Message;
+  }
+
+  /**
+   * Stream messages for a folder, calling onMessage for each one as it arrives.
+   * Messages are emitted newest-first, matching the non-streaming order.
+   */
+  async streamConversationsForFolder(
+    mailboxId: string,
+    folderId: string,
+    onMessage: (msg: Message) => void,
+    maxResults: number = 30,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const token = getAccessToken();
+    const provider = getMailProvider();
+
+    const params = new URLSearchParams({
+      labelIds: folderId,
+      maxResults: maxResults.toString(),
+      stream: 'true',
+    });
+
+    const response = await fetch(`/api/gmail/messages?${params}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-Mail-Provider': provider,
+      },
+      signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err: any = new Error(body.error || `API Error: ${response.status}`);
+      err.status = response.status;
+      throw err;
+    }
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const raw = JSON.parse(trimmed);
+            onMessage(this.transformGmailMessage(raw, mailboxId, folderId));
+          } catch {
+            // Skip malformed lines
+          }
+        }
+      }
+
+      // Handle any remaining data in buffer
+      if (buffer.trim()) {
+        try {
+          const raw = JSON.parse(buffer.trim());
+          onMessage(this.transformGmailMessage(raw, mailboxId, folderId));
+        } catch {
+          // Skip
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
   }
 }

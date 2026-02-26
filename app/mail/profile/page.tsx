@@ -296,7 +296,7 @@ function StepIndicator({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function ProfilePageContent() {
-  const { getValidAccessToken, logout } = useAuth();
+  const { getValidAccessToken, logout, tokenData } = useAuth();
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -400,6 +400,7 @@ function ProfilePageContent() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'X-Mail-Provider': tokenData?.provider ?? 'gmail',
         },
         body: JSON.stringify({
           maxResultsPerCategory,

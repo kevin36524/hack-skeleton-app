@@ -4,10 +4,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { getQueryClient } from '@/lib/react-query-provider';
 import { setAccessToken } from '@/lib/services/gmail-client';
+import type { MailProvider } from '@/lib/imap/providers';
+
+export type { MailProvider };
 
 export interface AuthData {
   email: string;
   appPassword: string;
+  provider: MailProvider;
 }
 
 interface AuthContextType {
@@ -38,11 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedData) {
         try {
           const parsed: AuthData = JSON.parse(storedData);
+          if (!parsed.provider) parsed.provider = 'gmail'; // migrate old sessions
           const credential = btoa(`${parsed.email}:${parsed.appPassword}`);
           setTokenData(parsed);
           setToken(credential);
           setIsAuthenticated(true);
-          setAccessToken(credential);
+          setAccessToken(credential, parsed.provider);
         } catch {
           localStorage.removeItem(TOKEN_STORAGE_KEY);
         }
@@ -72,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenData(authData);
     setToken(credential);
     setIsAuthenticated(true);
-    setAccessToken(credential);
+    setAccessToken(credential, authData.provider);
     router.push('/mail');
   };
 

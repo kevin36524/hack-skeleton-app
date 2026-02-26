@@ -1,21 +1,19 @@
 /**
- * Global map bridging workflow step token emissions to the SSE API route.
- * Keyed by streamId; value is called for each streamed text token.
- * Both the workflow step and the API route run in the same Next.js server
- * process, so a module-level Map is a safe coordination mechanism.
+ * In-process coordination maps for streaming workflows.
+ *
+ * These Maps are keyed by a per-request streamId (UUID) and are only populated
+ * for the duration of an active SSE stream. They hold no user credentials —
+ * only callbacks, AbortControllers, and booleans.
+ *
+ * CloudRun note: these Maps are in-memory per instance. The SSE POST request
+ * and the workflow steps that call back into these Maps always run on the same
+ * instance (same process, same request). The DELETE /cancel endpoint, however,
+ * may land on a different CloudRun instance and will return 404 in that case.
+ * If reliable cross-instance cancellation is required, replace these Maps with
+ * an external store (e.g. Redis pub/sub).
  */
 export const profileStreamCallbacks = new Map<string, (token: string) => void>();
-
-/**
- * Global map for abort controllers to allow killing running workflows.
- * Keyed by streamId; value is AbortController that can be used to cancel the workflow.
- */
 export const workflowAbortControllers = new Map<string, AbortController>();
-
-/**
- * Global map to track if a workflow has been killed.
- * Keyed by streamId; value is boolean indicating if the workflow should stop.
- */
 export const workflowKillSwitches = new Map<string, boolean>();
 
 /**

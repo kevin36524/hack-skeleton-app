@@ -9,6 +9,7 @@ import {
   formatAddress,
   parseEmailSource,
 } from '@/lib/imap/client';
+import { getProviderConfig, type MailProvider } from '@/lib/imap/providers';
 
 const emailDataSchema = z.object({
   id: z.string(),
@@ -51,6 +52,7 @@ const fetchInboxEmails = createStep({
     email: z.string(),
     appPassword: z.string(),
     maxResults: z.number().default(50),
+    provider: z.string().default('gmail'),
   }),
   outputSchema: z.object({
     emails: z.array(emailDataSchema),
@@ -58,49 +60,75 @@ const fetchInboxEmails = createStep({
     fetchErrors: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { email, appPassword, maxResults } = inputData;
+    const { email, appPassword, maxResults, provider = 'gmail' } = inputData;
     const emails: z.infer<typeof emailDataSchema>[] = [];
     let fetchErrors = 0;
 
-    await withImap(email, appPassword, async (client) => {
-      const lock = await client.getMailboxLock('INBOX', { readonly: true });
-      try {
-        const uids = (await client.search({ all: true }, { uid: true })) as number[];
-        const recentUids = uids.slice(-maxResults).reverse();
-        if (recentUids.length === 0) return;
+    console.log(`[fetch-inbox-emails] START — email=${email} provider=${provider} maxResults=${maxResults}`);
 
-        for await (const msg of client.fetch(
-          recentUids,
-          { uid: true, envelope: true, flags: true, internalDate: true, source: true },
-          { uid: true }
-        )) {
-          try {
-            const parsed = parseEmailSource(msg.source ?? '');
-            const msgId = encodeMessageId('INBOX', msg.uid);
-            const labelIds = imapFlagsToLabelIds(msg.flags ?? new Set(), 'INBOX');
+    const providerConfig = getProviderConfig(provider as MailProvider);
+    const inboxFolder = providerConfig.labelToImap['INBOX'] ?? 'INBOX';
 
-            emails.push({
-              id: msgId,
-              threadId: msgId,
-              labelIds,
-              snippet: parsed.snippet,
-              from: formatAddress(msg.envelope?.from),
-              to: formatAddress(msg.envelope?.to),
-              subject: msg.envelope?.subject || '',
-              date: msg.envelope?.date?.toUTCString() || '',
-              internalDate: msg.internalDate ? msg.internalDate.getTime().toString() : Date.now().toString(),
-              bodyText: parsed.textBody.substring(0, 2000),
-              bodyHtml: parsed.htmlBody.substring(0, 2000),
-            });
-          } catch {
-            fetchErrors++;
+    console.log(`[fetch-inbox-emails] IMAP host=${providerConfig.host} port=${providerConfig.port} inboxFolder="${inboxFolder}"`);
+
+    try {
+      await withImap(email, appPassword, async (client) => {
+        console.log(`[fetch-inbox-emails] IMAP connected OK`);
+
+        const lock = await client.getMailboxLock(inboxFolder, { readonly: true });
+        console.log(`[fetch-inbox-emails] mailbox locked: "${inboxFolder}"`);
+
+        try {
+          const uids = (await client.search({ all: true }, { uid: true })) as number[];
+          console.log(`[fetch-inbox-emails] search returned ${uids.length} UIDs`);
+
+          const recentUids = uids.slice(-maxResults).reverse();
+          console.log(`[fetch-inbox-emails] fetching ${recentUids.length} messages`);
+
+          if (recentUids.length === 0) return;
+
+          for await (const msg of client.fetch(
+            recentUids,
+            { uid: true, envelope: true, flags: true, internalDate: true, source: true },
+            { uid: true }
+          )) {
+            try {
+              const parsed = parseEmailSource(msg.source ?? '');
+              const msgId = encodeMessageId(inboxFolder, msg.uid);
+              const labelIds = imapFlagsToLabelIds(msg.flags ?? new Set(), 'INBOX');
+
+              emails.push({
+                id: msgId,
+                threadId: msgId,
+                labelIds,
+                snippet: parsed.snippet,
+                from: formatAddress(msg.envelope?.from),
+                to: formatAddress(msg.envelope?.to),
+                subject: msg.envelope?.subject || '',
+                date: msg.envelope?.date?.toUTCString() || '',
+                internalDate: msg.internalDate ? msg.internalDate.getTime().toString() : Date.now().toString(),
+                bodyText: parsed.textBody.substring(0, 2000),
+                bodyHtml: parsed.htmlBody.substring(0, 2000),
+              });
+            } catch (msgErr) {
+              console.error(`[fetch-inbox-emails] failed to parse msg uid=${msg.uid}:`, msgErr);
+              fetchErrors++;
+            }
           }
-        }
-      } finally {
-        lock.release();
-      }
-    });
 
+          console.log(`[fetch-inbox-emails] fetched ${emails.length} emails, errors=${fetchErrors}`);
+        } finally {
+          lock.release();
+          console.log(`[fetch-inbox-emails] mailbox lock released`);
+        }
+      }, provider as MailProvider);
+    } catch (imapErr: any) {
+      console.error(`[fetch-inbox-emails] IMAP error — message="${imapErr?.message}" responseCode="${imapErr?.responseCode}" serverMessage="${imapErr?.serverMessage}"`);
+      console.error(`[fetch-inbox-emails] full error:`, imapErr);
+      throw imapErr;
+    }
+
+    console.log(`[fetch-inbox-emails] DONE — returning ${emails.length} emails`);
     return { emails, totalFetched: emails.length, fetchErrors };
   },
 });
@@ -249,6 +277,7 @@ export const generateSummaryWorkflow = createWorkflow({
   inputSchema: z.object({
     email: z.string(),
     appPassword: z.string(),
+    provider: z.string().default('gmail'),
     maxResults: z.number().default(50),
     emailAddress: z.string().optional(),
     userProfile: z.string().optional(),

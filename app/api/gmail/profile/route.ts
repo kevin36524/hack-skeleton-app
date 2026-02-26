@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getImapCredentials, withImap } from '@/lib/imap/client';
+import { getImapCredentials, withImap, getProviderFromHeader } from '@/lib/imap/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { email, password } = getImapCredentials(authHeader);
+    const provider = getProviderFromHeader(request);
 
     const profile = await withImap(email, password, async (client) => {
-      // Open INBOX to get message count
       const status = await client.status('INBOX', { messages: true, unseen: true });
       return {
         emailAddress: email,
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         threadsTotal: status.messages ?? 0,
         historyId: '0',
       };
-    });
+    }, provider);
 
     return NextResponse.json(profile);
   } catch (error: any) {

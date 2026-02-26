@@ -294,7 +294,7 @@ function StepIndicator({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function SummaryPageContent() {
-  const { getValidAccessToken, logout } = useAuth();
+  const { getValidAccessToken, tokenData, logout } = useAuth();
   const router = useRouter();
 
   const [summary, setSummary] = useState<InboxSummary | null>(null);
@@ -404,6 +404,7 @@ function SummaryPageContent() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'X-Mail-Provider': tokenData?.provider ?? 'gmail',
         },
         body: JSON.stringify({
           maxResults,
