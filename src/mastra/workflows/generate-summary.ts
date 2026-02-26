@@ -34,6 +34,13 @@ const classifiedEmailSchema = z.object({
   subsection: z.string().optional(),
 });
 
+// Minimal classification from agent (to save tokens)
+const minimalClassificationSchema = z.object({
+  id: z.string(),
+  section: z.enum(['read_now', 'worth_a_glance', 'low_priority']),
+  subsection: z.string().optional(),
+});
+
 const summaryOutputSchema = z.object({
   short_summary: z.string(),
   emails: z.array(classifiedEmailSchema),
@@ -271,7 +278,10 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
     const totalTokens = rawUsage?.totalTokens ?? (promptTokens + completionTokens);
 
     // Parse the JSON output from the agent
-    let parsedResult: { short_summary: string; emails: z.infer<typeof classifiedEmailSchema>[] };
+    let parsedResult: { short_summary: string; emails: z.infer<typeof minimalClassificationSchema>[] };
+    
+    // Create a lookup map for email data to enrich the agent's minimal output
+    const emailDataMap = new Map(emailList.map(e => [e.id, e]));
     
     try {
       // Try to extract JSON from the output (in case there's markdown code block)
@@ -295,16 +305,26 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
         short_summary: 'Failed to parse summary. Please try again.',
         emails: emailList.map(e => ({
           id: e.id,
-          from: e.from,
-          subject: e.subject,
           section: 'low_priority' as const,
         })),
       };
     }
 
+    // Enrich the minimal classification with from/subject from original email data
+    const enrichedEmails: z.infer<typeof classifiedEmailSchema>[] = parsedResult.emails.map(classifiedEmail => {
+      const originalEmail = emailDataMap.get(classifiedEmail.id);
+      return {
+        id: classifiedEmail.id,
+        from: originalEmail?.from || 'Unknown Sender',
+        subject: originalEmail?.subject || 'No Subject',
+        section: classifiedEmail.section,
+        subsection: classifiedEmail.subsection,
+      };
+    });
+
     return {
       short_summary: parsedResult.short_summary,
-      emails: parsedResult.emails,
+      emails: enrichedEmails,
       emailAddress: initData.emailAddress || initData.email || 'unknown',
       generatedAt: new Date().toISOString(),
       stats,

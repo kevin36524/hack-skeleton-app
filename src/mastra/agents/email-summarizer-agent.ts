@@ -68,8 +68,6 @@ Return a JSON object with this exact structure:
   "emails": [
     {
       "id": "email-id-or-subject",
-      "from": "sender name/email",
-      "subject": "email subject",
       "section": "read_now|worth_a_glance|low_priority",
       "subsection": "category-name" // Only for worth_a_glance emails, omit for others
     }
@@ -91,5 +89,7 @@ You will receive:
 1. A user profile describing their email triage patterns and priorities
 2. A list of emails from the user's inbox with id, from, subject, date, snippet, and body preview
 
-Analyze each email against the user profile and classify accordingly. Output ONLY the JSON object, no markdown formatting around it.`,
+Analyze each email against the user profile and classify accordingly. 
+
+Output ONLY the JSON object, no markdown formatting around it.`,
 });
