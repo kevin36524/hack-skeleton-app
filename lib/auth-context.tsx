@@ -73,6 +73,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (authData: AuthData) => {
     const credential = btoa(`${authData.email}:${authData.appPassword}`);
+
+    // Validate credentials before storing
+    const res = await fetch('/api/gmail/profile', {
+      headers: {
+        Authorization: `Bearer ${credential}`,
+        'X-Mail-Provider': authData.provider,
+      },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Invalid email or app password');
+    }
+
     localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(authData));
     setTokenData(authData);
     setToken(credential);

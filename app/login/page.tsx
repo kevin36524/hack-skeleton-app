@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Monitor, Smartphone } from 'lucide-react';
 import Image from 'next/image';
 
 const PROVIDERS: { id: MailProvider; label: string; placeholder: string; domain: string }[] = [
@@ -52,7 +53,10 @@ function LoginForm() {
   const [appPassword, setAppPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>('mobile');
   const { login } = useAuth();
+
+  const toggleViewMode = () => setViewMode(v => v === 'mobile' ? 'desktop' : 'mobile');
 
   const handleProviderSwitch = (newProvider: MailProvider) => {
     setProvider(newProvider);
@@ -81,136 +85,189 @@ function LoginForm() {
   const instructions = APP_PASSWORD_INSTRUCTIONS[provider];
   const currentProvider = PROVIDERS.find((p) => p.id === provider)!;
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="w-full max-w-md px-4">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
-            <Image
-              src="/logo.png"
-              alt="Test Mail Logo"
-              width={64}
-              height={64}
-              className="rounded-full"
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Test Mail
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Sign in to access your emails
-          </p>
+  const loginContent = (
+    <div className="w-full max-w-md px-4">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+          <Image
+            src="/logo.png"
+            alt="Test Mail Logo"
+            width={64}
+            height={64}
+            className="rounded-full"
+          />
         </div>
-
-        {/* Provider switcher */}
-        <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 shadow-sm">
-          {PROVIDERS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleProviderSwitch(p.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
-                provider === p.id
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              {p.id === 'gmail' ? (
-                <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M22 6c0-1.1-.9-2-2-2H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"
-                  />
-                </svg>
-              )}
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome</CardTitle>
-            <CardDescription className="text-center">
-              Sign in with your {currentProvider.label} address and app password
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">{currentProvider.label} address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder={currentProvider.placeholder}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="email"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="appPassword">App password</Label>
-                <Input
-                  id="appPassword"
-                  type="password"
-                  placeholder="xxxx xxxx xxxx xxxx"
-                  value={appPassword}
-                  onChange={(e) => setAppPassword(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Connecting...</span>
-                  </div>
-                ) : (
-                  <span className="font-medium">Sign in</span>
-                )}
-              </Button>
-
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <h3 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">
-                  {instructions.title}
-                </h3>
-                <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-                  {instructions.steps.map((step, i) => (
-                    <li key={i}>{step}</li>
-                  ))}
-                </ol>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <div className="text-center mt-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Credentials are stored locally in your browser only
-          </p>
-        </div>
+        <h1 className={`font-bold text-gray-900 dark:text-white mb-2 ${viewMode === 'mobile' ? 'text-2xl' : 'text-3xl'}`}>
+          Test Mail
+        </h1>
+        <p className={`text-gray-600 dark:text-gray-400 ${viewMode === 'mobile' ? 'text-sm' : ''}`}>
+          Sign in to access your emails
+        </p>
       </div>
+
+      {/* Provider switcher */}
+      <div className="flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mb-6 shadow-sm">
+        {PROVIDERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => handleProviderSwitch(p.id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
+              provider === p.id
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            {p.id === 'gmail' ? (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M22 6c0-1.1-.9-2-2-2H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"
+                />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"
+                />
+              </svg>
+            )}
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <Card className="border-0 shadow-xl">
+        <CardHeader className="space-y-1">
+          <CardTitle className={`text-center ${viewMode === 'mobile' ? 'text-xl' : 'text-2xl'}`}>Welcome</CardTitle>
+          <CardDescription className="text-center">
+            Sign in with your {currentProvider.label} address and app password
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="email">{currentProvider.label} address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder={currentProvider.placeholder}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="appPassword">App password</Label>
+              <Input
+                id="appPassword"
+                type="password"
+                placeholder="xxxx xxxx xxxx xxxx"
+                value={appPassword}
+                onChange={(e) => setAppPassword(e.target.value)}
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Connecting...</span>
+                </div>
+              ) : (
+                <span className="font-medium">Sign in</span>
+              )}
+            </Button>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <h3 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">
+                {instructions.title}
+              </h3>
+              <ol className="text-xs text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+                {instructions.steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <div className="text-center mt-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Credentials are stored locally in your browser only
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={viewMode === 'mobile'
+      ? "min-h-screen bg-gray-300 dark:bg-gray-950 flex items-center justify-center p-4"
+      : "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex flex-col"
+    }>
+      {/* Mobile Phone Shim */}
+      {viewMode === 'mobile' && (
+        <div className="w-full max-w-sm h-[calc(100vh-2rem)] rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-900 shadow-2xl overflow-hidden flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+          {/* Mobile Header Bar */}
+          <div className="flex items-center justify-between px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <Image
+                src="/logo.png"
+                alt="Test Mail Logo"
+                width={24}
+                height={24}
+                className="rounded-full"
+              />
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">Test Mail</span>
+            </div>
+            <button
+              onClick={toggleViewMode}
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Switch to Desktop view"
+            >
+              <Monitor className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          </div>
+
+          {/* Mobile Login Content */}
+          <div className="flex-1 overflow-y-auto flex items-center justify-center p-3">
+            {loginContent}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop View */}
+      {viewMode === 'desktop' && (
+        <div className="flex-1 flex flex-col items-center justify-center relative">
+          <div className="absolute top-4 right-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleViewMode}
+              title="Switch to Mobile view"
+            >
+              <Smartphone className="h-4 w-4" />
+            </Button>
+          </div>
+          {loginContent}
+        </div>
+      )}
     </div>
   );
 }
