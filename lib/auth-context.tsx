@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getQueryClient } from '@/lib/react-query-provider';
 import { setAccessToken } from '@/lib/services/gmail-client';
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const getValidAccessToken = async (): Promise<string | null> => {
+  const getValidAccessToken = useCallback(async (): Promise<string | null> => {
     let data = tokenData;
     if (!data) {
       const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (!data) return null;
     return btoa(`${data.email}:${data.appPassword}`);
-  };
+  }, [tokenData]);
 
   const validateToken = async (token: string): Promise<boolean> => {
     return token.length > 0;

@@ -793,6 +793,11 @@ function SummaryPageContent() {
                   <p className="text-gray-500 dark:text-gray-400">
                     Since you were last here you have {summary.emails.length} emails to review
                   </p>
+                  {summary.short_summary && (
+                    <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {summary.short_summary}
+                    </p>
+                  )}
                 </div>
 
                 {/* Read Now Section */}
