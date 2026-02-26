@@ -25,7 +25,7 @@ const PROFILE_STORAGE_KEY = 'user_gmail_profile';
 
 type SectionType = 'read_now' | 'worth_a_glance' | 'low_priority';
 
-interface ClassifiedEmail {
+export interface ClassifiedEmail {
   id: string;
   from: string;
   subject: string;
@@ -189,11 +189,11 @@ function SectionHeader({
   );
 }
 
-function EmailItem({ email }: { email: ClassifiedEmail }) {
+function EmailItem({ email, onEmailSelected }: { email: ClassifiedEmail; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   // Extract sender name from "Name <email>" format
   const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
   const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
-  
+
   // Get initials for avatar
   const initials = senderName
     .split(' ')
@@ -203,7 +203,10 @@ function EmailItem({ email }: { email: ClassifiedEmail }) {
     .slice(0, 2);
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+    <div
+      className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg px-2 -mx-2 transition-colors"
+      onClick={() => onEmailSelected?.(email)}
+    >
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
         {initials}
       </div>
@@ -218,9 +221,11 @@ function EmailItem({ email }: { email: ClassifiedEmail }) {
 function SubsectionGroup({
   subsection,
   emails,
+  onEmailSelected,
 }: {
   subsection: string;
   emails: ClassifiedEmail[];
+  onEmailSelected?: (email: ClassifiedEmail) => void;
 }) {
   const [isOpen, setIsOpen] = useState(true);
   
@@ -260,7 +265,7 @@ function SubsectionGroup({
       <CollapsibleContent>
         <div className="pl-4 mt-2">
           {emails.map((email) => (
-            <EmailItem key={email.id} email={email} />
+            <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
           ))}
         </div>
       </CollapsibleContent>
@@ -268,7 +273,7 @@ function SubsectionGroup({
   );
 }
 
-function ReadNowSection({ emails }: { emails: ClassifiedEmail[] }) {
+function ReadNowSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   const [isOpen, setIsOpen] = useState(true);
 
   if (emails.length === 0) return null;
@@ -287,7 +292,7 @@ function ReadNowSection({ emails }: { emails: ClassifiedEmail[] }) {
         <CollapsibleContent>
           <div className="mt-4 space-y-1">
             {emails.map((email) => (
-              <EmailItem key={email.id} email={email} />
+              <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
             ))}
           </div>
           <button className="w-full mt-4 py-2.5 px-4 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2">
@@ -300,7 +305,7 @@ function ReadNowSection({ emails }: { emails: ClassifiedEmail[] }) {
   );
 }
 
-function WorthAGlanceSection({ emails }: { emails: ClassifiedEmail[] }) {
+function WorthAGlanceSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   const [isOpen, setIsOpen] = useState(true);
 
   if (emails.length === 0) return null;
@@ -331,6 +336,7 @@ function WorthAGlanceSection({ emails }: { emails: ClassifiedEmail[] }) {
                 key={subsection}
                 subsection={subsection}
                 emails={subsectionEmails}
+                onEmailSelected={onEmailSelected}
               />
             ))}
           </div>
@@ -340,7 +346,7 @@ function WorthAGlanceSection({ emails }: { emails: ClassifiedEmail[] }) {
   );
 }
 
-function LowPrioritySection({ emails }: { emails: ClassifiedEmail[] }) {
+function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (emails.length === 0) return null;
@@ -359,7 +365,7 @@ function LowPrioritySection({ emails }: { emails: ClassifiedEmail[] }) {
         <CollapsibleContent>
           <div className="mt-4 space-y-1">
             {emails.map((email) => (
-              <EmailItem key={email.id} email={email} />
+              <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
             ))}
           </div>
         </CollapsibleContent>
@@ -370,7 +376,7 @@ function LowPrioritySection({ emails }: { emails: ClassifiedEmail[] }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function SummaryContent() {
+export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: ClassifiedEmail) => void } = {}) {
   const { getValidAccessToken, tokenData } = useAuth();
 
   const [summary, setSummary] = useState<InboxSummary | null>(null);
@@ -748,13 +754,13 @@ export function SummaryContent() {
           </div>
 
           {/* Read Now Section */}
-          <ReadNowSection emails={readNowEmails} />
+          <ReadNowSection emails={readNowEmails} onEmailSelected={onEmailSelected} />
 
           {/* Worth a Glance Section */}
-          <WorthAGlanceSection emails={worthAGlanceEmails} />
+          <WorthAGlanceSection emails={worthAGlanceEmails} onEmailSelected={onEmailSelected} />
 
           {/* Low Priority Section */}
-          <LowPrioritySection emails={lowPriorityEmails} />
+          <LowPrioritySection emails={lowPriorityEmails} onEmailSelected={onEmailSelected} />
 
           {/* Footer actions */}
           <div className="flex items-center justify-between pt-4">

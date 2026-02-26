@@ -11,12 +11,13 @@ import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
 import { ProfileContent } from '@/components/profile-content';
 import { SummaryContent } from '@/components/summary-content';
-import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText, ChevronLeft } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Message } from '@/lib/types/api';
+import type { ClassifiedEmail } from '@/components/summary-content';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ function MailPageContent() {
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [summarySelectedMessage, setSummarySelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [activeTab, setActiveTab] = useState<ViewTab>('mail');
@@ -138,6 +140,30 @@ function MailPageContent() {
 
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
+    setSummarySelectedMessage(null);
+  };
+
+  const handleSummaryEmailSelected = (email: ClassifiedEmail) => {
+    const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
+    const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || senderEmail;
+    const stub: Message = {
+      id: email.id,
+      conversationId: email.id,
+      snippet: '',
+      flags: { read: false },
+      attachments: [],
+      decos: [],
+      dedupId: 0,
+      modSeq: 0,
+      folder: { id: 'INBOX', name: 'INBOX', types: ['inbox'], unread: 0, total: 0, acctId: '', highestModSeq: 0 },
+      headers: {
+        subject: email.subject,
+        from: [{ email: senderEmail, name: senderName }],
+        to: [],
+        internalDate: '',
+      },
+    };
+    setSummarySelectedMessage(stub);
   };
 
   const isReady = mailboxId;
@@ -372,8 +398,29 @@ function MailPageContent() {
               )}
               
               {activeTab === 'summary' && (
-                <div className="flex-1 overflow-auto">
-                  <SummaryContent />
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {summarySelectedMessage ? (
+                    <>
+                      <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSummarySelectedMessage(null)}
+                          className="flex items-center gap-1 -ml-2"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Summary
+                        </Button>
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 overflow-auto">
+                      <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -448,8 +495,29 @@ function MailPageContent() {
             )}
             
             {activeTab === 'summary' && (
-              <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-900">
-                <SummaryContent />
+              <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+                {summarySelectedMessage ? (
+                  <>
+                    <div className="flex items-center gap-2 px-6 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSummarySelectedMessage(null)}
+                        className="flex items-center gap-1 -ml-2"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Back to Summary
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-full overflow-auto">
+                    <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                  </div>
+                )}
               </div>
             )}
           </div>

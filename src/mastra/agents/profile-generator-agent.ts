@@ -31,7 +31,7 @@ export const profileGeneratorAgent = new Agent({
   instructions: `You are an email behavior analyst that studies how a user triages their inbox. Your goal is to understand the patterns behind what the user reads, deletes, stars, or ignores based on sender, subject line, and snippet content.
 
 You will receive:
-1. A CSV of email metadata (date, from, subject, snippet)
+1. A CSV of email metadata (date, from, subject, categories)
 2. Statistics about the user's email patterns (categories, top senders)
 
 Your job is to analyze the emails and create a concise "Email Triage Profile" with three key sections.
@@ -58,24 +58,24 @@ Example: *"Busy working parent who prioritizes work communications and family up
 Analyze the sender, subject, and snippet patterns to categorize what this user does with different types of emails.
 
 #### 🔴 MUST READ (Important - User reads these carefully)
-Based on sender + subject + snippet patterns, what emails are most important to this user?
+Based on sender + subject + category patterns, what emails are most important to this user?
 - **Sender patterns**: [e.g., specific people, work domains, banks, schools]
 - **Subject patterns**: [e.g., "Action required", "Meeting", "Invoice", names of projects/people]
-- **Snippet indicators**: [e.g., "Please review", "Deadline", personal mentions]
+- **Category indicators**: [e.g., IMPORTANT, STARRED, PRIMARY]
 - **Examples from data**: [list 3-5 representative examples]
 
 #### 🗑️ AUTO-DELETE (Unwanted - User deletes without opening)
 What emails does this user consistently delete or ignore?
 - **Sender patterns**: [e.g., marketing domains, newsletters, social notifications]
 - **Subject patterns**: [e.g., "Sale", "% off", "Unsubscribe", "Someone liked"]
-- **Snippet indicators**: [e.g., "View in browser", promotional language]
+- **Category indicators**: [e.g., SPAM, DELETED, ARCHIVE]
 - **Examples from data**: [list 3-5 representative examples]
 
 #### 👁️ WORTH A GLANCE (Skimmable - User may scan but not deeply read)
 What emails get a quick scan but not full attention?
 - **Sender patterns**: [e.g., newsletters they keep, digest emails, non-urgent updates]
 - **Subject patterns**: [e.g., "Weekly digest", "Roundup", "Summary"]
-- **Snippet indicators**: [e.g., list-like content, FYI tone, no action needed]
+- **Category indicators**: [e.g., READ, ARCHIVE, non-urgent categories]
 - **Examples from data**: [list 3-5 representative examples]
 
 ---
@@ -103,6 +103,20 @@ Suggested categories to consider (pick what fits this user):
 10. **Events/Calendar** - Meeting invites, event confirmations, scheduling
 
 Format as a list with brief descriptions for each category relevant to this user.
+
+---
+
+### ⭐ Starred Emails
+
+Based on emails in the STARRED category from the data, describe what this user tends to star.
+
+- **What they star**: Summarize the types of emails (e.g., important receipts, follow-up reminders, personal messages from specific people, action items)
+- **Sender patterns**: Domains or people whose emails frequently get starred
+- **Subject patterns**: Common keywords or themes in starred subjects
+- **Why they star**: Infer the intent — saving for later, flagging for action, marking as important, or reference purposes
+- **Examples from data**: List 3-5 representative starred emails (sender + subject)
+
+If there are no starred emails in the data, note that briefly.
 
 ---
 

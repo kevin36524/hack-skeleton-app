@@ -259,7 +259,6 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
 
       rawOutput += chunk;
       tokenCount += chunk.length / 4;
-      emitToken?.(chunk);
 
       if (rawOutput.length > MAX_CHARS_ESTIMATE) {
         console.warn(`[Workflow] Summary generation exceeded max length limit, stopping`);
@@ -283,31 +282,76 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
     // Create a lookup map for email data to enrich the agent's minimal output
     const emailDataMap = new Map(emailList.map(e => [e.id, e]));
     
+    // Recovers short_summary + all complete email objects from a truncated JSON response.
+    function recoverPartialJson(raw: string): typeof parsedResult | null {
+      try {
+        const summaryMatch = raw.match(/"short_summary"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+        const short_summary = summaryMatch ? summaryMatch[1] : 'Summary was incomplete.';
+
+        const arrayStart = raw.search(/"emails"\s*:\s*\[/);
+        if (arrayStart === -1) return null;
+
+        const arrayContent = raw.slice(raw.indexOf('[', arrayStart) + 1);
+        const emails: z.infer<typeof minimalClassificationSchema>[] = [];
+        let depth = 0;
+        let objStart = -1;
+
+        for (let i = 0; i < arrayContent.length; i++) {
+          const ch = arrayContent[i];
+          if (ch === '{') {
+            if (depth === 0) objStart = i;
+            depth++;
+          } else if (ch === '}') {
+            depth--;
+            if (depth === 0 && objStart !== -1) {
+              try {
+                const obj = JSON.parse(arrayContent.substring(objStart, i + 1));
+                if (obj.id && obj.section) emails.push(obj);
+              } catch { /* skip malformed object */ }
+              objStart = -1;
+            }
+          }
+        }
+
+        if (emails.length === 0) return null;
+        console.log(`[Workflow] Recovered ${emails.length} email(s) from partial JSON`);
+        return { short_summary, emails };
+      } catch {
+        return null;
+      }
+    }
+
     try {
       // Try to extract JSON from the output (in case there's markdown code block)
-      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)```/) || 
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)```/) ||
                         rawOutput.match(/```\s*([\s\S]*?)```/) ||
                         rawOutput.match(/(\{[\s\S]*\})/);
-      
+
       const jsonStr = jsonMatch ? jsonMatch[1] : rawOutput;
       parsedResult = JSON.parse(jsonStr.trim());
-      
+
       // Validate that we have the required fields
       if (!parsedResult.short_summary || !Array.isArray(parsedResult.emails)) {
         throw new Error('Invalid response structure');
       }
     } catch (parseError) {
       console.error('[Workflow] Failed to parse agent output as JSON:', parseError);
-      console.error('[Workflow] Raw output:', rawOutput);
-      
-      // Fallback: create a basic structure
-      parsedResult = {
-        short_summary: 'Failed to parse summary. Please try again.',
-        emails: emailList.map(e => ({
-          id: e.id,
-          section: 'low_priority' as const,
-        })),
-      };
+
+      // Try to salvage whatever complete email objects were generated
+      const recovered = recoverPartialJson(rawOutput);
+      if (recovered) {
+        parsedResult = recovered;
+      } else {
+        console.error('[Workflow] Recovery failed. Raw output:', rawOutput);
+        // Fallback: create a basic structure
+        parsedResult = {
+          short_summary: 'Failed to parse summary. Please try again.',
+          emails: emailList.map(e => ({
+            id: e.id,
+            section: 'low_priority' as const,
+          })),
+        };
+      }
     }
 
     // Enrich the minimal classification with from/subject from original email data

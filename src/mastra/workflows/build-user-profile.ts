@@ -283,9 +283,9 @@ const generateProfile = createStep({
 
     const escape = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, ' ').trim()}"`;
     const csvRows = inputData.emailsWithMetadata.map(e =>
-      [escape(e.date), escape(e.from), escape(e.subject), escape(e.snippet.substring(0, 120))].join(',')
+      [escape(e.date), escape(e.from), escape(e.subject), escape(e.categories.join(';'))].join(',')
     );
-    const csv = `date,from,subject,snippet\n${csvRows.join('\n')}`;
+    const csv = `date,from,subject,categories\n${csvRows.join('\n')}`;
 
     const dateContext = initData.currentDate
       ? `Current date: ${initData.currentDate}${initData.timezone ? ` (${initData.timezone})` : ''}`
