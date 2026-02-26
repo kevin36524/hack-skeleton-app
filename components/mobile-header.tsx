@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, ScrollText } from 'lucide-react';
+import { Menu, Mail, LogOut, RefreshCw, X, ScrollText, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -18,6 +18,7 @@ interface MobileHeaderProps {
   onRefresh: () => void;
   activeTab?: 'mail' | 'profile' | 'summary';
   onTabChange?: (tab: 'mail' | 'profile' | 'summary') => void;
+  onViewModeToggle?: () => void;
 }
 
 export function MobileHeader({
@@ -30,10 +31,11 @@ export function MobileHeader({
   onRefresh,
   activeTab = 'mail',
   onTabChange,
+  onViewModeToggle,
 }: MobileHeaderProps) {
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b md:hidden">
+    <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
       <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
@@ -65,6 +67,15 @@ export function MobileHeader({
           
           <div className="flex items-center space-x-2">
             <ThemeToggle size="sm" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onViewModeToggle}
+              className="p-2"
+              title="Switch to Desktop view"
+            >
+              <Monitor className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="sm"

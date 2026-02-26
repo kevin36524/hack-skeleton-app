@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText, ChevronLeft } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Search, User, ScrollText, ChevronLeft, Monitor, Smartphone } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -40,9 +40,7 @@ function MailPageContent() {
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  // Track actual viewport to avoid mounting duplicate MessageList instances
-  // (both md:hidden and hidden md:block layouts are always in the DOM)
-  const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
+  const [viewMode, setViewMode] = useState<'mobile' | 'desktop'>('mobile');
   const [summarySelectedMessage, setSummarySelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
@@ -64,14 +62,7 @@ function MailPageContent() {
     console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId);
   }, [mailboxId, accountId, folderId]);
 
-  // Detect actual viewport so we only mount MessageList in the active layout
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobileLayout(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobileLayout(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const toggleViewMode = () => setViewMode(v => v === 'mobile' ? 'desktop' : 'mobile');
 
   // Load desktop sidebar collapsed state and panel sizes from localStorage
   useEffect(() => {
@@ -191,23 +182,167 @@ function MailPageContent() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className={viewMode === 'mobile'
+        ? "min-h-screen bg-gray-300 dark:bg-gray-950 flex items-center justify-center p-4"
+        : "min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col"
+      }>
 
-        {/* Mobile Header */}
-        <MobileHeader
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          onMailboxSelected={handleMailboxSelected}
-          onAccountSelected={handleAccountSelected}
-          mailboxId={mailboxId}
-          onLogout={handleLogout}
-          onRefresh={refreshData}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
+        {/* Mobile Phone Shim */}
+        {viewMode === 'mobile' && (
+          <div className="w-full max-w-sm h-[calc(100vh-2rem)] rounded-[2.5rem] border-[10px] border-gray-800 dark:border-gray-900 shadow-2xl overflow-hidden flex flex-col">
+            <MobileHeader
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={toggleSidebar}
+              onMailboxSelected={handleMailboxSelected}
+              onAccountSelected={handleAccountSelected}
+              mailboxId={mailboxId}
+              onLogout={handleLogout}
+              onRefresh={refreshData}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              onViewModeToggle={toggleViewMode}
+            />
+            <div className="flex-1 overflow-hidden min-h-0">
+              <div className="h-full flex overflow-hidden relative">
+                {/* Mobile Sidebar Overlay */}
+                {sidebarOpen && (
+                  <div
+                    className="fixed inset-0 z-40 bg-black bg-opacity-50"
+                    onClick={toggleSidebar}
+                  />
+                )}
+
+                {/* Mobile Sidebar */}
+                <aside className={`
+                  fixed inset-y-0 left-0 z-50
+                  w-64 bg-white dark:bg-gray-800 border-r flex flex-col
+                  transform transition-transform duration-200 ease-in-out
+                  ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                `}>
+                  <div className="p-4 border-b flex justify-between items-center">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-white">Folders</h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleSidebar}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1">
+                    {isReady ? (
+                      <FolderSidebar
+                        mailboxId={mailboxId}
+                        accountId={accountId}
+                        selectedFolderId={folderId}
+                        onFolderSelected={(id) => {
+                          handleFolderSelected(id);
+                          setSidebarOpen(false);
+                        }}
+                      />
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500">Loading folders...</div>
+                    )}
+                  </div>
+                </aside>
+
+                {/* Mobile Main Content Area — sliding panels */}
+                <div className="flex-1 overflow-hidden relative">
+                  <div
+                    className="flex h-full transition-transform duration-300 ease-in-out"
+                    style={{ transform: `translateX(-${MOBILE_TAB_ORDER.indexOf(activeTab === 'profile' ? 'mail' : activeTab) * 100}%)` }}
+                  >
+                    {/* Mail Panel */}
+                    <div className="w-full flex-shrink-0 flex h-full">
+                      {/* Message List */}
+                      <div className={`
+                        w-full border-r flex flex-col bg-white dark:bg-gray-800
+                        ${mobileView === 'list' ? 'flex' : 'hidden'}
+                      `}>
+                        <div className="p-4 border-b">
+                          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                            Messages
+                          </h2>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                          {isReady ? (
+                            <MessageList
+                              mailboxId={mailboxId}
+                              folderId={folderId}
+                              onMessageSelected={handleMessageSelected}
+                              selectedMessageId={selectedMessage?.id}
+                            />
+                          ) : (
+                            <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Message Detail */}
+                      <div className={`
+                        flex-1 flex flex-col
+                        ${mobileView === 'detail' ? 'flex' : 'hidden'}
+                      `}>
+                        <div className="p-4 border-b flex justify-between items-center">
+                          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                            Message Details
+                          </h2>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleBackToList}
+                          >
+                            Back to list
+                          </Button>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <MessageDetail
+                            message={selectedMessage}
+                            mailboxId={mailboxId}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Summary Panel */}
+                    <div className="w-full flex-shrink-0 flex flex-col h-full overflow-hidden">
+                      {visitedTabs.has('summary') && (
+                        summarySelectedMessage ? (
+                          <>
+                            <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSummarySelectedMessage(null)}
+                                className="flex items-center gap-1 -ml-2"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                                Summary
+                              </Button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex-1 overflow-auto">
+                            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
+                              <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
+                            </Suspense>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Desktop Header */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm border-b hidden md:block">
+        {viewMode === 'desktop' && (
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-4">
@@ -243,7 +378,7 @@ function MailPageContent() {
                   mailboxId={mailboxId}
                   onAccountSelected={handleAccountSelected}
                 />
-                
+
                 {/* Tab Navigation Buttons */}
                 <Button
                   variant="ghost"
@@ -284,8 +419,16 @@ function MailPageContent() {
                   <ScrollText className="h-4 w-4" />
                   <span className="hidden lg:inline">Summary</span>
                 </Button>
-                
+
                 <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleViewMode}
+                  title="Switch to Mobile view"
+                >
+                  <Smartphone className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -308,149 +451,12 @@ function MailPageContent() {
             </div>
           </div>
         </header>
+        )}
 
-        {/* Main Content */}
+        {/* Desktop Main Content */}
+        {viewMode === 'desktop' && (
         <div className="flex-1 overflow-hidden relative">
-          {/* Mobile Layout */}
-          <div className="md:hidden h-full flex overflow-hidden relative">
-            {/* Mobile Sidebar Overlay */}
-            {sidebarOpen && (
-              <div
-                className="fixed inset-0 z-40 bg-black bg-opacity-50"
-                onClick={toggleSidebar}
-              />
-            )}
-
-            {/* Mobile Sidebar */}
-            <aside className={`
-              fixed inset-y-0 left-0 z-50
-              w-64 bg-white dark:bg-gray-800 border-r flex flex-col
-              transform transition-transform duration-200 ease-in-out
-              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            `}>
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Folders</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleSidebar}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex-1">
-                {isReady ? (
-                  <FolderSidebar
-                    mailboxId={mailboxId}
-                    accountId={accountId}
-                    selectedFolderId={folderId}
-                    onFolderSelected={(id) => {
-                      handleFolderSelected(id);
-                      setSidebarOpen(false);
-                    }}
-                  />
-                ) : (
-                  <div className="p-4 text-sm text-gray-500">Loading folders...</div>
-                )}
-              </div>
-            </aside>
-
-            {/* Mobile Main Content Area — sliding panels */}
-            <div className="flex-1 overflow-hidden relative">
-              <div
-                className="flex h-full transition-transform duration-300 ease-in-out"
-                style={{ transform: `translateX(-${MOBILE_TAB_ORDER.indexOf(activeTab === 'profile' ? 'mail' : activeTab) * 100}%)` }}
-              >
-                {/* Mail Panel */}
-                <div className="w-full flex-shrink-0 flex h-full">
-                  {/* Message List */}
-                  <div className={`
-                    w-full border-r flex flex-col
-                    ${mobileView === 'list' ? 'flex' : 'hidden'}
-                  `}>
-                    <div className="p-4 border-b">
-                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                        Messages
-                      </h2>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      {/* isMobileLayout guard prevents this instance from mounting on desktop */}
-                      {isReady && isMobileLayout === true ? (
-                        <MessageList
-                          mailboxId={mailboxId}
-                          folderId={folderId}
-                          onMessageSelected={handleMessageSelected}
-                          selectedMessageId={selectedMessage?.id}
-                        />
-                      ) : isReady ? (
-                        <div className="p-4 text-sm text-gray-500">Loading...</div>
-                      ) : (
-                        <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Message Detail */}
-                  <div className={`
-                    flex-1 flex flex-col
-                    ${mobileView === 'detail' ? 'flex' : 'hidden'}
-                  `}>
-                    <div className="p-4 border-b flex justify-between items-center">
-                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                        Message Details
-                      </h2>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleBackToList}
-                      >
-                        Back to list
-                      </Button>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <MessageDetail
-                        message={selectedMessage}
-                        mailboxId={mailboxId}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Summary Panel — isMobileLayout guard prevents mounting on desktop */}
-                <div className="w-full flex-shrink-0 flex flex-col h-full overflow-hidden">
-                  {visitedTabs.has('summary') && isMobileLayout === true && (
-                    summarySelectedMessage ? (
-                      <>
-                        <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSummarySelectedMessage(null)}
-                            className="flex items-center gap-1 -ml-2"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Summary
-                          </Button>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                          <MessageDetail message={summarySelectedMessage} mailboxId={mailboxId} />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 overflow-auto">
-                        <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
-                          <SummaryContent onEmailSelected={handleSummaryEmailSelected} />
-                        </Suspense>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop Layout with Resizable Panels */}
-          <div className="hidden md:block h-full w-full">
+          <div className="h-full w-full">
             {activeTab === 'mail' && (
               <ResizablePanels
                 defaultSizes={panelSizes}
@@ -481,8 +487,7 @@ function MailPageContent() {
                     </h2>
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    {/* isMobileLayout guard prevents this instance from mounting on mobile */}
-                    {isReady && isMobileLayout !== true ? (
+                    {isReady ? (
                       <MessageList
                         mailboxId={mailboxId}
                         folderId={folderId}
@@ -511,7 +516,7 @@ function MailPageContent() {
                 </div>
               </ResizablePanels>
             )}
-            
+
             {activeTab === 'profile' && (
               <div className="h-full overflow-auto bg-gray-50 dark:bg-gray-900">
                 <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="h-6 w-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" /></div>}>
@@ -520,7 +525,7 @@ function MailPageContent() {
               </div>
             )}
 
-            {activeTab === 'summary' && isMobileLayout !== true && (
+            {activeTab === 'summary' && (
               <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
                 {summarySelectedMessage ? (
                   <>
@@ -550,6 +555,7 @@ function MailPageContent() {
             )}
           </div>
         </div>
+        )}
       </div>
     </ProtectedRoute>
   );

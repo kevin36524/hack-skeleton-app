@@ -284,8 +284,9 @@ function SubsectionGroup({
 
 function ReadNowSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   const [isOpen, setIsOpen] = useState(true);
+  const [done, setDone] = useState(false);
 
-  if (emails.length === 0) return null;
+  if (emails.length === 0 || done) return null;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
@@ -304,12 +305,14 @@ function ReadNowSection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]
               <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
             ))}
           </div>
-          <button className="w-full mt-4 py-2.5 px-4 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2">
-            Mark as done
-            <Check className="h-4 w-4" />
-          </button>
         </CollapsibleContent>
       </Collapsible>
+      {isOpen && (
+        <button onClick={() => { console.log('[ReadNow] Mark as done tapped'); setDone(true); }} className="w-full mt-4 py-2.5 px-4 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2">
+          Mark as done
+          <Check className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
