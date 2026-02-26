@@ -399,12 +399,14 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // Load summary and user profile from localStorage on mount
+  // Load summary and user profile from localStorage on mount; auto-generate if nothing cached
   useEffect(() => {
+    let summaryData = null;
     try {
       const storedSummary = localStorage.getItem(SUMMARY_STORAGE_KEY);
       if (storedSummary) {
-        setSummary(JSON.parse(storedSummary));
+        summaryData = JSON.parse(storedSummary);
+        setSummary(summaryData);
       }
       const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
       if (storedProfile) {
@@ -413,6 +415,9 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
       }
     } catch (e) {
       console.error('[SUMMARY] Error loading from localStorage:', e);
+    }
+    if (!summaryData) {
+      generateSummary();
     }
   }, []);
 
@@ -576,86 +581,16 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
 
   return (
     <div className="h-full max-w-2xl mx-auto px-4 py-6">
-      {/* ── Empty state ───────────────────────────────────────────── */}
+      {/* ── Empty state (error / retry) ───────────────────────────── */}
       {!summary && !generating && (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/40 mb-4 mx-auto">
-              <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h2 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Your Inbox Summary
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm leading-relaxed">
-              Generate a personalized summary of your inbox emails. The AI analyzes your top emails
-              and creates a context-aware summary based on your user profile.
-            </p>
-
-            <div className="mb-5 text-left">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                Max emails to analyze
-              </label>
-              <input
-                type="number"
-                min={10}
-                max={100}
-                value={maxResults}
-                onChange={e => setMaxResults(Math.max(10, Math.min(100, Number(e.target.value))))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Fetches this many emails from your inbox (10–100)
-              </p>
-            </div>
-
-            <div className="mb-5 text-left">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                Model
-              </label>
-              <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
-                {([
-                  { id: 'gemini-flash-lite', label: 'Gemini' },
-                  { id: 'groq', label: 'Groq' },
-                  { id: 'kimi', label: 'Kimi' },
-                ] as const).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedModel(id);
-                      setCostPerMInput(MODEL_PRICING[id].input);
-                      setCostPerMOutput(MODEL_PRICING[id].output);
-                    }}
-                    className={cn(
-                      'flex-1 py-2 text-sm font-medium transition-colors',
-                      selectedModel === id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {!userProfile && (
-              <div className="mb-5 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start space-x-2 text-yellow-700 dark:text-yellow-400 text-sm text-left">
-                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <p>
-                  No user profile found. Generate a profile first for personalized summaries, 
-                  or continue with a generic summary.
-                </p>
-              </div>
-            )}
-
             {error && (
               <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start space-x-2 text-red-600 dark:text-red-400 text-sm text-left">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <p>{error}</p>
               </div>
             )}
-
             <Button
               onClick={generateSummary}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -663,9 +598,6 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
               <FileText className="h-4 w-4 mr-2" />
               Generate Summary
             </Button>
-            <p className="text-xs text-gray-400 mt-3">
-              Analyzes top {maxResults} emails from your inbox
-            </p>
           </div>
         </div>
       )}

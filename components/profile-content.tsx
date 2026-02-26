@@ -311,15 +311,20 @@ export function ProfileContent() {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // Load profile from localStorage on mount
+  // Load profile from localStorage on mount; auto-generate if nothing cached
   useEffect(() => {
+    let profileData = null;
     try {
       const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
       if (stored) {
-        setProfile(JSON.parse(stored));
+        profileData = JSON.parse(stored);
+        setProfile(profileData);
       }
     } catch (e) {
       console.error('[PROFILE] Error loading from localStorage:', e);
+    }
+    if (!profileData) {
+      generateProfile();
     }
   }, []);
 
@@ -478,76 +483,16 @@ export function ProfileContent() {
 
   return (
     <div className="h-full max-w-4xl mx-auto px-4 py-8">
-      {/* ── Empty state ───────────────────────────────────────────── */}
+      {/* ── Empty state (error / retry) ───────────────────────────── */}
       {!profile && !generating && (
         <div className="flex flex-col items-center justify-center h-full">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 max-w-md w-full text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-purple-100 dark:bg-purple-900/40 mb-4 mx-auto">
-              <User className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            </div>
-            <h2 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">
-              Your Email Profile
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-5 text-sm leading-relaxed">
-              Generate a comprehensive personal profile based on your Gmail emails. The AI
-              analyzes your email patterns, contacts, and activities to build a rich summary.
-            </p>
-
-            <div className="mb-5 text-left">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                Emails per category
-              </label>
-              <input
-                type="number"
-                min={5}
-                max={200}
-                value={maxResultsPerCategory}
-                onChange={e => setMaxResultsPerCategory(Math.max(5, Math.min(200, Number(e.target.value))))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Fetches this many emails from each of the 5 categories (5–200)
-              </p>
-            </div>
-
-            <div className="mb-5 text-left">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                Model
-              </label>
-              <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
-                {([
-                  { id: 'gemini-flash-lite', label: 'Gemini' },
-                  { id: 'groq', label: 'Groq' },
-                  { id: 'kimi', label: 'Kimi' },
-                ] as const).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedModel(id);
-                      setCostPerMInput(MODEL_PRICING[id].input);
-                      setCostPerMOutput(MODEL_PRICING[id].output);
-                    }}
-                    className={cn(
-                      'flex-1 py-2 text-sm font-medium transition-colors',
-                      selectedModel === id
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {error && (
               <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start space-x-2 text-red-600 dark:text-red-400 text-sm text-left">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <p>{error}</p>
               </div>
             )}
-
             <Button
               onClick={generateProfile}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white"
@@ -555,9 +500,6 @@ export function ProfileContent() {
               <User className="h-4 w-4 mr-2" />
               Generate Profile
             </Button>
-            <p className="text-xs text-gray-400 mt-3">
-              Analyzes top {maxResultsPerCategory} emails × 5 categories
-            </p>
           </div>
         </div>
       )}

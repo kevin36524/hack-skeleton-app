@@ -65,14 +65,24 @@ Return a JSON object with this exact structure:
 \`\`\`json
 {
   "short_summary": "A brief 2-3 sentence summary of the most important items, or 'Nothing urgent. Clean inbox.' if nothing important",
-  "emails": [
-    {
-      "id": "email-id-or-subject",
-      "section": "read_now|worth_a_glance|low_priority",
-      "subsection": "category-name" // Only for worth_a_glance emails, omit for others
-    }
-  ]
+  "emails": "id,section,subsection\n<id>,<section>,<subsection>\n<id>,<section>,<subsection>"
 }
+\`\`\`
+
+The "emails" field is a CSV string. Rules:
+- First line is always the header: \`id,section,subsection\`
+- One email per line: \`<id>,<section>,<subsection>\`
+- For read_now and low_priority emails, leave subsection empty: \`<id>,read_now,\`
+- For worth_a_glance emails, include the subsection: \`<id>,worth_a_glance,newsletters\`
+- Every email from the input MUST appear exactly once
+
+Example:
+\`\`\`
+id,section,subsection
+abc123,read_now,
+def456,worth_a_glance,newsletters
+ghi789,low_priority,
+jkl012,worth_a_glance,transactions
 \`\`\`
 
 ## Classification Rules

@@ -278,44 +278,47 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
 
     // Parse the JSON output from the agent
     let parsedResult: { short_summary: string; emails: z.infer<typeof minimalClassificationSchema>[] };
-    
+
     // Create a lookup map for email data to enrich the agent's minimal output
     const emailDataMap = new Map(emailList.map(e => [e.id, e]));
-    
-    // Recovers short_summary + all complete email objects from a truncated JSON response.
-    function recoverPartialJson(raw: string): typeof parsedResult | null {
+
+    // Parses the CSV emails string into minimalClassificationSchema objects.
+    function parseCsvEmails(csv: string): z.infer<typeof minimalClassificationSchema>[] {
+      const lines = csv.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      // Skip header line if present
+      const dataLines = lines[0]?.startsWith('id,') ? lines.slice(1) : lines;
+      const emails: z.infer<typeof minimalClassificationSchema>[] = [];
+      for (const line of dataLines) {
+        const [id, section, subsection] = line.split(',').map(s => s.trim());
+        if (!id || !section) continue;
+        const validSections = ['read_now', 'worth_a_glance', 'low_priority'] as const;
+        if (!validSections.includes(section as any)) continue;
+        emails.push({
+          id,
+          section: section as z.infer<typeof minimalClassificationSchema>['section'],
+          ...(subsection ? { subsection } : {}),
+        });
+      }
+      return emails;
+    }
+
+    // Recovers short_summary + CSV emails from a truncated/malformed response.
+    function recoverPartial(raw: string): typeof parsedResult | null {
       try {
         const summaryMatch = raw.match(/"short_summary"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
         const short_summary = summaryMatch ? summaryMatch[1] : 'Summary was incomplete.';
 
-        const arrayStart = raw.search(/"emails"\s*:\s*\[/);
-        if (arrayStart === -1) return null;
-
-        const arrayContent = raw.slice(raw.indexOf('[', arrayStart) + 1);
-        const emails: z.infer<typeof minimalClassificationSchema>[] = [];
-        let depth = 0;
-        let objStart = -1;
-
-        for (let i = 0; i < arrayContent.length; i++) {
-          const ch = arrayContent[i];
-          if (ch === '{') {
-            if (depth === 0) objStart = i;
-            depth++;
-          } else if (ch === '}') {
-            depth--;
-            if (depth === 0 && objStart !== -1) {
-              try {
-                const obj = JSON.parse(arrayContent.substring(objStart, i + 1));
-                if (obj.id && obj.section) emails.push(obj);
-              } catch { /* skip malformed object */ }
-              objStart = -1;
-            }
+        // Try to extract the CSV string value from the emails field
+        const csvMatch = raw.match(/"emails"\s*:\s*"((?:[^"\\]|\\[^])*)"/s);
+        if (csvMatch) {
+          const csv = csvMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          const emails = parseCsvEmails(csv);
+          if (emails.length > 0) {
+            console.log(`[Workflow] Recovered ${emails.length} email(s) from partial JSON`);
+            return { short_summary, emails };
           }
         }
-
-        if (emails.length === 0) return null;
-        console.log(`[Workflow] Recovered ${emails.length} email(s) from partial JSON`);
-        return { short_summary, emails };
+        return null;
       } catch {
         return null;
       }
@@ -328,22 +331,22 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
                         rawOutput.match(/(\{[\s\S]*\})/);
 
       const jsonStr = jsonMatch ? jsonMatch[1] : rawOutput;
-      parsedResult = JSON.parse(jsonStr.trim());
+      const raw = JSON.parse(jsonStr.trim());
 
-      // Validate that we have the required fields
-      if (!parsedResult.short_summary || !Array.isArray(parsedResult.emails)) {
+      if (!raw.short_summary || typeof raw.emails !== 'string') {
         throw new Error('Invalid response structure');
       }
+
+      const emails = parseCsvEmails(raw.emails);
+      parsedResult = { short_summary: raw.short_summary, emails };
     } catch (parseError) {
       console.error('[Workflow] Failed to parse agent output as JSON:', parseError);
 
-      // Try to salvage whatever complete email objects were generated
-      const recovered = recoverPartialJson(rawOutput);
+      const recovered = recoverPartial(rawOutput);
       if (recovered) {
         parsedResult = recovered;
       } else {
         console.error('[Workflow] Recovery failed. Raw output:', rawOutput);
-        // Fallback: create a basic structure
         parsedResult = {
           short_summary: 'Failed to parse summary. Please try again.',
           emails: emailList.map(e => ({
@@ -354,8 +357,16 @@ Please provide a comprehensive summary following your instructions. Output ONLY 
       }
     }
 
+    // Deduplicate by ID (LLM may emit the same ID multiple times in CSV)
+    const seenIds = new Set<string>();
+    const uniqueClassified = parsedResult.emails.filter(e => {
+      if (seenIds.has(e.id)) return false;
+      seenIds.add(e.id);
+      return true;
+    });
+
     // Enrich the minimal classification with from/subject from original email data
-    const enrichedEmails: z.infer<typeof classifiedEmailSchema>[] = parsedResult.emails.map(classifiedEmail => {
+    const enrichedEmails: z.infer<typeof classifiedEmailSchema>[] = uniqueClassified.map(classifiedEmail => {
       const originalEmail = emailDataMap.get(classifiedEmail.id);
       return {
         id: classifiedEmail.id,
