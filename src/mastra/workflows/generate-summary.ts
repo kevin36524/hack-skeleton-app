@@ -25,8 +25,18 @@ const emailDataSchema = z.object({
   bodyHtml: z.string().optional(),
 });
 
+// New structured email classification
+const classifiedEmailSchema = z.object({
+  id: z.string(),
+  from: z.string(),
+  subject: z.string(),
+  section: z.enum(['read_now', 'worth_a_glance', 'low_priority']),
+  subsection: z.string().optional(),
+});
+
 const summaryOutputSchema = z.object({
-  summary: z.string(),
+  short_summary: z.string(),
+  emails: z.array(classifiedEmailSchema),
   emailAddress: z.string(),
   generatedAt: z.string(),
   stats: z.object({
@@ -185,6 +195,7 @@ const generateSummary = createStep({
         ? e.bodyText.substring(0, 300).replace(/\n/g, ' ').trim()
         : e.snippet;
       return {
+        id: e.id,
         from: e.from,
         subject: e.subject,
         date: e.date,
@@ -213,7 +224,7 @@ ${initData.userProfile || 'No user profile provided. Analyze emails based on gen
 ## Email Data (JSON)
 ${JSON.stringify(emailList, null, 2)}
 
-Please provide a comprehensive summary following your instructions.`;
+Please provide a comprehensive summary following your instructions. Output ONLY valid JSON.`;
 
     const requestContext = new RequestContext();
     requestContext.set('model-id', initData.model || 'gemini-flash-lite');
@@ -229,7 +240,7 @@ Please provide a comprehensive summary following your instructions.`;
       maxTokens: MAX_TOKENS,
     });
 
-    let summaryMarkdown = '';
+    let rawOutput = '';
     let tokenCount = 0;
     const streamId = initData.streamId;
 
@@ -239,19 +250,17 @@ Please provide a comprehensive summary following your instructions.`;
         throw new Error('Workflow killed by user');
       }
 
-      summaryMarkdown += chunk;
+      rawOutput += chunk;
       tokenCount += chunk.length / 4;
       emitToken?.(chunk);
 
-      if (summaryMarkdown.length > MAX_CHARS_ESTIMATE) {
+      if (rawOutput.length > MAX_CHARS_ESTIMATE) {
         console.warn(`[Workflow] Summary generation exceeded max length limit, stopping`);
-        summaryMarkdown += '\n\n*[Summary generation truncated due to length limit]*';
         break;
       }
 
-      if (tokenCount > 6000 && !summaryMarkdown.includes('##')) {
+      if (tokenCount > 6000) {
         console.warn('[Workflow] Summary generation seems to be repeating, stopping');
-        summaryMarkdown += '\n\n*[Summary generation stopped - possible repetition detected]*';
         break;
       }
     }
@@ -261,8 +270,41 @@ Please provide a comprehensive summary following your instructions.`;
     const completionTokens = rawUsage?.completionTokens ?? rawUsage?.outputTokens ?? 0;
     const totalTokens = rawUsage?.totalTokens ?? (promptTokens + completionTokens);
 
+    // Parse the JSON output from the agent
+    let parsedResult: { short_summary: string; emails: z.infer<typeof classifiedEmailSchema>[] };
+    
+    try {
+      // Try to extract JSON from the output (in case there's markdown code block)
+      const jsonMatch = rawOutput.match(/```json\s*([\s\S]*?)```/) || 
+                        rawOutput.match(/```\s*([\s\S]*?)```/) ||
+                        rawOutput.match(/(\{[\s\S]*\})/);
+      
+      const jsonStr = jsonMatch ? jsonMatch[1] : rawOutput;
+      parsedResult = JSON.parse(jsonStr.trim());
+      
+      // Validate that we have the required fields
+      if (!parsedResult.short_summary || !Array.isArray(parsedResult.emails)) {
+        throw new Error('Invalid response structure');
+      }
+    } catch (parseError) {
+      console.error('[Workflow] Failed to parse agent output as JSON:', parseError);
+      console.error('[Workflow] Raw output:', rawOutput);
+      
+      // Fallback: create a basic structure
+      parsedResult = {
+        short_summary: 'Failed to parse summary. Please try again.',
+        emails: emailList.map(e => ({
+          id: e.id,
+          from: e.from,
+          subject: e.subject,
+          section: 'low_priority' as const,
+        })),
+      };
+    }
+
     return {
-      summary: summaryMarkdown,
+      short_summary: parsedResult.short_summary,
+      emails: parsedResult.emails,
       emailAddress: initData.emailAddress || initData.email || 'unknown',
       generatedAt: new Date().toISOString(),
       stats,

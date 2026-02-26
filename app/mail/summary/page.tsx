@@ -15,17 +15,33 @@ import {
   CheckCircle2,
   LogOut,
   ChevronDown,
+  Mail,
+  Eye,
+  Archive,
+  Check,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const SUMMARY_STORAGE_KEY = 'user_gmail_summary';
 const PROFILE_STORAGE_KEY = 'user_gmail_profile';
 
+type SectionType = 'read_now' | 'worth_a_glance' | 'low_priority';
+
+interface ClassifiedEmail {
+  id: string;
+  from: string;
+  subject: string;
+  section: SectionType;
+  subsection?: string;
+}
+
 interface InboxSummary {
-  summary: string;
+  short_summary: string;
+  emails: ClassifiedEmail[];
   emailAddress: string;
   generatedAt: string;
   stats: {
@@ -54,155 +70,6 @@ const INITIAL_STEPS: GenerationStep[] = [
   { id: 'fetch-inbox-emails', label: 'Fetching inbox emails', status: 'pending' },
   { id: 'generate-summary', label: 'Generating summary', status: 'pending' },
 ];
-
-// ── Inline markdown renderer ──────────────────────────────────────────────────
-
-function renderInline(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  const regex = /\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    if (match[1] !== undefined) {
-      parts.push(
-        <strong key={match.index} className="font-semibold text-gray-900 dark:text-gray-100">
-          {match[1]}
-        </strong>
-      );
-    } else if (match[2] !== undefined) {
-      parts.push(<em key={match.index}>{match[2]}</em>);
-    } else if (match[3] !== undefined) {
-      parts.push(
-        <code
-          key={match.index}
-          className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-xs font-mono"
-        >
-          {match[3]}
-        </code>
-      );
-    }
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length === 1 ? parts[0] : <>{parts}</>;
-}
-
-function MarkdownContent({ content }: { content: string }) {
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let i = 0;
-  let keyCounter = 0;
-  const nextKey = () => String(keyCounter++);
-
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Headers
-    if (trimmed.startsWith('# ')) {
-      elements.push(
-        <h1 key={nextKey()} className="text-2xl font-bold mt-8 mb-3 text-gray-900 dark:text-gray-100">
-          {renderInline(trimmed.slice(2))}
-        </h1>
-      );
-      i++;
-    } else if (trimmed.startsWith('## ')) {
-      elements.push(
-        <h2
-          key={nextKey()}
-          className="text-xl font-semibold mt-6 mb-2 pb-1 border-b border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-        >
-          {renderInline(trimmed.slice(3))}
-        </h2>
-      );
-      i++;
-    } else if (trimmed.startsWith('### ')) {
-      elements.push(
-        <h3 key={nextKey()} className="text-base font-semibold mt-4 mb-2 text-gray-800 dark:text-gray-200">
-          {renderInline(trimmed.slice(4))}
-        </h3>
-      );
-      i++;
-    } else if (trimmed.startsWith('#### ')) {
-      elements.push(
-        <h4 key={nextKey()} className="text-sm font-semibold mt-3 mb-1 text-gray-800 dark:text-gray-200">
-          {renderInline(trimmed.slice(5))}
-        </h4>
-      );
-      i++;
-    }
-    // Horizontal rule
-    else if (/^[-*]{3,}$/.test(trimmed)) {
-      elements.push(
-        <hr key={nextKey()} className="my-5 border-gray-200 dark:border-gray-700" />
-      );
-      i++;
-    }
-    // Unordered list – collect consecutive items
-    else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      const items: React.ReactNode[] = [];
-      while (
-        i < lines.length &&
-        (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))
-      ) {
-        const itemText = lines[i].trim().slice(2);
-        items.push(
-          <li key={i} className="mb-1 leading-relaxed">
-            {renderInline(itemText)}
-          </li>
-        );
-        i++;
-      }
-      elements.push(
-        <ul key={nextKey()} className="list-disc ml-5 my-2 space-y-0.5 text-gray-700 dark:text-gray-300">
-          {items}
-        </ul>
-      );
-    }
-    // Ordered list – collect consecutive items
-    else if (/^\d+\. /.test(trimmed)) {
-      const items: React.ReactNode[] = [];
-      while (i < lines.length && /^\d+\. /.test(lines[i].trim())) {
-        const itemText = lines[i].trim().replace(/^\d+\. /, '');
-        items.push(
-          <li key={i} className="mb-1 leading-relaxed">
-            {renderInline(itemText)}
-          </li>
-        );
-        i++;
-      }
-      elements.push(
-        <ol key={nextKey()} className="list-decimal ml-5 my-2 space-y-0.5 text-gray-700 dark:text-gray-300">
-          {items}
-        </ol>
-      );
-    }
-    // Empty line → small spacer
-    else if (trimmed === '') {
-      elements.push(<div key={nextKey()} className="h-1" />);
-      i++;
-    }
-    // Normal paragraph
-    else {
-      elements.push(
-        <p key={nextKey()} className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2 text-sm">
-          {renderInline(trimmed)}
-        </p>
-      );
-      i++;
-    }
-  }
-
-  return <div>{elements}</div>;
-}
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -291,6 +158,222 @@ function StepIndicator({
   );
 }
 
+// ── Section Card Components ───────────────────────────────────────────────────
+
+function SectionHeader({
+  title,
+  count,
+  icon: Icon,
+  colorClass,
+}: {
+  title: string;
+  count: number;
+  icon: React.ElementType;
+  colorClass: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className={cn("p-2 rounded-lg", colorClass)}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{count} emails</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={cn(
+          "text-lg font-bold",
+          colorClass.replace('bg-', 'text-').replace('/10', '')
+        )}>
+          {count}
+        </span>
+        <ChevronDown className="h-5 w-5 text-gray-400" />
+      </div>
+    </div>
+  );
+}
+
+function EmailItem({ email }: { email: ClassifiedEmail }) {
+  // Extract sender name from "Name <email>" format
+  const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
+  const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
+  
+  // Get initials for avatar
+  const initials = senderName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <div className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
+        {initials}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{senderName}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{email.subject}</p>
+      </div>
+    </div>
+  );
+}
+
+function SubsectionGroup({
+  subsection,
+  emails,
+}: {
+  subsection: string;
+  emails: ClassifiedEmail[];
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+  
+  // Get unique sender initials for the avatar stack
+  const uniqueSenders = [...new Set(emails.map(e => e.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || e.from))].slice(0, 4);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg px-2 -mx-2 transition-colors">
+          <div className="flex items-center gap-3">
+            {/* Avatar stack */}
+            <div className="flex -space-x-2">
+              {uniqueSenders.map((sender, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-medium text-white",
+                    i === 0 && "bg-blue-500",
+                    i === 1 && "bg-green-500",
+                    i === 2 && "bg-purple-500",
+                    i === 3 && "bg-orange-500"
+                  )}
+                >
+                  {sender.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 1)}
+                </div>
+              ))}
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-gray-900 dark:text-gray-100 capitalize">{subsection}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{emails.length} emails</p>
+            </div>
+          </div>
+          <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", isOpen && "rotate-180")} />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pl-4 mt-2">
+          {emails.map((email) => (
+            <EmailItem key={email.id} email={email} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function ReadNowSection({ emails }: { emails: ClassifiedEmail[] }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  if (emails.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <SectionHeader
+            title="Read now"
+            count={emails.length}
+            icon={Mail}
+            colorClass="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-4 space-y-1">
+            {emails.map((email) => (
+              <EmailItem key={email.id} email={email} />
+            ))}
+          </div>
+          <button className="w-full mt-4 py-2.5 px-4 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center justify-center gap-2">
+            Mark as done
+            <Check className="h-4 w-4" />
+          </button>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+function WorthAGlanceSection({ emails }: { emails: ClassifiedEmail[] }) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  if (emails.length === 0) return null;
+
+  // Group by subsection
+  const grouped = emails.reduce((acc, email) => {
+    const subsection = email.subsection || 'other';
+    if (!acc[subsection]) acc[subsection] = [];
+    acc[subsection].push(email);
+    return acc;
+  }, {} as Record<string, ClassifiedEmail[]>);
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <SectionHeader
+            title="Worth a glance"
+            count={emails.length}
+            icon={Eye}
+            colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-4 space-y-2">
+            {Object.entries(grouped).map(([subsection, subsectionEmails]) => (
+              <SubsectionGroup
+                key={subsection}
+                subsection={subsection}
+                emails={subsectionEmails}
+              />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+function LowPrioritySection({ emails }: { emails: ClassifiedEmail[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (emails.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <SectionHeader
+            title="Low priority"
+            count={emails.length}
+            icon={Archive}
+            colorClass="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-4 space-y-1">
+            {emails.map((email) => (
+              <EmailItem key={email.id} email={email} />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function SummaryPageContent() {
@@ -300,7 +383,7 @@ function SummaryPageContent() {
   const [summary, setSummary] = useState<InboxSummary | null>(null);
   const [userProfile, setUserProfile] = useState<string>('');
   const [generating, setGenerating] = useState(false);
-  const [streamingSummary, setStreamingSummary] = useState('');
+  const [streamingText, setStreamingText] = useState('');
   const [maxResults, setMaxResults] = useState(50);
   const [selectedModel, setSelectedModel] = useState<'gemini-flash-lite' | 'groq' | 'kimi'>('gemini-flash-lite');
   const [costPerMInput, setCostPerMInput] = useState(0.10);
@@ -337,7 +420,7 @@ function SummaryPageContent() {
   const resetSteps = () => {
     setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending' as StepStatus })));
     setExpandedSteps(new Set());
-    setStreamingSummary('');
+    setStreamingText('');
   };
 
   const updateStep = (stepId: string, patch: Partial<GenerationStep>) =>
@@ -363,12 +446,13 @@ function SummaryPageContent() {
       if (stepId) updateStep(stepId, { status: 'error' });
     } else if (eventType === 'summary-chunk') {
       const { token } = data ?? {};
-      if (token) setStreamingSummary((prev) => prev + token);
+      if (token) setStreamingText((prev) => prev + token);
     } else if (eventType === 'workflow-complete') {
       const result = data?.result;
-      if (result?.summary) {
+      if (result?.emails) {
         const summaryData: InboxSummary = {
-          summary: result.summary,
+          short_summary: result.short_summary,
+          emails: result.emails,
           emailAddress: result.emailAddress,
           generatedAt: result.generatedAt,
           stats: result.stats,
@@ -453,7 +537,6 @@ function SummaryPageContent() {
           }
         }
       } finally {
-        // Ensure generating is always cleared when the stream ends
         setGenerating(false);
       }
     } catch (err: any) {
@@ -486,6 +569,11 @@ function SummaryPageContent() {
       return iso;
     }
   };
+
+  // Group emails by section
+  const readNowEmails = summary?.emails.filter(e => e.section === 'read_now') || [];
+  const worthAGlanceEmails = summary?.emails.filter(e => e.section === 'worth_a_glance') || [];
+  const lowPriorityEmails = summary?.emails.filter(e => e.section === 'low_priority') || [];
 
   return (
     <ProtectedRoute>
@@ -533,7 +621,7 @@ function SummaryPageContent() {
 
         {/* Main content */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-full max-w-4xl mx-auto px-4 py-8">
+          <div className="h-full max-w-2xl mx-auto px-4 py-6">
 
             {/* ── Empty state ───────────────────────────────────────────── */}
             {!summary && !generating && (
@@ -631,8 +719,8 @@ function SummaryPageContent() {
 
             {/* ── Generating state ──────────────────────────────────────── */}
             {generating && (
-              streamingSummary ? (
-                // Live preview: split layout — steps sidebar + streaming markdown
+              streamingText ? (
+                // Live preview: split layout — steps sidebar + streaming text
                 <div className="h-full flex gap-4">
                   {/* Steps sidebar */}
                   <div className="w-64 flex-shrink-0">
@@ -654,12 +742,13 @@ function SummaryPageContent() {
                     </div>
                   </div>
 
-                  {/* Streaming summary content */}
+                  {/* Streaming content */}
                   <div className="flex-1 overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                     <ScrollArea className="h-full">
                       <div className="px-8 py-6">
-                        <MarkdownContent content={streamingSummary} />
-                        {/* Blinking cursor at the end */}
+                        <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                          {streamingText}
+                        </pre>
                         <span className="inline-block w-0.5 h-4 bg-blue-500 animate-pulse ml-0.5 align-middle" />
                       </div>
                     </ScrollArea>
@@ -695,104 +784,61 @@ function SummaryPageContent() {
 
             {/* ── Summary display ───────────────────────────────────────── */}
             {summary && !generating && (
-              <div className="h-full flex flex-col gap-4">
-                {/* Summary card header */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                  <div className="flex items-start justify-between flex-wrap gap-4">
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <FileText className="h-5 w-5 text-blue-500" />
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {summary.emailAddress}
-                        </h2>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        Generated {formatDate(summary.generatedAt)}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full font-medium">
-                          {summary.stats.totalEmailsFetched.toLocaleString()} emails analyzed
-                        </span>
-                        <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium">
-                          {summary.stats.uniqueSenders.toLocaleString()} unique senders
-                        </span>
-                      </div>
-                      {summary.usage && (
-                        <div className="mt-3 space-y-2">
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span>
-                              <span className="font-medium text-gray-700 dark:text-gray-300">{summary.usage.promptTokens.toLocaleString()}</span> in
-                              {' · '}
-                              <span className="font-medium text-gray-700 dark:text-gray-300">{summary.usage.completionTokens.toLocaleString()}</span> out
-                              {' · '}
-                              <span className="font-medium text-gray-700 dark:text-gray-300">{summary.usage.totalTokens.toLocaleString()}</span> total tokens
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="text-gray-400 dark:text-gray-500">$/M tokens:</span>
-                            <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                              in
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={costPerMInput}
-                                onChange={e => setCostPerMInput(parseFloat(e.target.value) || 0)}
-                                className="w-16 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                              />
-                            </label>
-                            <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                              out
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={costPerMOutput}
-                                onChange={e => setCostPerMOutput(parseFloat(e.target.value) || 0)}
-                                className="w-16 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                              />
-                            </label>
-                            <span className="text-green-600 dark:text-green-400 font-medium">
-                              = ${(
-                                (summary.usage.promptTokens / 1_000_000) * costPerMInput +
-                                (summary.usage.completionTokens / 1_000_000) * costPerMOutput
-                              ).toFixed(4)} USD
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={generateSummary}
-                        className="flex items-center space-x-2"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        <span>Regenerate</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearSummary}
-                        className="flex items-center space-x-2 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:border-red-800 dark:hover:border-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Clear</span>
-                      </Button>
-                    </div>
+              <div className="space-y-4">
+                {/* Header greeting */}
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                    Good morning
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Since you were last here you have {summary.emails.length} emails to review
+                  </p>
+                </div>
+
+                {/* Read Now Section */}
+                <ReadNowSection emails={readNowEmails} />
+
+                {/* Worth a Glance Section */}
+                <WorthAGlanceSection emails={worthAGlanceEmails} />
+
+                {/* Low Priority Section */}
+                <LowPrioritySection emails={lowPriorityEmails} />
+
+                {/* Footer actions */}
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Generated {formatDate(summary.generatedAt)}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateSummary}
+                      className="flex items-center space-x-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      <span>Regenerate</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearSummary}
+                      className="flex items-center space-x-2 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:border-red-800 dark:hover:border-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Clear</span>
+                    </Button>
                   </div>
                 </div>
 
-                {/* Summary markdown content */}
-                <div className="flex-1 overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                  <ScrollArea className="h-full">
-                    <div className="px-8 py-6">
-                      <MarkdownContent content={summary.summary} />
-                    </div>
-                  </ScrollArea>
-                </div>
+                {/* Token usage (collapsible) */}
+                {summary.usage && (
+                  <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
+                    {summary.usage.totalTokens.toLocaleString()} tokens · 
+                    ${((summary.usage.promptTokens / 1_000_000) * costPerMInput +
+                       (summary.usage.completionTokens / 1_000_000) * costPerMOutput).toFixed(4)} USD
+                  </div>
+                )}
               </div>
             )}
           </div>

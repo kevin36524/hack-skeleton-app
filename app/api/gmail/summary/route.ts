@@ -56,7 +56,8 @@ function summarizeOutput(stepId: string, output: unknown): unknown {
       return {
         emailAddress: d.emailAddress,
         generatedAt: d.generatedAt,
-        summaryLength: typeof d.summary === 'string' ? `${d.summary.length} chars` : 0,
+        short_summary: d.short_summary,
+        emailCount: Array.isArray(d.emails) ? d.emails.length : 0,
         stats: d.stats,
       };
 
