@@ -39,11 +39,13 @@ Help users triage their emails by:
 
 Each email MUST be classified into one of these three sections:
 
-1. **read_now** - Reserved ONLY for emails the user would star or treat as highest priority per their profile. Be extremely selective — if in doubt, it does NOT belong here. A typical inbox should have very few read_now emails (aim for 1–5 max). Only include if the email clearly matches the user's MUST READ patterns: specific VIP senders, urgent action required, or topics the profile explicitly marks as top priority.
+1. **read_now** - Reserved ONLY for emails the user would star or treat as highest priority per their profile. **Must be exactly ~10% of total emails** (e.g. 5 out of 50). Only include if the email clearly matches the user's MUST READ patterns: specific VIP senders, urgent action required, or topics the profile explicitly marks as top priority.
 
-2. **worth_a_glance** - Emails the user would generally glance at and do nothing more. These are informational but not urgent.
+2. **worth_a_glance** - Emails the user would generally glance at and do nothing more. These are informational but not urgent. **Must be exactly ~20% of total emails** (e.g. 10 out of 50).
 
-3. **low_priority** - Emails the user will mostly archive or delete. These are noise, promotions, or irrelevant messages.
+3. **low_priority** - Emails the user will mostly archive or delete. These are noise, promotions, or irrelevant messages. **Must be exactly ~70% of total emails** (e.g. 35 out of 50).
+
+**Distribution rule**: Across the full email list, enforce read_now ≈ 10%, worth_a_glance ≈ 20%, low_priority ≈ 70%. Count your emails per section before outputting and adjust until the distribution matches.
 
 ## Subsections (only for "worth_a_glance")
 
@@ -89,9 +91,9 @@ jkl012,worth_a_glance,transactions
 
 ## Classification Rules
 
-1. **Extremely Selective read_now**: Only emails the user would realistically star or act on immediately go here. Cross-check against the profile's MUST READ patterns and ⭐ Starred Emails section. When uncertain, downgrade to worth_a_glance or low_priority.
-2. **Aggressive Filtering**: If an email doesn't clearly match VIP senders, urgent markers, or high-priority topics from the profile → low_priority.
-3. **No Guessing**: Don't assume something might be important. The user profile decides. Err on the side of fewer read_now.
+1. **Enforce the distribution**: read_now = ~10%, worth_a_glance = ~20%, low_priority = ~70%. Before finalizing, count emails in each section and adjust if needed.
+2. **Selective read_now**: Only emails the user would realistically star or act on immediately. Cross-check against the profile's MUST READ patterns and ⭐ Starred Emails section. When uncertain, downgrade to worth_a_glance or low_priority.
+3. **Aggressive Filtering**: If an email doesn't clearly match VIP senders, urgent markers, or high-priority topics from the profile → low_priority.
 4. **Be Brutal**: Promotional emails, newsletters (unless explicitly starred in the profile), generic notifications, order confirmations, and social pings → low_priority.
 5. **Subsection Assignment**: Only worth_a_glance emails get subsections. Pick the most appropriate category based on content.
 6. **Consistency**: Use consistent subsection names across emails.

@@ -87,8 +87,16 @@ const fetchAllCategories = createStep({
 
     console.log(`[fetch-all-categories] provider=${provider} host=${providerConfig.host} email=${email}`);
 
+    // For providers with a dedicated Starred folder (Gmail), fetch from that folder.
+    // For providers without one (Yahoo), search Inbox for the \Flagged IMAP flag.
+    const starredCategory = l2i.STARRED
+      ? { name: 'STARRED', folder: l2i.STARRED, criteria: { all: true } }
+      : l2i.INBOX
+        ? { name: 'STARRED', folder: l2i.INBOX, criteria: { flagged: true } }
+        : null;
+
     const categories = ([
-      l2i.STARRED   ? { name: 'STARRED',   folder: l2i.STARRED,   criteria: { all: true }  } : null,
+      starredCategory,
       l2i.INBOX     ? { name: 'READ',       folder: l2i.INBOX,     criteria: { seen: true } } : null,
       l2i.SENT      ? { name: 'SENT',       folder: l2i.SENT,      criteria: { all: true }  } : null,
       l2i.IMPORTANT ? { name: 'IMPORTANT',  folder: l2i.IMPORTANT, criteria: { all: true }  } : null,

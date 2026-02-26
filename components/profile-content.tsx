@@ -586,7 +586,7 @@ export function ProfileContent() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <span className="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full font-medium">
-                    {profile.stats.uniqueEmails.toLocaleString()} emails analyzed
+                    {profile.stats?.uniqueEmails?.toLocaleString() ?? '?'} emails analyzed
                   </span>
                 </div>
                 {profile.usage && (

@@ -213,10 +213,10 @@ function MarkAsDoneButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full mt-4 py-2.5 px-4 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium text-sm hover:border-purple-400 hover:text-purple-600 dark:hover:border-purple-500 dark:hover:text-purple-400 transition-colors flex items-center justify-center gap-2"
+      className="w-full mt-4 py-2.5 px-4 rounded-full border border-purple-600 text-purple-600 font-semibold text-base transition-colors flex items-center justify-center gap-2"
     >
       Mark as done
-      <ChevronsRight className="h-4 w-4" />
+      <CheckCircle2 className="h-5 w-5" />
     </button>
   );
 }
@@ -312,7 +312,7 @@ function ReadNowSection({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Read now</h3>
-              <span className="min-w-6 h-6 px-1.5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center">
                 {emails.length}
               </span>
             </div>
@@ -401,9 +401,10 @@ function LowPrioritySection({
   const senderMap = emails.reduce((acc, email) => {
     const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
     const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
-    if (!acc[senderEmail]) acc[senderEmail] = { name: senderName, email: senderEmail };
+    if (!acc[senderEmail]) acc[senderEmail] = { name: senderName, email: senderEmail, count: 0 };
+    acc[senderEmail].count += 1;
     return acc;
-  }, {} as Record<string, { name: string; email: string }>);
+  }, {} as Record<string, { name: string; email: string; count: number }>);
   const senders = Object.values(senderMap);
 
   const [selectedSenders, setSelectedSenders] = useState<Set<string>>(
@@ -471,24 +472,28 @@ function LowPrioritySection({
               </span>
             </button>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="columns-2 gap-2 space-y-0">
               {senders.map((sender) => {
                 const isSelected = selectedSenders.has(sender.email);
                 return (
-                  <button
-                    key={sender.email}
-                    onClick={() => toggleSender(sender.email)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-left"
-                  >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      {isSelected && (
-                        <Check className="h-4 w-4 text-gray-500 dark:text-gray-300" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
-                      {sender.name}
+                  <div key={sender.email} className="relative pt-2.5 break-inside-avoid mb-2">
+                    <span className="absolute top-0 -right-2 z-10 min-w-5 h-5 px-1 rounded-full bg-black text-white text-[10px] font-bold flex items-center justify-center">
+                      {sender.count}
                     </span>
-                  </button>
+                    <button
+                      onClick={() => toggleSender(sender.email)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-left"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                        {isSelected && (
+                          <Check className="h-4 w-4 text-gray-500 dark:text-gray-300" />
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100 leading-tight">
+                        {sender.name}
+                      </span>
+                    </button>
+                  </div>
                 );
               })}
             </div>
