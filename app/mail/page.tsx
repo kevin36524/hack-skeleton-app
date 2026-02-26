@@ -192,12 +192,12 @@ function MailPageContent() {
               <div className="flex items-center space-x-4">
                 <Image
                   src="/logo.png"
-                  alt="Oath Mail Logo"
+                  alt="Test Mail Logo"
                   width={32}
                   height={32}
                   className="h-8 w-8 object-contain"
                 />
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Oath Mail</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Test Mail</h1>
               </div>
 
               {/* Search Box */}

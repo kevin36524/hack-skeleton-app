@@ -88,14 +88,14 @@ function LoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
             <Image
               src="/logo.png"
-              alt="Oath Mail Logo"
+              alt="Test Mail Logo"
               width={64}
               height={64}
               className="rounded-full"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Oath Mail
+            Test Mail
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sign in to access your emails
