@@ -53,10 +53,10 @@ export async function GET(
 
         if (format === 'full' && msg.source) {
           const parsed = parseEmailSource(msg.source);
-          return buildGmailFull(msg.uid, msg.envelope, msg.flags, msg.internalDate, folder, folderLabel, parsed);
+          return buildGmailFull(msg.uid, msg.envelope, msg.flags ?? new Set(), msg.internalDate, folder, folderLabel, parsed);
         }
 
-        return buildGmailMetadata(msg.uid, msg.envelope, msg.flags, msg.internalDate, folder, folderLabel);
+        return buildGmailMetadata(msg.uid, msg.envelope, msg.flags ?? new Set(), msg.internalDate, folder, folderLabel);
       } finally {
         lock.release();
       }
