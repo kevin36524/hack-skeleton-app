@@ -82,9 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem('sidebar-collapsed');
-    localStorage.removeItem('panel-sizes');
+    localStorage.clear();
     const queryClient = getQueryClient();
     queryClient.clear();
     setToken(null);

@@ -40,6 +40,9 @@ function MailPageContent() {
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  // Track actual viewport to avoid mounting duplicate MessageList instances
+  // (both md:hidden and hidden md:block layouts are always in the DOM)
+  const [isMobileLayout, setIsMobileLayout] = useState<boolean | null>(null);
   const [summarySelectedMessage, setSummarySelectedMessage] = useState<Message | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
@@ -60,6 +63,15 @@ function MailPageContent() {
   useEffect(() => {
     console.log('MailPage: mailboxId:', mailboxId, 'accountId:', accountId, 'folderId:', folderId);
   }, [mailboxId, accountId, folderId]);
+
+  // Detect actual viewport so we only mount MessageList in the active layout
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobileLayout(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobileLayout(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Load desktop sidebar collapsed state and panel sizes from localStorage
   useEffect(() => {
@@ -362,13 +374,16 @@ function MailPageContent() {
                       </h2>
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      {isReady ? (
+                      {/* isMobileLayout guard prevents this instance from mounting on desktop */}
+                      {isReady && isMobileLayout === true ? (
                         <MessageList
                           mailboxId={mailboxId}
                           folderId={folderId}
                           onMessageSelected={handleMessageSelected}
                           selectedMessageId={selectedMessage?.id}
                         />
+                      ) : isReady ? (
+                        <div className="p-4 text-sm text-gray-500">Loading...</div>
                       ) : (
                         <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
                       )}
@@ -401,9 +416,9 @@ function MailPageContent() {
                   </div>
                 </div>
 
-                {/* Summary Panel */}
+                {/* Summary Panel — isMobileLayout guard prevents mounting on desktop */}
                 <div className="w-full flex-shrink-0 flex flex-col h-full overflow-hidden">
-                  {visitedTabs.has('summary') && (
+                  {visitedTabs.has('summary') && isMobileLayout === true && (
                     summarySelectedMessage ? (
                       <>
                         <div className="flex items-center gap-2 px-4 py-3 border-b bg-white dark:bg-gray-800 flex-shrink-0">
@@ -466,7 +481,8 @@ function MailPageContent() {
                     </h2>
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    {isReady ? (
+                    {/* isMobileLayout guard prevents this instance from mounting on mobile */}
+                    {isReady && isMobileLayout !== true ? (
                       <MessageList
                         mailboxId={mailboxId}
                         folderId={folderId}
@@ -504,7 +520,7 @@ function MailPageContent() {
               </div>
             )}
 
-            {activeTab === 'summary' && (
+            {activeTab === 'summary' && isMobileLayout !== true && (
               <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
                 {summarySelectedMessage ? (
                   <>

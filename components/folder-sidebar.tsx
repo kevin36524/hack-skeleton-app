@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { folderService } from '@/lib/services/folder-service';
+import { useFolders } from '@/lib/hooks/use-yahoo-mail';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw, User, Users, Tag, Bell, MessageSquare, MailOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/lib/auth-context';
-import { setAccessToken } from '@/lib/services/gmail-client';
 
 interface FolderSidebarProps {
   mailboxId?: string;
@@ -36,59 +34,32 @@ export function FolderSidebar({
   isCollapsed = false,
   onCollapsedChange
 }: FolderSidebarProps) {
-  const { getValidAccessToken, tokenData } = useAuth();
   const router = useRouter();
-  const [folders, setFolders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
+  const { data: folders = [], isLoading: loading, error: queryError, refetch } = useFolders(mailboxId || '');
+  const error = queryError ? ((queryError as Error).message || 'Failed to load folders') : null;
+
+  // Log when folders load
   useEffect(() => {
-    console.log('FolderSidebar: Loading folders...');
-    loadFolders();
-  }, []);
-
-  const loadFolders = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Ensure we have a valid access token (auto-refreshes if expired)
-      const token = await getValidAccessToken();
-      if (!token) {
-        setError('Authentication required');
-        return;
-      }
-
-      // Update token in gmail client
-      setAccessToken(token, tokenData?.provider ?? 'gmail');
-
-      console.log('FolderSidebar: Calling folderService.getFolders');
-      const labels = await folderService.getFolders();
-      console.log('FolderSidebar: Got labels:', labels.length);
-
-      setFolders(labels);
-
-      // Auto-select inbox if no folder is selected
-      if (!selectedFolderId && labels.length > 0) {
-        const inbox = labels.find(label => label.id === 'INBOX');
-        if (inbox) {
-          console.log('FolderSidebar: Auto-selecting inbox');
-          onFolderSelected?.('INBOX');
-        } else {
-          // Fallback to first folder
-          console.log('FolderSidebar: Auto-selecting first folder:', labels[0].id);
-          onFolderSelected?.(labels[0].id!);
-        }
-      }
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to load folders';
-      setError(errorMessage);
-      console.error('Error loading folders:', err);
-    } finally {
-      setLoading(false);
+    if (folders.length > 0) {
+      console.log('[FolderSidebar] Folders loaded:', folders.length, 'mailboxId:', mailboxId);
     }
-  };
+  }, [folders, mailboxId]);
+
+  // Auto-select inbox when folders load and no folder is selected
+  useEffect(() => {
+    if (!selectedFolderId && folders.length > 0) {
+      const inbox = folders.find((f: any) => f.id === 'INBOX');
+      if (inbox) {
+        console.log('[FolderSidebar] Auto-selecting inbox, mailboxId:', mailboxId);
+        onFolderSelected?.('INBOX');
+      } else {
+        console.log('[FolderSidebar] Auto-selecting first folder:', (folders[0] as any).id, 'mailboxId:', mailboxId);
+        onFolderSelected?.((folders[0] as any).id!);
+      }
+    }
+  }, [folders, selectedFolderId]);
 
   const getFolderIcon = (folder: any) => {
     const type = folder.id?.toUpperCase();
@@ -256,10 +227,10 @@ export function FolderSidebar({
           <AlertCircle className="h-10 w-10 text-red-500 mb-3 mx-auto" />
           <h3 className="text-sm font-semibold mb-2">Failed to load folders</h3>
           <p className="text-xs text-gray-600 mb-3">{error}</p>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
-            onClick={loadFolders}
+            onClick={() => refetch()}
             className="text-xs"
           >
             <RefreshCw className="h-3 w-3 mr-1" />

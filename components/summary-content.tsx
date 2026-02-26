@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -357,22 +357,112 @@ function WorthAGlanceSection({ emails, onEmailSelected }: { emails: ClassifiedEm
 
 function LowPrioritySection({ emails, onEmailSelected }: { emails: ClassifiedEmail[]; onEmailSelected?: (email: ClassifiedEmail) => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [done, setDone] = useState(false);
 
-  if (emails.length === 0) return null;
+  // Group emails by sender
+  const senderMap = emails.reduce((acc, email) => {
+    const senderName = email.from.match(/^(.+?)\s*</)?.[1]?.replace(/"/g, '') || email.from;
+    const senderEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
+    if (!acc[senderEmail]) acc[senderEmail] = { name: senderName, email: senderEmail };
+    return acc;
+  }, {} as Record<string, { name: string; email: string }>);
+  const senders = Object.values(senderMap);
+
+  const [selectedSenders, setSelectedSenders] = useState<Set<string>>(
+    () => new Set(senders.map(s => s.email))
+  );
+
+  const allSelected = senders.length > 0 && selectedSenders.size === senders.length;
+
+  const toggleSender = (email: string) => {
+    setSelectedSenders(prev => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedSenders(new Set());
+    else setSelectedSenders(new Set(senders.map(s => s.email)));
+  };
+
+  if (emails.length === 0 || done) return null;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="w-full">
-          <SectionHeader
-            title="Low priority"
-            count={emails.length}
-            icon={Archive}
-            colorClass="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-          />
+          {/* Mobile header */}
+          <div className="flex items-center justify-between md:hidden">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-900 dark:text-gray-100">Low priority</span>
+              <span className="min-w-6 h-6 px-1 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center">
+                {emails.length}
+              </span>
+            </div>
+            <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform duration-200", isOpen && "rotate-180")} />
+          </div>
+          {/* Desktop header */}
+          <div className="hidden md:block">
+            <SectionHeader
+              title="Low priority"
+              count={emails.length}
+              icon={Archive}
+              colorClass="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+            />
+          </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-4 space-y-1">
+          {/* Mobile: 2-column sender grid */}
+          <div className="mt-4 md:hidden">
+            <button
+              className="flex items-center gap-2 mb-4"
+              onClick={(e) => { e.stopPropagation(); toggleAll(); }}
+            >
+              <div className={cn(
+                "w-6 h-6 rounded flex items-center justify-center flex-shrink-0 transition-colors",
+                allSelected ? "bg-violet-600" : "border-2 border-gray-300 dark:border-gray-600"
+              )}>
+                {allSelected && <Check className="h-3.5 w-3.5 text-white" />}
+              </div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </span>
+            </button>
+
+            <div className="grid grid-cols-2 gap-2">
+              {senders.map((sender) => {
+                const isSelected = selectedSenders.has(sender.email);
+                return (
+                  <button
+                    key={sender.email}
+                    onClick={() => toggleSender(sender.email)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-left"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      {isSelected && <Check className="h-4 w-4 text-gray-500 dark:text-gray-300" />}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
+                      {sender.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setDone(true)}
+              disabled={selectedSenders.size === 0}
+              className="mt-4 w-full py-3.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-semibold text-base transition-colors"
+            >
+              Delete all
+            </button>
+          </div>
+
+          {/* Desktop: regular email list */}
+          <div className="hidden md:block mt-4 space-y-1">
             {emails.map((email) => (
               <EmailItem key={email.id} email={email} onEmailSelected={onEmailSelected} />
             ))}
@@ -409,8 +499,14 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
+  // Guard against React StrictMode double-invoke and duplicate mounts
+  const generateCalledRef = useRef(false);
+
   // Load summary and user profile from localStorage on mount; auto-generate if nothing cached
   useEffect(() => {
+    if (generateCalledRef.current) return;
+    generateCalledRef.current = true;
+
     let summaryData = null;
     try {
       const storedSummary = localStorage.getItem(SUMMARY_STORAGE_KEY);
@@ -427,6 +523,7 @@ export function SummaryContent({ onEmailSelected }: { onEmailSelected?: (email: 
       console.error('[SUMMARY] Error loading from localStorage:', e);
     }
     if (!summaryData) {
+      console.log('[SummaryContent] No cached summary, generating...');
       // Pass profile read directly from storage to avoid state race condition
       let cachedProfile = '';
       try {

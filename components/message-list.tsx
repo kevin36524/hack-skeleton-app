@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { messageService } from '@/lib/services/message-service';
 import { Message } from '@/lib/types/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,7 +41,16 @@ export function MessageList({
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
+  // Use refs to hold the latest auth functions so they don't destabilize useCallback
+  const getValidAccessTokenRef = useRef(getValidAccessToken);
+  const tokenDataRef = useRef(tokenData);
+  useLayoutEffect(() => {
+    getValidAccessTokenRef.current = getValidAccessToken;
+    tokenDataRef.current = tokenData;
+  });
+
   const loadMessages = useCallback(async () => {
+    console.log('[MessageList] loadMessages triggered — mailboxId:', mailboxId, 'folderId:', folderId);
     // Cancel any in-flight stream from a previous folder
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -53,13 +62,13 @@ export function MessageList({
     setMessages([]);
 
     try {
-      const token = await getValidAccessToken();
+      const token = await getValidAccessTokenRef.current();
       if (!token) {
         setError('Authentication required');
         return;
       }
 
-      setAccessToken(token, tokenData?.provider ?? 'gmail');
+      setAccessToken(token, tokenDataRef.current?.provider ?? 'gmail');
 
       let receivedFirst = false;
 
@@ -80,16 +89,17 @@ export function MessageList({
     } catch (err: any) {
       if (err?.name === 'AbortError') return; // folder changed, ignore
       setError(err?.message || 'Failed to load messages');
-      console.error('Error loading messages:', err);
+      console.error('[MessageList] Error loading messages:', err);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
         setStreaming(false);
       }
     }
-  }, [mailboxId, folderId, getValidAccessToken]);
+  }, [mailboxId, folderId]); // getValidAccessToken removed — held in a ref to avoid triggering extra calls
 
   useEffect(() => {
+    console.log('[MessageList] useEffect — mailboxId:', mailboxId, 'folderId:', folderId);
     if (mailboxId && folderId) {
       loadMessages();
     }

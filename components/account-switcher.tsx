@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { accountService } from '@/lib/services/account-service';
+import { useAccounts } from '@/lib/hooks/use-yahoo-mail';
 import { Account } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, User } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
-import { setAccessToken } from '@/lib/services/gmail-client';
 
 interface AccountSwitcherProps {
   mailboxId: string;
@@ -20,57 +18,23 @@ export function AccountSwitcher({
   selectedAccountId,
   onAccountSelected
 }: AccountSwitcherProps) {
-  const { getValidAccessToken, tokenData } = useAuth();
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  const { data, isLoading: loading, error: queryError } = useAccounts(mailboxId);
+  const accounts: Account[] = data?.accounts || [];
+  const error = queryError ? ((queryError as Error).message || 'Failed to load accounts') : null;
+
+  // Auto-select primary account when accounts load
   useEffect(() => {
-    console.log('AccountSwitcher: mailboxId:', mailboxId);
-    if (mailboxId) {
-      console.log('AccountSwitcher: Loading accounts...');
-      loadAccounts();
-    }
-  }, [mailboxId]);
-
-  const loadAccounts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Ensure we have a valid access token (auto-refreshes if expired)
-      const token = await getValidAccessToken();
-      if (!token) {
-        setError('Authentication required');
-        return;
-      }
-
-      // Update token in gmail client
-      setAccessToken(token, tokenData?.provider ?? 'gmail');
-
-      console.log('AccountSwitcher: Calling accountService.getEnabledAccounts for mailboxId:', mailboxId);
-      const enabledAccounts = await accountService.getEnabledAccounts();
-      console.log('AccountSwitcher: Got accounts:', enabledAccounts.length);
-      setAccounts(enabledAccounts);
-
-      // Select primary account or first enabled account
-      const primaryAccount = enabledAccounts.find(acc => acc.isPrimary) || enabledAccounts[0];
+    if (accounts.length > 0 && !selectedAccount) {
+      const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
       if (primaryAccount) {
-        console.log('AccountSwitcher: Auto-selecting account:', primaryAccount.id);
+        console.log('[AccountSwitcher] Auto-selecting account:', primaryAccount.id, 'mailboxId:', mailboxId);
         setSelectedAccount(primaryAccount);
-        if (onAccountSelected) {
-          onAccountSelected(primaryAccount);
-        }
+        onAccountSelected?.(primaryAccount);
       }
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to load accounts';
-      setError(errorMessage);
-      console.error('Error loading accounts:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [accounts]);
 
   const handleAccountSelect = (account: Account) => {
     setSelectedAccount(account);
