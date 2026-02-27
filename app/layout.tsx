@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Oath Mail",
+  title: "Test Mail",
   description: "A modern email client for Gmail",
   manifest: '/site.webmanifest',
   icons: {

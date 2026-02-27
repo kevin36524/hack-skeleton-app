@@ -1,6 +1,6 @@
 {
-  "name": "Oath Mail",
-  "short_name": "Oath Mail",
+  "name": "Test Mail",
+  "short_name": "Test Mail",
   "description": "A modern email client for Gmail",
   "icons": [
     {

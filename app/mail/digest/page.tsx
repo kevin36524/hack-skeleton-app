@@ -508,7 +508,7 @@ function DigestPageContent() {
                 </Button>
                 <Image
                   src="/logo.png"
-                  alt="Oath Mail Logo"
+                  alt="Test Mail Logo"
                   width={32}
                   height={32}
                   className="h-8 w-8 object-contain"
