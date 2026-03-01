@@ -35,7 +35,7 @@ export const puzzles: CrosswordPuzzle[] = [
   {
     title: "Colors",
     description: "Find the rainbow colors!",
-    gridSize: 8,
+    gridSize: 10,
     words: [
       // Across words
       { number: 1, direction: "across", row: 0, col: 0, answer: "RED", clue: "Color of apples" },
@@ -51,7 +51,7 @@ export const puzzles: CrosswordPuzzle[] = [
   {
     title: "Space",
     description: "Explore the universe!",
-    gridSize: 8,
+    gridSize: 9,
     words: [
       // Across words
       { number: 1, direction: "across", row: 0, col: 0, answer: "SUN", clue: "Bright star in our sky" },
