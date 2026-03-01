@@ -7,7 +7,7 @@ import { Keyboard } from "@/components/keyboard";
 import { GameStatus } from "@/components/game-status";
 import { Confetti } from "@/components/confetti";
 import { WORD_LIST, getRandomWord } from "@/lib/words";
-import { RotateCcw, Trophy, Sparkles } from "lucide-react";
+import { RotateCcw, Trophy, Sparkles, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MAX_WRONG_GUESSES = 6;
@@ -22,6 +22,7 @@ export default function HangmanGame() {
   const [streak, setStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [clueRevealed, setClueRevealed] = useState(false);
 
   // Initialize game
   const initGame = useCallback(() => {
@@ -32,6 +33,7 @@ export default function HangmanGame() {
     setWrongGuesses(0);
     setGameStatus("playing");
     setShowConfetti(false);
+    setClueRevealed(false);
   }, []);
 
   useEffect(() => {
@@ -58,6 +60,22 @@ export default function HangmanGame() {
       setStreak(0);
     }
   }, [guessedLetters, wrongGuesses, word]);
+
+  // Handle clue reveal - reveals one random letter
+  const handleClue = useCallback(() => {
+    if (gameStatus !== "playing" || clueRevealed) return;
+    
+    const wordLetters = word.split("").filter((l) => l !== " ");
+    const unguessedLetters = wordLetters.filter((l) => !guessedLetters.has(l));
+    
+    if (unguessedLetters.length > 0) {
+      const randomLetter = unguessedLetters[Math.floor(Math.random() * unguessedLetters.length)];
+      const newGuessed = new Set(guessedLetters);
+      newGuessed.add(randomLetter);
+      setGuessedLetters(newGuessed);
+      setClueRevealed(true);
+    }
+  }, [gameStatus, clueRevealed, word, guessedLetters]);
 
   // Handle letter guess
   const handleGuess = useCallback(
@@ -148,6 +166,23 @@ export default function HangmanGame() {
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                   {category}
                 </span>
+              </div>
+              
+              {/* Clue Button */}
+              <div className="absolute bottom-4 left-4">
+                <button
+                  onClick={handleClue}
+                  disabled={gameStatus !== "playing" || clueRevealed}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
+                    clueRevealed
+                      ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                      : "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/70 shadow-sm"
+                  )}
+                >
+                  <Lightbulb className="w-4 h-4" />
+                  {clueRevealed ? "Clue Used" : "Get Clue"}
+                </button>
               </div>
               
               {/* Lives Counter */}
