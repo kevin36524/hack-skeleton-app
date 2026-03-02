@@ -51,7 +51,7 @@ export function MobileHeader({
             <div className="flex items-center space-x-2">
               <Mail className="h-6 w-6 text-purple-600" />
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Yahoo Mail
+                Test Mail
               </h1>
             </div>
           </div>

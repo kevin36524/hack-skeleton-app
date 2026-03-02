@@ -103,7 +103,7 @@ function LoginForm() {
             <Mail className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Yahoo Mail
+            Test Mail
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sign in to access your emails
@@ -243,14 +243,22 @@ function LoginForm() {
           </form>
         </Card>
 
-        <div className="text-center mt-4">
+        <div className="text-center mt-4 space-y-2">
           <a
             href="https://developer.yahoo.com/oauth2/guide/flows_authcode/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+            className="block text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
           >
             Learn more about Yahoo OAuth
+          </a>
+          <a
+            href="/privacy-policy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+          >
+            Privacy Policy
           </a>
         </div>
       </div>
