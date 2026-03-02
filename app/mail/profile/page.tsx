@@ -409,7 +409,7 @@ function ProfilePageContent() {
         }),
       });
 
-      // On 401, refresh the access token via login.oath.email and retry once
+      // On 401, refresh the access token via login.vibatic.com and retry once
       if (response.status === 401) {
         console.log('[PROFILE] Got 401, attempting token refresh...');
         const newToken = await refreshTokenStandalone();
