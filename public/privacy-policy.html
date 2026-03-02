@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Hackable Mail</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #6001d2;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #6001d2;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #6001d2;
+            font-size: 1.8em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 1.3em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .updated-date {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        .highlight {
+            background-color: #f0e6ff;
+            padding: 15px;
+            border-left: 4px solid #6001d2;
+            margin: 20px 0;
+        }
+
+        .contact-box {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+
+        a {
+            color: #6001d2;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .scope-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .scope-table th,
+        .scope-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        .scope-table th {
+            background-color: #6001d2;
+            color: white;
+        }
+
+        .scope-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Privacy Policy</h1>
+        <p class="updated-date">Last Updated: March 2, 2026</p>
+
+        <div class="highlight">
+            <strong>In Short:</strong> This application accesses your Yahoo Mail data solely to provide email management services. We do not store, share, or sell your email data to third parties. Your information remains private and under your control.
+        </div>
+
+        <h2>1. Introduction</h2>
+        <p>
+            This Privacy Policy explains how Hackable Mail ("the Application", "we", "us", or "our") collects, uses, and protects your information when you use our service to access and manage your Yahoo Mail account.
+        </p>
+        <p>
+            By using this Application, you agree to the collection and use of information in accordance with this policy. If you do not agree with this policy, please do not use our Application.
+        </p>
+
+        <h2>2. Information We Access</h2>
+        <p>
+            When you authorize our Application to access your Yahoo Mail account, we request the following permissions via Yahoo's OAuth 2.0 API:
+        </p>
+
+        <table class="scope-table">
+            <thead>
+                <tr>
+                    <th>Permission Scope</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>mail-r (Read Mail)</strong></td>
+                    <td>Read your email messages, folders, and metadata to display them in the application interface</td>
+                </tr>
+                <tr>
+                    <td><strong>mail-w (Write Mail)</strong></td>
+                    <td>Modify your emails (e.g., mark as read/unread, move, delete) based on your actions</td>
+                </tr>
+                <tr>
+                    <td><strong>openid / profile</strong></td>
+                    <td>Access your Yahoo profile information (name, email address) to personalize your experience</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>What We Access:</h3>
+        <ul>
+            <li>Email messages and their content</li>
+            <li>Email metadata (sender, recipient, subject, date, folder labels)</li>
+            <li>Yahoo Mail folders and organization</li>
+            <li>Your Yahoo profile information (email address, name)</li>
+            <li>Message threads and conversation history</li>
+        </ul>
+
+        <h2>3. How We Use Your Information</h2>
+        <p>
+            We use the information accessed from your Yahoo Mail account exclusively to:
+        </p>
+        <ul>
+            <li><strong>Display your emails:</strong> Show your messages, threads, and folders in our application interface</li>
+            <li><strong>Perform actions you request:</strong> Archive messages, move to folders, mark as read/unread, or delete messages when you explicitly request these actions</li>
+            <li><strong>AI-assisted email management:</strong> Optionally use an AI agent to help you triage, summarize, and respond to emails based on your explicit instructions</li>
+            <li><strong>Search functionality:</strong> Enable you to search through your emails</li>
+            <li><strong>Provide email management features:</strong> Organize and manage your inbox according to your preferences</li>
+        </ul>
+
+        <div class="highlight">
+            <strong>Important:</strong> We access your Yahoo Mail data only when you are actively using the Application. Email content processed by our AI assistant is handled transiently and is not permanently stored on our servers.
+        </div>
+
+        <h2>4. Data Storage and Security</h2>
+
+        <h3>4.1 No Permanent Email Storage</h3>
+        <p>
+            We do not store your email content or Yahoo Mail data on our servers. All information is:
+        </p>
+        <ul>
+            <li>Fetched directly from Yahoo's Mail API in real-time</li>
+            <li>Processed temporarily in memory for display and AI-assisted features</li>
+            <li>Automatically cleared when you close the application or log out</li>
+        </ul>
+
+        <h3>4.2 Authentication Tokens</h3>
+        <p>
+            To maintain your connection to Yahoo Mail, we handle OAuth 2.0 authentication tokens as follows:
+        </p>
+        <ul>
+            <li><strong>Access Tokens:</strong> Stored temporarily in your browser's secure session storage</li>
+            <li><strong>Refresh Tokens:</strong> Used only to obtain new access tokens when needed</li>
+            <li><strong>Token Security:</strong> All tokens are transmitted over encrypted HTTPS connections</li>
+            <li><strong>Token Deletion:</strong> Tokens are automatically removed when you log out or revoke access</li>
+        </ul>
+
+        <h3>4.3 Security Measures</h3>
+        <p>
+            We implement industry-standard security measures to protect your data:
+        </p>
+        <ul>
+            <li>All communications use HTTPS/TLS encryption</li>
+            <li>OAuth 2.0 protocol for secure authentication with Yahoo</li>
+            <li>No logging of email content or sensitive information</li>
+            <li>Regular security audits and updates</li>
+            <li>Secure API endpoints with rate limiting to prevent abuse</li>
+        </ul>
+
+        <h2>5. Data Sharing and Third Parties</h2>
+        <p>
+            <strong>We do not share, sell, rent, or trade your Yahoo Mail data with any third parties.</strong> Your email data is:
+        </p>
+        <ul>
+            <li>Never shared with advertisers or marketing companies</li>
+            <li>Never used for analytics or tracking purposes beyond core application functionality</li>
+            <li>Never sold or monetized in any way</li>
+            <li>Only accessed by you through our Application interface</li>
+        </ul>
+
+        <h3>AI Processing</h3>
+        <p>
+            When you use our AI-assisted features, email content may be sent to an AI model (e.g., Claude by Anthropic) to generate summaries or suggested actions. This processing is:
+        </p>
+        <ul>
+            <li>Done solely to fulfill your explicit in-app requests</li>
+            <li>Transient — data is not retained by the AI provider beyond the immediate request</li>
+            <li>Subject to the AI provider's own privacy and data handling policies</li>
+        </ul>
+
+        <h3>Legal Requirements</h3>
+        <p>
+            We may disclose information only if required by law, such as in response to:
+        </p>
+        <ul>
+            <li>Valid legal processes (subpoenas, court orders)</li>
+            <li>Government requests</li>
+            <li>Protection of our legal rights</li>
+        </ul>
+        <p>
+            However, since we do not store your email data, there is minimal information available for disclosure.
+        </p>
+
+        <h2>6. Your Rights and Control</h2>
+        <p>
+            You have complete control over your data and can exercise the following rights at any time:
+        </p>
+
+        <h3>6.1 Revoke Access</h3>
+        <p>
+            You can revoke our Application's access to your Yahoo Mail account at any time by:
+        </p>
+        <ol>
+            <li>Visiting your Yahoo Account Security settings at <a href="https://login.yahoo.com/account/security" target="_blank">https://login.yahoo.com/account/security</a></li>
+            <li>Navigating to "Connected Apps &amp; Websites" or "Recent Activity"</li>
+            <li>Finding our Application in the list and selecting "Remove Access"</li>
+        </ol>
+        <p>
+            Once access is revoked, our Application will no longer be able to access your Yahoo Mail data.
+        </p>
+
+        <h3>6.2 Data Deletion</h3>
+        <p>
+            Since we do not store your email data:
+        </p>
+        <ul>
+            <li>No email content needs to be deleted from our systems</li>
+            <li>Authentication tokens are automatically removed when you revoke access</li>
+            <li>All temporary data is cleared from your browser when you log out</li>
+        </ul>
+
+        <h3>6.3 Access and Review</h3>
+        <p>
+            You can review what permissions our Application has by checking the connected apps section of your Yahoo Account. The Application only accesses data when you are actively using it.
+        </p>
+
+        <h2>7. Use of Yahoo APIs</h2>
+        <p>
+            This Application's use and transfer of information received from Yahoo APIs adheres to Yahoo's Developer Terms of Service and applicable data policies. Our use of Yahoo Mail API data is limited to providing the email management features described in this policy.
+        </p>
+
+        <h3>Limited Use Disclosure</h3>
+        <p>
+            Our Application's use of information received from Yahoo Mail APIs will:
+        </p>
+        <ul>
+            <li>Only be used to provide or improve user-facing features that are prominent in the requesting application's user interface</li>
+            <li>Not be transferred to others unless necessary to provide or improve user-facing features, comply with applicable law, or as part of a merger, acquisition, or sale of assets with notice to users</li>
+            <li>Not be used or transferred for purposes that are unrelated to our Application's core email management functionality</li>
+            <li>Not be used or transferred to determine creditworthiness or for lending purposes</li>
+        </ul>
+
+        <h2>8. Children's Privacy</h2>
+        <p>
+            Our Application is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
+        </p>
+
+        <h2>9. International Data Transfers</h2>
+        <p>
+            Your data may be processed in different countries where we or our service providers operate. However, since we do not store your email data, the only transfers that occur are:
+        </p>
+        <ul>
+            <li>Direct connections between your browser and Yahoo's Mail API servers</li>
+            <li>Temporary processing for real-time display and AI-assisted features</li>
+        </ul>
+        <p>
+            All data transfers are encrypted and comply with applicable data protection regulations.
+        </p>
+
+        <h2>10. Changes to This Privacy Policy</h2>
+        <p>
+            We may update this Privacy Policy from time to time to reflect changes in our practices or for legal, operational, or regulatory reasons. When we make changes:
+        </p>
+        <ul>
+            <li>We will update the "Last Updated" date at the top of this policy</li>
+            <li>Significant changes will be prominently displayed in the Application</li>
+            <li>Continued use of the Application after changes constitutes acceptance of the updated policy</li>
+        </ul>
+        <p>
+            We encourage you to review this Privacy Policy periodically to stay informed about how we protect your information.
+        </p>
+
+        <h2>11. Compliance</h2>
+        <p>
+            Our Application complies with:
+        </p>
+        <ul>
+            <li><strong>Yahoo Developer Terms of Service:</strong> Including data use and privacy requirements</li>
+            <li><strong>GDPR:</strong> General Data Protection Regulation (where applicable)</li>
+            <li><strong>CCPA:</strong> California Consumer Privacy Act (where applicable)</li>
+            <li><strong>OAuth 2.0 Security Best Practices:</strong> For authentication and authorization</li>
+        </ul>
+
+        <h2>12. Contact Information</h2>
+        <div class="contact-box">
+            <p>
+                If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
+            </p>
+            <p>
+                <strong>Email:</strong> <a href="mailto:kevin36524@gmail.com">kevin36524@gmail.com</a><br>
+                <strong>Response Time:</strong> We aim to respond to all inquiries within 48 hours
+            </p>
+            <p>
+                For issues related to your Yahoo Mail data or account access, you can also contact Yahoo directly through the <a href="https://help.yahoo.com/" target="_blank">Yahoo Help Center</a>.
+            </p>
+        </div>
+
+        <h2>13. Additional Resources</h2>
+        <p>
+            For more information about how Yahoo handles your data:
+        </p>
+        <ul>
+            <li><a href="https://legal.yahoo.com/us/en/yahoo/privacy/index.html" target="_blank">Yahoo Privacy Policy</a></li>
+            <li><a href="https://login.yahoo.com/account/security" target="_blank">Yahoo Account Security &amp; Connected Apps</a></li>
+            <li><a href="https://developer.yahoo.com/oauth2/guide/" target="_blank">Yahoo OAuth 2.0 Documentation</a></li>
+        </ul>
+
+        <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
+
+        <p style="text-align: center; color: #888; font-size: 0.9em;">
+            This privacy policy is effective as of the date listed above and applies to all users of the Application.
+        </p>
+    </div>
+</body>
+</html>
