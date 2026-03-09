@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Image from 'next/image';
 
-const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.oath.email';
+const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.vibatic.com';
 
 function LoginForm() {
   const [error, setError] = useState('');
@@ -92,14 +92,14 @@ function LoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
             <Image
               src="/logo.png"
-              alt="Oath Mail Logo"
+              alt="Test Mail Logo"
               width={64}
               height={64}
               className="rounded-full"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Oath Mail
+            Test Mail
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sign in to access your emails

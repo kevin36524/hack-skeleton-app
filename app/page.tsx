@@ -10,12 +10,12 @@ export default function LandingPage() {
         <div className="flex items-center gap-2">
           <Image
             src="/logo.png"
-            alt="Oath Mail Logo"
+            alt="Test Mail Logo"
             width={40}
             height={40}
             className="rounded-full"
           />
-          <span className="text-xl font-bold text-gray-900 dark:text-white">Oath Mail</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">Test Mail</span>
         </div>
         <nav className="flex items-center gap-6">
           <Link 
@@ -107,7 +107,7 @@ export default function LandingPage() {
             Your Privacy Matters
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            We take your privacy seriously. Oath Mail only accesses your Gmail data 
+            We take your privacy seriously. Test Mail only accesses your Gmail data 
             to display and manage your emails. We never store, share, or sell your data.
           </p>
           <Link 
@@ -126,13 +126,13 @@ export default function LandingPage() {
             <div className="flex items-center gap-2">
               <Image
                 src="/logo.png"
-                alt="Oath Mail Logo"
+                alt="Test Mail Logo"
                 width={24}
                 height={24}
                 className="rounded-full"
               />
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                © 2026 Oath Mail. All rights reserved.
+                © 2026 Test Mail. All rights reserved.
               </span>
             </div>
             <div className="flex items-center gap-6">

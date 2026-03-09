@@ -33,7 +33,7 @@ interface AuthProviderProps {
 }
 
 const TOKEN_STORAGE_KEY = 'gmail_oauth_tokens';
-const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.oath.email';
+const OAUTH_BRIDGE_URL = process.env.NEXT_PUBLIC_OAUTH_BRIDGE_URL || 'https://login.vibatic.com';
 
 /**
  * Standalone token refresh function that can be called outside of React context

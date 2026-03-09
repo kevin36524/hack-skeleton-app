@@ -52,13 +52,13 @@ export function MobileHeader({
             <div className="flex items-center space-x-2">
               <Image
                 src="/logo.png"
-                alt="Oath Mail Logo"
+                alt="Test Mail Logo"
                 width={24}
                 height={24}
                 className="h-6 w-6 object-contain"
               />
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Oath Mail
+                Test Mail
               </h1>
             </div>
           </div>
