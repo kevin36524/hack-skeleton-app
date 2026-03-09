@@ -1,65 +1,116 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useCallback } from "react";
+
+type Player = "X" | "O" | null;
+type Board = Player[];
+
+function calculateWinner(board: Board): Player {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  for (const [a, b, c] of lines) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+  return null;
+}
+
+function isBoardFull(board: Board): boolean {
+  return board.every((cell) => cell !== null);
+}
+
+export default function TicTacToe() {
+  const [board, setBoard] = useState<Board>(Array(9).fill(null));
+  const [currentPlayer, setCurrentPlayer] = useState<"X" | "O">("X");
+  const [winner, setWinner] = useState<Player>(null);
+  const [isDraw, setIsDraw] = useState(false);
+
+  const handleCellClick = useCallback(
+    (index: number) => {
+      if (board[index] || winner || isDraw) return;
+
+      const newBoard = [...board];
+      newBoard[index] = currentPlayer;
+      setBoard(newBoard);
+
+      const gameWinner = calculateWinner(newBoard);
+      if (gameWinner) {
+        setWinner(gameWinner);
+      } else if (isBoardFull(newBoard)) {
+        setIsDraw(true);
+      } else {
+        setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
+      }
+    },
+    [board, currentPlayer, winner, isDraw]
+  );
+
+  const resetGame = useCallback(() => {
+    setBoard(Array(9).fill(null));
+    setCurrentPlayer("X");
+    setWinner(null);
+    setIsDraw(false);
+  }, []);
+
+  const getStatusMessage = () => {
+    if (winner) {
+      return `Winner: ${winner}!`;
+    }
+    if (isDraw) {
+      return "It's a draw!";
+    }
+    return `Current player: ${currentPlayer}`;
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      <div className="flex flex-col items-center gap-8">
+        <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
+          Tic Tac Toe
+        </h1>
+
+        <div className="text-xl font-medium text-zinc-700 dark:text-zinc-300">
+          {getStatusMessage()}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid grid-cols-3 gap-2">
+          {board.map((cell, index) => (
+            <button
+              key={index}
+              onClick={() => handleCellClick(index)}
+              className="flex h-24 w-24 items-center justify-center rounded-lg bg-white text-4xl font-bold shadow-sm transition-all hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"
+              disabled={!!cell || !!winner || isDraw}
+            >
+              <span
+                className={
+                  cell === "X"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-red-600 dark:text-red-400"
+                }
+              >
+                {cell}
+              </span>
+            </button>
+          ))}
         </div>
-      </main>
+
+        <button
+          onClick={resetGame}
+          className="rounded-full bg-zinc-900 px-6 py-3 text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          New Game
+        </button>
+      </div>
     </div>
   );
 }
