@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooPost } from '../helpers/yahoo-api';
+import { getMailboxId } from '../helpers/get-mailbox-id';
 import type { MoveMessagesResponse } from '../../../lib/types/api';
 
 /**
@@ -11,7 +12,6 @@ export const moveMessages = createTool({
   id: 'move-messages',
   description: 'Move one or more messages to a different folder. Requires user approval.',
   inputSchema: z.object({
-    mailboxId: z.string().describe('The mailbox ID from getMailbox'),
     messageIds: z.array(z.string()).describe('Array of message IDs to move'),
     targetFolderId: z.string().describe('The folder ID to move messages to'),
   }),
@@ -20,8 +20,9 @@ export const moveMessages = createTool({
     movedCount: z.number(),
   }),
   requireApproval: true,
-  execute: async ({ mailboxId, messageIds, targetFolderId }, context) => {
+  execute: async ({ messageIds, targetFolderId }, context) => {
     const token = getToken(context);
+    const mailboxId = await getMailboxId(token, context);
 
     const idsQuery = messageIds.join('%20');
     const uri = `/ws/v3/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=id%3A(${idsQuery})`;

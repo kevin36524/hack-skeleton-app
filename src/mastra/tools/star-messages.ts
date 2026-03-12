@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooPost } from '../helpers/yahoo-api';
+import { getMailboxId } from '../helpers/get-mailbox-id';
 import type { TriageRequest, TriageResponse } from '../../../lib/types/api';
 
 /**
@@ -11,7 +12,6 @@ export const starMessages = createTool({
   id: 'star-messages',
   description: 'Star or unstar one or more messages. Requires user approval.',
   inputSchema: z.object({
-    mailboxId: z.string().describe('The mailbox ID from getMailbox'),
     messageIds: z.array(z.string()).describe('Array of message IDs to star/unstar'),
     starred: z.boolean().describe('true to star, false to unstar'),
   }),
@@ -20,8 +20,9 @@ export const starMessages = createTool({
     count: z.number(),
   }),
   requireApproval: true,
-  execute: async ({ mailboxId, messageIds, starred }, context) => {
+  execute: async ({ messageIds, starred }, context) => {
     const token = getToken(context);
+    const mailboxId = await getMailboxId(token, context);
 
     // Use batch API matching frontend logic (message-service.ts)
     const request: TriageRequest = {

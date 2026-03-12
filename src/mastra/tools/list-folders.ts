@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken, getAccountId } from '../helpers/get-token';
 import { yahooGet } from '../helpers/yahoo-api';
+import { getMailboxId } from '../helpers/get-mailbox-id';
 import { toSlimFolder } from '../types';
 import type { GetFoldersApiResponse } from '../../../lib/types/api';
 
@@ -10,9 +11,8 @@ import type { GetFoldersApiResponse } from '../../../lib/types/api';
  */
 export const listFolders = createTool({
   id: 'list-folders',
-  description: 'List all mail folders with unread message counts. If accountId is available in context, returns folders for that account only.',
+  description: 'List all mail folders with unread message counts. Fetches the mailbox automatically.',
   inputSchema: z.object({
-    mailboxId: z.string().describe('The mailbox ID from getMailbox'),
     accountId: z.string().optional().describe('Optional account ID to filter folders. If not provided, will try to use accountId from requestContext.'),
   }),
   outputSchema: z.array(
@@ -23,8 +23,9 @@ export const listFolders = createTool({
       unreadCount: z.number(),
     })
   ),
-  execute: async ({ mailboxId, accountId: inputAccountId }, context) => {
+  execute: async ({ accountId: inputAccountId }, context) => {
     const token = getToken(context);
+    const mailboxId = await getMailboxId(token, context);
 
     // Get accountId from input or requestContext
     const accountId = inputAccountId || getAccountId(context);

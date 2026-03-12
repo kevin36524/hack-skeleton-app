@@ -12,7 +12,6 @@ import { Memory } from '@mastra/memory';
 import { createStorage } from '../storage';
 
 // Import read tools
-import { getMailbox } from '../tools/get-mailbox';
 import { listFolders } from '../tools/list-folders';
 import { listMessages } from '../tools/list-messages';
 import { searchMessages } from '../tools/search-messages';
@@ -57,14 +56,13 @@ CAPABILITIES:
 - Delete messages (requires user approval)
 
 WORKFLOW:
-1. First call getMailbox to get the mailboxId
-2. Then call listFolders to understand the folder structure
+1. Call listFolders to understand the folder structure
    - If accountId is provided in the context, folders will automatically be filtered for that account
    - Look for the INBOX folder to get the inbox folderId
-3. Use listMessages to fetch inbox messages
-4. Analyze messages and suggest triage actions
-5. For ANY write/update/delete action, call the tool immediately — do NOT ask the user for approval in chat, the system handles approval automatically
-6. The user will approve or decline each write operation via the system UI
+2. Use listMessages to fetch inbox messages
+3. Analyze messages and suggest triage actions
+4. For ANY write/update/delete action, call the tool immediately — do NOT ask the user for approval in chat, the system handles approval automatically
+5. The user will approve or decline each write operation via the system UI
 
 CONTEXT RULES:
 - When listing messages, only show sender (from) and subject by default — do NOT include snippet/preview unless the user explicitly asks for details
@@ -78,7 +76,6 @@ SAFETY:
 - All write/update/delete operations will pause for user approval automatically — never ask for approval in chat`,
 
   tools: {
-    getMailbox,
     listFolders,
     listMessages,
     searchMessages,

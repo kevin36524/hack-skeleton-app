@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooGet } from '../helpers/yahoo-api';
+import { getMailboxId } from '../helpers/get-mailbox-id';
 import { toSlimMessage } from '../types';
 import type { ListConversationsApiResponse } from '../../../lib/types/api';
 
@@ -12,7 +13,6 @@ export const listMessages = createTool({
   id: 'list-messages',
   description: 'List messages in a folder with pagination support',
   inputSchema: z.object({
-    mailboxId: z.string().describe('The mailbox ID from getMailbox'),
     folderId: z.string().describe('The folder ID to list messages from'),
     count: z.number().optional().default(30).describe('Number of messages to fetch (default 30)'),
     offset: z.number().optional().default(0).describe('Offset for pagination (default 0)'),
@@ -32,8 +32,9 @@ export const listMessages = createTool({
       folderName: z.string(),
     })
   ),
-  execute: async ({ mailboxId, folderId, count = 30, offset = 0 }, context) => {
+  execute: async ({ folderId, count = 30, offset = 0 }, context) => {
     const token = getToken(context);
+    const mailboxId = await getMailboxId(token, context);
 
     // Build query string matching frontend logic (message-service.ts)
     const query = `folderId:${folderId}+groupBy:conversationId+offset:${offset}+count:${count}`;

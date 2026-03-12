@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { getToken } from '../helpers/get-token';
 import { yahooPost } from '../helpers/yahoo-api';
+import { getMailboxId } from '../helpers/get-mailbox-id';
 import type { TriageResponse } from '../../../lib/types/api';
 
 /**
@@ -11,7 +12,6 @@ export const markAsRead = createTool({
   id: 'mark-as-read',
   description: 'Mark one or more messages as read or unread. Requires user approval.',
   inputSchema: z.object({
-    mailboxId: z.string().describe('The mailbox ID from getMailbox'),
     messageIds: z.array(z.string()).describe('Array of message IDs to mark'),
     read: z.boolean().describe('true to mark as read, false to mark as unread'),
   }),
@@ -20,8 +20,9 @@ export const markAsRead = createTool({
     count: z.number(),
   }),
   requireApproval: true,
-  execute: async ({ mailboxId, messageIds, read }, context) => {
+  execute: async ({ messageIds, read }, context) => {
     const token = getToken(context);
+    const mailboxId = await getMailboxId(token, context);
 
     // Combine all IDs into a single batch request using select query
     const idsQuery = messageIds.join('%20');
