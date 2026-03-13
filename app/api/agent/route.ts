@@ -72,8 +72,14 @@ export async function POST(req: NextRequest) {
       requestContext.set('referenceId', referenceId);
     }
 
+    // Prepend reference context so the agent LLM knows the actual IDs
+    let contextualMessage = message;
+    if (referenceType && referenceId) {
+      contextualMessage = `[UI context: ${referenceType}="${referenceId}"]\n\n${message}`;
+    }
+
     // Invoke agent with memory context
-    const stream = await mailTriageAgent.stream(message, {
+    const stream = await mailTriageAgent.stream(contextualMessage, {
       requestContext,
       memory: {
         resource: userGuid,
