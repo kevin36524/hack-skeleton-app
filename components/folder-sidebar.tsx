@@ -6,14 +6,32 @@ import { Folder } from '@/lib/types/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Inbox, Send, Trash2, Archive, Star, FileText, AlertCircle, RefreshCw, Layers, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+export interface Space {
+  id: string;
+  name: string;
+  shortName?: string;
+  status?: string;
+  keywords?: string[];
+  emailSenders?: { name?: string; email: string }[];
+  extraData?: {
+    messageScores?: string[];
+    filteredMessageIds?: string[];
+  };
+}
 
 interface FolderSidebarProps {
   mailboxId: string;
   accountId?: string;
+  acceptedSpaces?: Space[];
+  suggestedSpaces?: Space[];
+  spacesLoading?: boolean;
   selectedFolderId?: string;
   onFolderSelected?: (folderId: string) => void;
+  selectedSpaceId?: string;
+  onSpaceSelected?: (spaceId: string, messageIds: string[]) => void;
   className?: string;
   isCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -28,8 +46,13 @@ interface FolderGroup {
 export function FolderSidebar({
   mailboxId,
   accountId,
+  acceptedSpaces = [],
+  suggestedSpaces = [],
+  spacesLoading = false,
   selectedFolderId,
   onFolderSelected,
+  selectedSpaceId,
+  onSpaceSelected,
   className,
   isCollapsed = false,
   onCollapsedChange
@@ -224,6 +247,81 @@ export function FolderSidebar({
 
       <ScrollArea className="flex-1">
         <div className="space-y-4 p-4">
+
+        {/* Spaces */}
+        {(acceptedSpaces.length > 0 || suggestedSpaces.length > 0 || spacesLoading) && (
+          <div>
+            <Collapsible
+              open={!collapsedGroups.has('Spaces')}
+              onOpenChange={() => toggleGroup('Spaces')}
+            >
+              <CollapsibleTrigger className={cn(
+                "flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md",
+                isCollapsed && "hidden"
+              )}>
+                <span>Spaces</span>
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    !collapsedGroups.has('Spaces') && 'rotate-90'
+                  )}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <nav className="space-y-1 mt-2">
+                  {spacesLoading && !isCollapsed && (
+                    <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">Loading spaces...</div>
+                  )}
+                  {acceptedSpaces.map((space) => (
+                    <Button
+                      key={space.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onSpaceSelected?.(space.id, space.extraData?.filteredMessageIds || [])}
+                      className={cn(
+                        isCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start text-left font-normal whitespace-normal h-auto py-2',
+                        selectedSpaceId === space.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                      )}
+                      title={space.name}
+                    >
+                      {isCollapsed ? (
+                        <Layers className="h-4 w-4" />
+                      ) : (
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <Layers className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{space.name}</span>
+                        </div>
+                      )}
+                    </Button>
+                  ))}
+                  {suggestedSpaces.map((space) => (
+                    <Button
+                      key={space.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onSpaceSelected?.(space.id, space.extraData?.filteredMessageIds || [])}
+                      className={cn(
+                        isCollapsed ? 'w-full justify-center px-2' : 'w-full justify-start text-left font-normal whitespace-normal h-auto py-2',
+                        selectedSpaceId === space.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                      )}
+                      title={space.name}
+                    >
+                      {isCollapsed ? (
+                        <Sparkles className="h-4 w-4" />
+                      ) : (
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <Sparkles className="h-4 w-4 flex-shrink-0 text-purple-400" />
+                          <span className="truncate">{space.name}</span>
+                        </div>
+                      )}
+                    </Button>
+                  ))}
+                </nav>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
+
         {folderGroups.map((group) => (
           <div key={group.name}>
             <Collapsible

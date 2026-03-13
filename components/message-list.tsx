@@ -15,6 +15,7 @@ import { Star, Paperclip, Reply, Forward, AlertCircle } from 'lucide-react';
 interface MessageListProps {
   mailboxId: string;
   folderId: string;
+  messageIds?: string[];
   onMessageSelected?: (message: Message) => void;
   selectedMessageId?: string;
 }
@@ -26,11 +27,12 @@ interface GroupedMessage {
   conversation: Conversation | undefined;
 }
 
-export function MessageList({ 
-  mailboxId, 
-  folderId, 
-  onMessageSelected, 
-  selectedMessageId 
+export function MessageList({
+  mailboxId,
+  folderId,
+  messageIds,
+  onMessageSelected,
+  selectedMessageId
 }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -41,19 +43,25 @@ export function MessageList({
   const loadMessages = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await messageService.getConversationsForFolder(mailboxId, folderId);
-      setMessages(data.messages);
-      setConversations(data.conversations);
+      if (messageIds && messageIds.length > 0) {
+        const msgs = await messageService.getMessagesByIds(mailboxId, messageIds);
+        setMessages(msgs);
+        setConversations([]);
+      } else {
+        const data = await messageService.getConversationsForFolder(mailboxId, folderId);
+        setMessages(data.messages);
+        setConversations(data.conversations);
+      }
     } catch (err) {
       setError('Failed to load messages');
       console.error('Error loading messages:', err);
     } finally {
       setLoading(false);
     }
-  }, [mailboxId, folderId]);
+  }, [mailboxId, folderId, messageIds]);
 
   useEffect(() => {
-    if (mailboxId && folderId) {
+    if (mailboxId && (folderId || (messageIds && messageIds.length > 0))) {
       loadMessages();
     }
   }, [loadMessages]);

@@ -13,11 +13,23 @@ interface YahooApiHeaders {
   'Content-Type'?: string;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < 3) await new Promise((res) => setTimeout(res, 500 * attempt));
+    }
+  }
+  throw new Error(`${label} failed after 3 attempts: ${lastError?.message ?? lastError}`);
+}
+
 /**
  * GET request to Yahoo Mail API
  */
 export async function yahooGet<T>(token: string, endpoint: string): Promise<T> {
-  // Add appid as query parameter
   const separator = endpoint.includes('?') ? '&' : '?';
   const url = `${YAHOO_API_BASE_URL}${endpoint}${separator}appid=${APP_ID}`;
 
@@ -25,18 +37,19 @@ export async function yahooGet<T>(token: string, endpoint: string): Promise<T> {
     Authorization: `Bearer ${token}`,
   };
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: headers as unknown as HeadersInit,
-  });
+  return withRetry(async () => {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: headers as unknown as HeadersInit,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Yahoo API GET failed: ${response.status} ${response.statusText} ${url}`);
-  }
+    if (!response.ok) {
+      throw new Error(`Yahoo API GET failed: ${response.status} ${response.statusText} ${url}`);
+    }
 
-  const data = await response.json();
-  // Yahoo API wraps responses in { result: {...} }
-  return (data.result || data) as T;
+    const data = await response.json();
+    return (data.result || data) as T;
+  }, `Yahoo API GET ${endpoint}`);
 }
 
 /**
@@ -59,28 +72,28 @@ export async function yahooPost<T>(
   console.log(`[yahooPost] token length: ${token?.length ?? 0}, token prefix: ${token?.slice(0, 10)}...`);
   console.log(`[yahooPost] body:`, JSON.stringify(body));
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: headers as unknown as HeadersInit,
-    body: JSON.stringify(body),
-  });
+  return withRetry(async () => {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers as unknown as HeadersInit,
+      body: JSON.stringify(body),
+    });
 
-  console.log(`[yahooPost] response status: ${response.status} ${response.statusText}`);
+    console.log(`[yahooPost] response status: ${response.status} ${response.statusText}`);
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '(could not read body)');
-    console.error(`[yahooPost] error body: ${errorText}`);
-    throw new Error(`Yahoo API POST failed: ${response.status} ${response.statusText}`);
-  }
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '(could not read body)');
+      console.error(`[yahooPost] error body: ${errorText}`);
+      throw new Error(`Yahoo API POST failed: ${response.status} ${response.statusText}`);
+    }
 
-  // Handle 204 No Content responses
-  if (response.status === 204) {
-    return {} as T;
-  }
+    if (response.status === 204) {
+      return {} as T;
+    }
 
-  const data = await response.json();
-  // Yahoo API wraps responses in { result: {...} }
-  return (data.result || data) as T;
+    const data = await response.json();
+    return (data.result || data) as T;
+  }, `Yahoo API POST ${endpoint}`);
 }
 
 /**
@@ -94,12 +107,14 @@ export async function yahooDelete(token: string, endpoint: string): Promise<void
     Authorization: `Bearer ${token}`,
   };
 
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: headers as unknown as HeadersInit,
-  });
+  return withRetry(async () => {
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: headers as unknown as HeadersInit,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Yahoo API DELETE failed: ${response.status} ${response.statusText}`);
-  }
+    if (!response.ok) {
+      throw new Error(`Yahoo API DELETE failed: ${response.status} ${response.statusText}`);
+    }
+  }, `Yahoo API DELETE ${endpoint}`);
 }

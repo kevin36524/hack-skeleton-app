@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { mastra } from '../../../src/mastra';
 
 const mailTriageAgent = mastra.getAgent('mailTriageAgent');
+const spaceManagementAgent = mastra.getAgent('spaceManagementAgent');
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,19 +28,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Select agent based on referenceType
+    const agent = referenceType === 'SPACE_ID' ? spaceManagementAgent : mailTriageAgent;
+
     // Handle HITL approval
     if (action === 'approve' && runId) {
       console.log(`[HITL] Approving tool call for runId: ${runId}`);
       const requestContext = new RequestContext();
       requestContext.set('token', token);
-      const resumed = await mailTriageAgent.approveToolCall({ runId, requestContext });
+      if (accountId) requestContext.set('accountId', accountId);
+      if (referenceType) requestContext.set('referenceType', referenceType);
+      if (referenceId) requestContext.set('referenceId', referenceId);
+      const resumed = await agent.approveToolCall({ runId, requestContext });
       return streamAgentResponse(resumed);
     }
 
     // Handle HITL decline
     if (action === 'decline' && runId) {
       console.log(`[HITL] Declining tool call for runId: ${runId}`);
-      await mailTriageAgent.declineToolCall({ runId });
+      await agent.declineToolCall({ runId });
       return NextResponse.json({ declined: true });
     }
 
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Invoke agent with memory context
-    const stream = await mailTriageAgent.stream(contextualMessage, {
+    const stream = await agent.stream(contextualMessage, {
       requestContext,
       memory: {
         resource: userGuid,

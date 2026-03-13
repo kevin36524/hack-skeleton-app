@@ -65,6 +65,23 @@ class MessageService {
     return this.getConversations(mailboxId, folderId);
   }
 
+  async getMessagesByIds(
+    mailboxId: string,
+    messageIds: string[]
+  ): Promise<Message[]> {
+    try {
+      const idList = messageIds.join(' ');
+      const q = encodeURIComponent(`id:(${idList})`);
+      const response = await apiClient.get<ApiResponse<ListConversationsApiResponse>>(
+        `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${q}`
+      );
+      return response.result.messages;
+    } catch (error) {
+      console.error('Failed to fetch messages by IDs:', error);
+      throw error;
+    }
+  }
+
   async getMessagesBySearch(
     mailboxId: string,
     query: string,

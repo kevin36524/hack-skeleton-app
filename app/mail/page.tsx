@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/protected-route';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from '@/components/mailbox-selector';
 import { AccountSwitcher } from '@/components/account-switcher';
-import { FolderSidebar } from '@/components/folder-sidebar';
+import { FolderSidebar, Space } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
 import { LogOut, Mail, RefreshCw, Menu, X, Bot } from 'lucide-react';
@@ -26,6 +26,11 @@ function MailPageContent() {
   const [accountId, setAccountId] = useState<string>('');
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>('');
+  const [spaceMessageIds, setSpaceMessageIds] = useState<string[]>([]);
+  const [acceptedSpaces, setAcceptedSpaces] = useState<Space[]>([]);
+  const [suggestedSpaces, setSuggestedSpaces] = useState<Space[]>([]);
+  const [spacesLoading, setSpacesLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
@@ -70,6 +75,22 @@ function MailPageContent() {
     }
   }, [desktopSidebarCollapsed]);
 
+  // Fetch spaces once when token + accountId are available
+  useEffect(() => {
+    if (!token || !accountId) return;
+    setSpacesLoading(true);
+    fetch(`/api/spaces?accountId=${accountId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setAcceptedSpaces(data.acceptedSpaces || []);
+        setSuggestedSpaces(data.suggestedSpaces || []);
+      })
+      .catch((err) => console.error('Error loading spaces:', err))
+      .finally(() => setSpacesLoading(false));
+  }, [token, accountId]);
+
   // Save panel sizes to localStorage
   const handlePanelResize = (sizes: number[]) => {
     setPanelSizes(sizes);
@@ -90,7 +111,18 @@ function MailPageContent() {
     setAccountId(account.id);
   };
 
+  const handleSpaceSelected = (spaceId: string, messageIds: string[]) => {
+    setSelectedSpaceId(spaceId);
+    setSpaceMessageIds(messageIds);
+    setFolderId('');
+    setSelectedMessage(null);
+    setMobileView('list');
+    setSidebarOpen(false);
+  };
+
   const handleFolderSelected = (id: string) => {
+    setSelectedSpaceId('');
+    setSpaceMessageIds([]);
     setFolderId(id);
     setSelectedMessage(null);
     setMobileView('list');
@@ -222,11 +254,13 @@ function MailPageContent() {
                   <FolderSidebar
                     mailboxId={mailboxId}
                     accountId={accountId}
+                    acceptedSpaces={acceptedSpaces}
+                    suggestedSpaces={suggestedSpaces}
+                    spacesLoading={spacesLoading}
                     selectedFolderId={folderId}
-                    onFolderSelected={(id) => {
-                      handleFolderSelected(id);
-                      setSidebarOpen(false);
-                    }}
+                    onFolderSelected={handleFolderSelected}
+                    selectedSpaceId={selectedSpaceId}
+                    onSpaceSelected={handleSpaceSelected}
                   />
                 ) : (
                   <div className="p-4 text-sm text-gray-500">Loading folders...</div>
@@ -252,6 +286,7 @@ function MailPageContent() {
                     <MessageList
                       mailboxId={mailboxId}
                       folderId={folderId}
+                      messageIds={spaceMessageIds.length > 0 ? spaceMessageIds : undefined}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
                     />
@@ -310,8 +345,13 @@ function MailPageContent() {
                   <FolderSidebar
                     mailboxId={mailboxId}
                     accountId={accountId}
+                    acceptedSpaces={acceptedSpaces}
+                    suggestedSpaces={suggestedSpaces}
+                    spacesLoading={spacesLoading}
                     selectedFolderId={folderId}
                     onFolderSelected={handleFolderSelected}
+                    selectedSpaceId={selectedSpaceId}
+                    onSpaceSelected={handleSpaceSelected}
                     isCollapsed={desktopSidebarCollapsed}
                     onCollapsedChange={setDesktopSidebarCollapsed}
                   />
@@ -332,6 +372,7 @@ function MailPageContent() {
                     <MessageList
                       mailboxId={mailboxId}
                       folderId={folderId}
+                      messageIds={spaceMessageIds.length > 0 ? spaceMessageIds : undefined}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
                     />
@@ -384,8 +425,8 @@ function MailPageContent() {
           token={token}
           userGuid={mailboxId || 'anonymous'}
           accountId={accountId}
-          referenceType={selectedMessage ? 'MESSAGE_ID' : folderId ? 'FOLDER_ID' : undefined}
-          referenceId={selectedMessage ? selectedMessage.id : folderId || undefined}
+          referenceType={selectedMessage ? 'MESSAGE_ID' : selectedSpaceId ? 'SPACE_ID' : folderId ? 'FOLDER_ID' : undefined}
+          referenceId={selectedMessage ? selectedMessage.id : selectedSpaceId || folderId || undefined}
         />
       )}
     </ProtectedRoute>

@@ -51,7 +51,7 @@ type ChatMessage =
 
 type ChatStatus = 'idle' | 'streaming' | 'awaiting-approval';
 
-export type ReferenceType = 'FOLDER_ID' | 'CONVERSATION_ID' | 'MESSAGE_ID' | 'SEARCH_QUERY';
+export type ReferenceType = 'FOLDER_ID' | 'CONVERSATION_ID' | 'MESSAGE_ID' | 'SEARCH_QUERY' | 'SPACE_ID';
 
 export interface AgentChatProps {
   isOpen: boolean;
@@ -318,7 +318,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ action: 'approve', runId }),
+          body: JSON.stringify({ action: 'approve', runId, accountId, referenceType, referenceId }),
         });
 
         if (!response.ok) throw new Error(`Approve failed (${response.status})`);
@@ -335,7 +335,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
         setStatus('idle');
       }
     },
-    [token, consumeStream]
+    [token, accountId, referenceType, referenceId, consumeStream]
   );
 
   const handleDecline = useCallback(
@@ -361,10 +361,10 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action: 'decline', runId }),
+        body: JSON.stringify({ action: 'decline', runId, referenceType, referenceId }),
       }).catch(() => undefined);
     },
-    [token]
+    [token, referenceType, referenceId]
   );
 
   const startNewConversation = useCallback(() => {
