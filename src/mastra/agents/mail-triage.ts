@@ -21,7 +21,6 @@ import { getMessageBody } from '../tools/get-message-body';
 import { markAsRead } from '../tools/mark-as-read';
 import { starMessages } from '../tools/star-messages';
 import { moveMessages } from '../tools/move-messages';
-import { deleteMessages } from '../tools/delete-messages';
 
 /**
  * Mastra memory with configurable storage backend
@@ -53,7 +52,6 @@ CAPABILITIES:
 - Mark messages as read/unread (requires user approval)
 - Star/unstar important messages (requires user approval)
 - Move messages between folders (requires user approval)
-- Delete messages (requires user approval)
 
 WORKFLOW:
 1. Call listFolders to understand the folder structure
@@ -63,6 +61,15 @@ WORKFLOW:
 3. Analyze messages and suggest triage actions
 4. For ANY write/update/delete action, call the tool immediately — do NOT ask the user for approval in chat, the system handles approval automatically
 5. The user will approve or decline each write operation via the system UI
+
+REFERENCE CONTEXT:
+Each request may include a referenceType and referenceId that tells you what the user is currently looking at:
+- FOLDER_ID: the user has a specific folder open — use this folderId directly when listing messages instead of looking up the inbox
+- CONVERSATION_ID: the user is viewing a specific conversation — operate on messages within that conversation
+- MESSAGE_ID: the user has a specific message selected — use this messageId for actions like star, mark as read, move, etc. without asking which message
+- SEARCH_QUERY: the user has an active search — use this query with searchMessages to find the relevant messages
+
+When a referenceType/referenceId is present, use it as the default target for actions unless the user explicitly specifies otherwise.
 
 CONTEXT RULES:
 - When listing messages, only show sender (from) and subject by default — do NOT include snippet/preview unless the user explicitly asks for details
@@ -83,6 +90,5 @@ SAFETY:
     markAsRead,
     starMessages,
     moveMessages,
-    deleteMessages,
   },
 });

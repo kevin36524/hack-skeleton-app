@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { message, userGuid, accountId, sessionId, runId, action } = body;
+    const { message, userGuid, accountId, sessionId, runId, action, referenceType, referenceId } = body;
 
     // Validate required fields for normal agent invocation
     if (!action && (!message || !userGuid || !sessionId)) {
@@ -59,11 +59,17 @@ export async function POST(req: NextRequest) {
       console.error('Failed to upsert agent_sessions:', upsertError);
     }
 
-    // Create runtime context with token and accountId
+    // Create runtime context with token, accountId, and reference context
     const requestContext = new RequestContext();
     requestContext.set('token', token);
     if (accountId) {
       requestContext.set('accountId', accountId);
+    }
+    if (referenceType) {
+      requestContext.set('referenceType', referenceType);
+    }
+    if (referenceId) {
+      requestContext.set('referenceId', referenceId);
     }
 
     // Invoke agent with memory context

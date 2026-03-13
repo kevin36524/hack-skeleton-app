@@ -12,7 +12,7 @@ import { MessageDetail } from '@/components/message-detail';
 import { LogOut, Mail, RefreshCw, Menu, X, Bot } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { AgentChat } from '@/components/agent-chat';
+import { AgentChat, ReferenceType } from '@/components/agent-chat';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
@@ -384,6 +384,8 @@ function MailPageContent() {
           token={token}
           userGuid={mailboxId || 'anonymous'}
           accountId={accountId}
+          referenceType={selectedMessage ? 'MESSAGE_ID' : folderId ? 'FOLDER_ID' : undefined}
+          referenceId={selectedMessage ? selectedMessage.id : folderId || undefined}
         />
       )}
     </ProtectedRoute>

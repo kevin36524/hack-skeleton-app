@@ -51,12 +51,16 @@ type ChatMessage =
 
 type ChatStatus = 'idle' | 'streaming' | 'awaiting-approval';
 
+export type ReferenceType = 'FOLDER_ID' | 'CONVERSATION_ID' | 'MESSAGE_ID' | 'SEARCH_QUERY';
+
 export interface AgentChatProps {
   isOpen: boolean;
   onClose: () => void;
   token: string;
   userGuid: string;
   accountId: string;
+  referenceType?: ReferenceType;
+  referenceId?: string;
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -115,7 +119,7 @@ function ToolResultDetails({ result }: { result: unknown }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: AgentChatProps) {
+export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referenceType, referenceId }: AgentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<ChatStatus>('idle');
@@ -278,7 +282,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: Agent
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text, userGuid, accountId, sessionId }),
+        body: JSON.stringify({ message: text, userGuid, accountId, sessionId, referenceType, referenceId }),
         signal: abortRef.current.signal,
       });
 
@@ -298,7 +302,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId }: Agent
       ]);
       setStatus('idle');
     }
-  }, [input, status, token, userGuid, accountId, sessionId, consumeStream]);
+  }, [input, status, token, userGuid, accountId, sessionId, referenceType, referenceId, consumeStream]);
 
   const handleApprove = useCallback(
     async (runId: string) => {
