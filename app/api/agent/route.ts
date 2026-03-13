@@ -5,6 +5,7 @@ import { mastra } from '../../../src/mastra';
 
 const mailTriageAgent = mastra.getAgent('mailTriageAgent');
 const spaceManagementAgent = mastra.getAgent('spaceManagementAgent');
+const digestPrefsAgent = mastra.getAgent('digestPrefsAgent');
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { message, userGuid, accountId, sessionId, runId, action, referenceType, referenceId } = body;
+    const { message, userGuid, accountId, sessionId, runId, action, referenceType, referenceId, currentPrefs } = body;
 
     // Validate required fields for normal agent invocation
     if (!action && (!message || !userGuid || !sessionId)) {
@@ -29,7 +30,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Select agent based on referenceType
-    const agent = referenceType === 'SPACE_ID' ? spaceManagementAgent : mailTriageAgent;
+    const agent =
+      referenceType === 'DIGEST'
+        ? digestPrefsAgent
+        : referenceType === 'SPACE_ID'
+        ? spaceManagementAgent
+        : mailTriageAgent;
 
     // Handle HITL approval
     if (action === 'approve' && runId) {
@@ -81,7 +87,10 @@ export async function POST(req: NextRequest) {
 
     // Prepend reference context so the agent LLM knows the actual IDs
     let contextualMessage = message;
-    if (referenceType && referenceId) {
+    if (referenceType === 'DIGEST') {
+      const nowEpoch = Math.floor(Date.now() / 1000);
+      contextualMessage = `Current time (epoch seconds): ${nowEpoch}\nCurrent prefs:\n${JSON.stringify(currentPrefs ?? {}, null, 2)}\n\nUser request: ${message}`;
+    } else if (referenceType && referenceId) {
       contextualMessage = `[UI context: ${referenceType}="${referenceId}"]\n\n${message}`;
     }
 

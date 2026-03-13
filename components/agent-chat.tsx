@@ -51,7 +51,7 @@ type ChatMessage =
 
 type ChatStatus = 'idle' | 'streaming' | 'awaiting-approval';
 
-export type ReferenceType = 'FOLDER_ID' | 'CONVERSATION_ID' | 'MESSAGE_ID' | 'SEARCH_QUERY' | 'SPACE_ID';
+export type ReferenceType = 'FOLDER_ID' | 'CONVERSATION_ID' | 'MESSAGE_ID' | 'SEARCH_QUERY' | 'SPACE_ID' | 'DIGEST';
 
 export interface AgentChatProps {
   isOpen: boolean;
@@ -61,6 +61,8 @@ export interface AgentChatProps {
   accountId: string;
   referenceType?: ReferenceType;
   referenceId?: string;
+  /** mailboxId used to read/write digest prefs from localStorage when referenceType=DIGEST */
+  mailboxId?: string;
 }
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -119,7 +121,7 @@ function ToolResultDetails({ result }: { result: unknown }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referenceType, referenceId }: AgentChatProps) {
+export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referenceType, referenceId, mailboxId }: AgentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<ChatStatus>('idle');
@@ -221,12 +223,25 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
             }
 
             case 'tool-result': {
+              const toolName = event.toolName as string;
+              // Intercept setPreference — apply prefs to localStorage, no UI bubble needed
+              if (toolName === 'setPreference' && referenceType === 'DIGEST' && mailboxId) {
+                try {
+                  const result = event.result as { prefs?: unknown };
+                  if (result?.prefs) {
+                    localStorage.setItem(`digest_prefs_${mailboxId}`, JSON.stringify(result.prefs));
+                  }
+                } catch {
+                  // ignore storage errors
+                }
+                break;
+              }
               setMessages((prev) => [
                 ...prev,
                 {
                   id: crypto.randomUUID(),
                   kind: 'tool-result' as const,
-                  toolName: event.toolName as string,
+                  toolName,
                   result: event.result,
                 },
               ]);
@@ -259,7 +274,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
       finaliseAssistant();
       setStatus((s) => (s === 'streaming' ? 'idle' : s));
     }
-  }, []);
+  }, [referenceType, mailboxId]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -276,13 +291,25 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
 
     try {
       abortRef.current = new AbortController();
+
+      // For DIGEST, read current prefs from localStorage so the agent can see them
+      let currentPrefs: unknown = undefined;
+      if (referenceType === 'DIGEST' && mailboxId) {
+        try {
+          const raw = localStorage.getItem(`digest_prefs_${mailboxId}`);
+          if (raw) currentPrefs = JSON.parse(raw);
+        } catch {
+          // ignore
+        }
+      }
+
       const response = await fetch('/api/agent', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text, userGuid, accountId, sessionId, referenceType, referenceId }),
+        body: JSON.stringify({ message: text, userGuid, accountId, sessionId, referenceType, referenceId, currentPrefs }),
         signal: abortRef.current.signal,
       });
 
@@ -302,7 +329,7 @@ export function AgentChat({ isOpen, onClose, token, userGuid, accountId, referen
       ]);
       setStatus('idle');
     }
-  }, [input, status, token, userGuid, accountId, sessionId, referenceType, referenceId, consumeStream]);
+  }, [input, status, token, userGuid, accountId, sessionId, referenceType, referenceId, mailboxId, consumeStream]);
 
   const handleApprove = useCallback(
     async (runId: string) => {

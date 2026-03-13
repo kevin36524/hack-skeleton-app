@@ -13,9 +13,10 @@ import { Mastra } from '@mastra/core/mastra';
 import { createStorage } from './storage';
 import { mailTriageAgent } from './agents/mail-triage';
 import { spaceManagementAgent } from './agents/space-management';
+import { digestPrefsAgent } from './agents/digest-prefs';
 
 export const mastra = new Mastra({
-  agents: { mailTriageAgent, spaceManagementAgent },
+  agents: { mailTriageAgent, spaceManagementAgent, digestPrefsAgent },
   storage: createStorage('mastra-storage'),
   logger: new PinoLogger({
     name: 'Mastra',

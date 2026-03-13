@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, Mail, LogOut, RefreshCw, X, BarChart3, Bot } from 'lucide-react';
+import { Menu, Mail, LogOut, RefreshCw, X, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
@@ -15,8 +15,8 @@ interface MobileHeaderProps {
   mailboxId: string;
   onLogout: () => void;
   onRefresh: () => void;
-  activeTab?: 'mail' | 'digest' | 'autopilot';
-  onTabChange?: (tab: 'mail' | 'digest' | 'autopilot') => void;
+  activeTab?: 'mail' | 'digest';
+  onTabChange?: (tab: 'mail' | 'digest') => void;
 }
 
 export function MobileHeader({
@@ -95,15 +95,6 @@ export function MobileHeader({
           >
             <BarChart3 className="h-3 w-3 mr-1" />
             Digest
-          </Button>
-          <Button
-            variant={activeTab === 'autopilot' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onTabChange?.('autopilot')}
-            className="flex-1 py-1 h-8 text-xs"
-          >
-            <Bot className="h-3 w-3 mr-1" />
-            Autopilot
           </Button>
         </div>
 

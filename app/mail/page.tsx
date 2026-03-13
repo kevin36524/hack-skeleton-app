@@ -16,6 +16,7 @@ import { AgentChat, ReferenceType } from '@/components/agent-chat';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Message } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
+import { DigestView } from '@/components/digest-view';
 
 function MailPageContent() {
   const { logout, token } = useAuth();
@@ -36,6 +37,7 @@ function MailPageContent() {
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [panelSizes, setPanelSizes] = useState<number[]>([25, 35, 40]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'mail' | 'digest'>('mail');
 
   // Initialize folderId from URL on mount
   useEffect(() => {
@@ -169,6 +171,8 @@ function MailPageContent() {
           mailboxId={mailboxId}
           onLogout={handleLogout}
           onRefresh={refreshData}
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
         />
 
         {/* Desktop Header */}
@@ -269,66 +273,83 @@ function MailPageContent() {
             </aside>
 
             {/* Mobile Main Content Area */}
-            <div className="flex-1 flex">
+            <div className="flex-1 flex overflow-hidden">
 
-              {/* Message List */}
-              <div className={`
-                w-full md:w-96 border-r flex flex-col
-                ${mobileView === 'list' ? 'block' : 'hidden md:block'}
-              `}>
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Messages
-                  </h2>
-                </div>
-                <div className="flex-1 overflow-hidden">
+              {/* Digest Tab */}
+              {mobileTab === 'digest' ? (
+                <div className="w-full flex flex-col overflow-hidden">
                   {isReady ? (
-                    <MessageList
+                    <DigestView
                       mailboxId={mailboxId}
-                      folderId={folderId}
-                      messageIds={spaceMessageIds.length > 0 ? spaceMessageIds : undefined}
                       onMessageSelected={handleMessageSelected}
                       selectedMessageId={selectedMessage?.id}
                     />
                   ) : (
-                    <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                    <div className="p-4 text-sm text-gray-500">Select a mailbox to view digest</div>
                   )}
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Message List */}
+                  <div className={`
+                    w-full md:w-96 border-r flex flex-col
+                    ${mobileView === 'list' ? 'block' : 'hidden md:block'}
+                  `}>
+                    <div className="p-4 border-b">
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Messages
+                      </h2>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      {isReady ? (
+                        <MessageList
+                          mailboxId={mailboxId}
+                          folderId={folderId}
+                          messageIds={spaceMessageIds.length > 0 ? spaceMessageIds : undefined}
+                          onMessageSelected={handleMessageSelected}
+                          selectedMessageId={selectedMessage?.id}
+                        />
+                      ) : (
+                        <div className="p-4 text-sm text-gray-500">Select a folder to view messages</div>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Message Detail */}
-              <div className={`
-                flex-1 flex flex-col
-                ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
-                ${!selectedMessage && 'md:block'}
-              `}>
-                <div className="p-4 border-b flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Message Details
-                  </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToList}
-                    className="md:hidden"
-                  >
-                    Back to list
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <MessageDetail
-                    message={selectedMessage}
-                    mailboxId={mailboxId}
-                    onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
-                    onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
-                    onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
-                    onReply={(message) => console.log('Reply to:', message.id)}
-                    onForward={(message) => console.log('Forward:', message.id)}
-                    onDelete={(messageId) => console.log('Delete:', messageId)}
-                    onArchive={(messageId) => console.log('Archive:', messageId)}
-                  />
-                </div>
-              </div>
+                  {/* Message Detail */}
+                  <div className={`
+                    flex-1 flex flex-col
+                    ${mobileView === 'detail' ? 'block' : 'hidden md:block'}
+                    ${!selectedMessage && 'md:block'}
+                  `}>
+                    <div className="p-4 border-b flex justify-between items-center">
+                      <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                        Message Details
+                      </h2>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBackToList}
+                        className="md:hidden"
+                      >
+                        Back to list
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <MessageDetail
+                        message={selectedMessage}
+                        mailboxId={mailboxId}
+                        onMarkAsRead={(messageId) => console.log('Mark as read:', messageId)}
+                        onMarkAsUnread={(messageId) => console.log('Mark as unread:', messageId)}
+                        onToggleStar={(messageId) => console.log('Toggle star:', messageId)}
+                        onReply={(message) => console.log('Reply to:', message.id)}
+                        onForward={(message) => console.log('Forward:', message.id)}
+                        onDelete={(messageId) => console.log('Delete:', messageId)}
+                        onArchive={(messageId) => console.log('Archive:', messageId)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -425,8 +446,9 @@ function MailPageContent() {
           token={token}
           userGuid={mailboxId || 'anonymous'}
           accountId={accountId}
-          referenceType={selectedMessage ? 'MESSAGE_ID' : selectedSpaceId ? 'SPACE_ID' : folderId ? 'FOLDER_ID' : undefined}
-          referenceId={selectedMessage ? selectedMessage.id : selectedSpaceId || folderId || undefined}
+          mailboxId={mailboxId}
+          referenceType={mobileTab === 'digest' ? 'DIGEST' : selectedMessage ? 'MESSAGE_ID' : selectedSpaceId ? 'SPACE_ID' : folderId ? 'FOLDER_ID' : undefined}
+          referenceId={mobileTab === 'digest' ? mailboxId : selectedMessage ? selectedMessage.id : selectedSpaceId || folderId || undefined}
         />
       )}
     </ProtectedRoute>
