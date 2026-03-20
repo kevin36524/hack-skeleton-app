@@ -18,7 +18,8 @@ import {
   Download,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,6 +57,9 @@ export function MessageDetail({
   const [fullBody, setFullBody] = useState<{ text: string; html?: string } | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
   const [bodyError, setBodyError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Fetch full message body when message changes
   useEffect(() => {
@@ -80,6 +84,8 @@ export function MessageDetail({
     } else {
       setFullBody(null);
       setBodyError(null);
+      setSummary(null);
+      setSummaryError(null);
     }
   }, [message?.id, mailboxId]);
 
@@ -124,8 +130,115 @@ export function MessageDetail({
     console.log('Downloading attachment:', attachment);
   };
 
+  /**
+   * Convert HTML to plain text
+   */
+  const htmlToText = (html: string): string => {
+    // Create a temporary DOM element to parse HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Get text content
+    let text = temp.textContent || temp.innerText || '';
+    
+    // Clean up extra whitespace
+    text = text
+      .replace(/\s+/g, ' ')      // Collapse multiple spaces/newlines into single space
+      .replace(/^\s+|\s+$/g, '') // Trim leading/trailing whitespace
+      .trim();
+    
+    return text;
+  };
+
+  /**
+   * Get email content as text (prefer text, fallback to HTML converted to text)
+   */
+  const getEmailTextContent = (): string => {
+    if (fullBody?.text) {
+      return fullBody.text;
+    }
+    if (fullBody?.html) {
+      return htmlToText(fullBody.html);
+    }
+    // Fallback to snippet if body not loaded
+    return message?.snippet || '';
+  };
+
+  /**
+   * Summarize the email using the API
+   */
+  const handleSummarize = async () => {
+    if (!message) return;
+    
+    setSummarizing(true);
+    setSummaryError(null);
+    setSummary(null);
+
+    try {
+      const emailContent = getEmailTextContent();
+      
+      if (!emailContent.trim()) {
+        setSummaryError('No content to summarize');
+        return;
+      }
+
+      const response = await fetch('/api/summarize-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emailContent }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (error) {
+      console.error('Failed to summarize email:', error);
+      setSummaryError(error instanceof Error ? error.message : 'Failed to summarize email');
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
+      {/* Summary Section */}
+      {(summary || summarizing || summaryError) && (
+        <div className="border-b bg-muted/50 p-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium mb-1">Summary</h3>
+              {summarizing ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Summarizing email...
+                </div>
+              ) : summaryError ? (
+                <div className="text-sm text-destructive">{summaryError}</div>
+              ) : summary ? (
+                <p className="text-sm text-muted-foreground leading-relaxed">{summary}</p>
+              ) : null}
+            </div>
+            {summary && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSummary(null)}
+                className="flex-shrink-0"
+              >
+                Dismiss
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b p-4">
         <div className="flex items-start justify-between">
@@ -135,6 +248,20 @@ export function MessageDetail({
             </h1>
           </div>
           <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSummarize}
+              disabled={summarizing || loadingBody}
+              className="flex items-center"
+            >
+              {summarizing ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Summarize
+            </Button>
             <Button
               variant="ghost"
               size="sm"
