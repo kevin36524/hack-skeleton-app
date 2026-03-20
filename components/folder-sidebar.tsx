@@ -25,6 +25,7 @@ export interface Space {
 interface FolderSidebarProps {
   mailboxId: string;
   accountId?: string;
+  folderPrefix?: string;
   acceptedSpaces?: Space[];
   suggestedSpaces?: Space[];
   spacesLoading?: boolean;
@@ -46,6 +47,7 @@ interface FolderGroup {
 export function FolderSidebar({
   mailboxId,
   accountId,
+  folderPrefix,
   acceptedSpaces = [],
   suggestedSpaces = [],
   spacesLoading = false,
@@ -128,6 +130,13 @@ export function FolderSidebar({
       default:
         return FileText;
     }
+  };
+
+  const getFolderDisplayName = (name: string): string => {
+    if (folderPrefix && name.startsWith(folderPrefix + '/')) {
+      return name.slice(folderPrefix.length + 1);
+    }
+    return name;
   };
 
   const groupFolders = (): FolderGroup[] => {
@@ -356,7 +365,7 @@ export function FolderSidebar({
                             'w-full justify-center px-2',
                             selectedFolderId === folder.id && 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
                           )}
-                          title={folder.name}
+                          title={getFolderDisplayName(folder.name)}
                         >
                           <Icon className="h-4 w-4" />
                         </Button>
@@ -377,7 +386,7 @@ export function FolderSidebar({
                         <div className="flex items-start justify-between w-full min-w-0 gap-2">
                           <div className="flex items-start space-x-2 min-w-0 flex-1">
                             <Icon className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                            <span className="break-all">{folder.name}</span>
+                            <span className="break-all">{getFolderDisplayName(folder.name)}</span>
                           </div>
                           <div className="flex items-center space-x-1 text-xs flex-shrink-0">
                             {folder.unread > 0 && (

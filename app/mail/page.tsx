@@ -14,7 +14,7 @@ import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AgentChat, ReferenceType } from '@/components/agent-chat';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Message } from '@/lib/types/api';
+import { Message, Account } from '@/lib/types/api';
 import { ResizablePanels } from '@/components/ui/resizable-panels';
 import { DigestView } from '@/components/digest-view';
 
@@ -25,6 +25,7 @@ function MailPageContent() {
 
   const [mailboxId, setMailboxId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
+  const [folderPrefix, setFolderPrefix] = useState<string | undefined>(undefined);
   const [folderId, setFolderId] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>('');
@@ -108,9 +109,10 @@ function MailPageContent() {
     setMailboxId(id);
   };
 
-  const handleAccountSelected = (account: { id: string }) => {
+  const handleAccountSelected = (account: Account) => {
     console.log('MailPage: Account selected:', account.id);
     setAccountId(account.id);
+    setFolderPrefix(account.folderPrefix);
   };
 
   const handleSpaceSelected = (spaceId: string, messageIds: string[]) => {
@@ -258,6 +260,7 @@ function MailPageContent() {
                   <FolderSidebar
                     mailboxId={mailboxId}
                     accountId={accountId}
+                    folderPrefix={folderPrefix}
                     acceptedSpaces={acceptedSpaces}
                     suggestedSpaces={suggestedSpaces}
                     spacesLoading={spacesLoading}
@@ -366,6 +369,7 @@ function MailPageContent() {
                   <FolderSidebar
                     mailboxId={mailboxId}
                     accountId={accountId}
+                    folderPrefix={folderPrefix}
                     acceptedSpaces={acceptedSpaces}
                     suggestedSpaces={suggestedSpaces}
                     spacesLoading={spacesLoading}

@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'standalone',
-  serverExternalPackages: [
+serverExternalPackages: [
     '@mastra/libsql',
     '@mastra/core',
     '@mastra/loggers',

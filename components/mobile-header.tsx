@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { MailboxSelector } from './mailbox-selector';
 import { AccountSwitcher } from './account-switcher';
 import { ThemeToggle } from './theme-toggle';
+import { Account } from '@/lib/types/api';
 
 interface MobileHeaderProps {
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
   onMailboxSelected: (id: string) => void;
-  onAccountSelected: (account: { id: string }) => void;
+  onAccountSelected: (account: Account) => void;
   mailboxId: string;
   onLogout: () => void;
   onRefresh: () => void;

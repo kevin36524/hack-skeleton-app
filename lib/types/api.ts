@@ -65,6 +65,7 @@ export interface Account {
   subscriptionId: string;
   highestModSeq: number;
   recoveryChannel?: boolean;
+  folderPrefix?: string;
   type: "FREE" | "IMAPIN" | "SENDAS";
   linkedAccounts?: string[];
   ignoredFolders?: Array<{

@@ -13,6 +13,13 @@ interface YahooApiHeaders {
   'Content-Type'?: string;
 }
 
+export class YahooApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = 'YahooApiError';
+  }
+}
+
 async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   let lastError: any;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -20,6 +27,10 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
       return await fn();
     } catch (err: any) {
       lastError = err;
+      // Don't retry client errors (4xx)
+      if (err instanceof YahooApiError && err.status >= 400 && err.status < 500) {
+        break;
+      }
       if (attempt < 3) await new Promise((res) => setTimeout(res, 500 * attempt));
     }
   }
@@ -44,7 +55,7 @@ export async function yahooGet<T>(token: string, endpoint: string): Promise<T> {
     });
 
     if (!response.ok) {
-      throw new Error(`Yahoo API GET failed: ${response.status} ${response.statusText} ${url}`);
+      throw new YahooApiError(response.status, `Yahoo API GET failed: ${response.status} ${response.statusText} ${url}`);
     }
 
     const data = await response.json();

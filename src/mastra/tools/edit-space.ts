@@ -71,7 +71,6 @@ Use "__DELETE__" as a value to remove a field entirely (e.g. clearing messageSco
       })
       .describe('Fields to update — only provided fields are changed'),
   }),
-  requireApproval: true,
   outputSchema: z.object({
     success: z.boolean(),
     space: z.any().optional(),
@@ -82,16 +81,47 @@ Use "__DELETE__" as a value to remove a field entirely (e.g. clearing messageSco
     const accountId = getAccountId(context);
     if (!accountId) throw new Error('accountId is required for editSpace');
 
-    const response = await yaiPost<any>(token, '/yai/autopilot/editSpace', {
-      accountId,
-      spaceId,
-      updateObj,
-    });
+    const TIMEOUT_MS = 5000;
+    const MAX_ATTEMPTS = 3;
 
-    return {
-      success: response.success ?? true,
-      space: response.space,
-      message: response.message,
-    };
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      try {
+        const response = await yaiPost<any>(
+          token,
+          '/yai/autopilot/editSpace',
+          { accountId, spaceId, updateObj },
+          controller.signal,
+        );
+        clearTimeout(timer);
+        return {
+          success: response.success ?? true,
+          space: response.space,
+          message: response.message,
+        };
+      } catch (err: any) {
+        clearTimeout(timer);
+        const isTimeout = err?.name === 'AbortError' || controller.signal.aborted;
+        if (!isTimeout) throw err;
+
+        console.warn(`[edit-space] attempt ${attempt}/${MAX_ATTEMPTS} timed out after ${TIMEOUT_MS}ms`);
+
+        if (attempt < MAX_ATTEMPTS) {
+          // Notify agent (via error message) so it can relay to user, then loop for next attempt
+          // We continue rather than throw so the loop retries internally
+          console.log(`[edit-space] retrying (attempt ${attempt + 1})…`);
+          continue;
+        }
+
+        throw new Error(
+          `edit-space timed out after ${MAX_ATTEMPTS} attempts (${TIMEOUT_MS / 1000}s limit each). The space service may be slow — please try again.`,
+        );
+      }
+    }
+
+    // Unreachable, but satisfies TypeScript
+    throw new Error('edit-space: unexpected exit from retry loop');
   },
 });

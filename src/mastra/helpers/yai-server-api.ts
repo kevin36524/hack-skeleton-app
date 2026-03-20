@@ -17,10 +17,12 @@ async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
       return await fn();
     } catch (err: any) {
       lastError = err;
+      // Don't retry aborts or client errors
+      if (err?.name === 'AbortError') break;
       if (attempt < 3) await new Promise((res) => setTimeout(res, 500 * attempt));
     }
   }
-  throw new Error(`${label} failed after 3 attempts: ${lastError?.message ?? lastError}`);
+  throw lastError instanceof Error ? lastError : new Error(`${label} failed after 3 attempts: ${lastError?.message ?? lastError}`);
 }
 
 /**
@@ -50,7 +52,7 @@ export async function yaiGet<T>(token: string, path: string): Promise<T> {
 /**
  * POST request to YAI server
  */
-export async function yaiPost<T>(token: string, path: string, body: unknown): Promise<T> {
+export async function yaiPost<T>(token: string, path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const separator = path.includes('?') ? '&' : '?';
   const url = `${YAI_SERVER_URL}${path}${separator}appid=${APP_ID}`;
 
@@ -62,6 +64,7 @@ export async function yaiPost<T>(token: string, path: string, body: unknown): Pr
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal,
     });
 
     if (!response.ok) {
