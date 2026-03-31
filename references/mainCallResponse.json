@@ -1,0 +1,2558 @@
+{
+    "data": {
+        "foryou": {
+            "pageInfo": {
+                "endCursor": "eyJyZWdpb24iOiJ1cy13ZXN0MSIsInNlc3Npb25faWQiOiIwMmE2ZDI4ZjMyOGY0N2Q5OTFlZGZjNjRiMWVmOWFlNyIsInBhZ2VfaW5kZXgiOjE1LCJuYW1lc3BhY2UiOiJmb3JfeW91In0=",
+                "hasNextPage": true,
+                "__typename": "NewsPageInfo"
+            },
+            "metadata": {
+                "type": "modeled",
+                "source": "cached",
+                "__typename": "NewsRecommendationMetadata"
+            },
+            "edges": [
+                {
+                    "node": {
+                        "uuid": "7ec38ca0-5d59-3da7-aa5d-e0a7d968e8c4",
+                        "category": "Lifestyle",
+                        "categoryGroup": "lifestyle",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_trendingscore",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "7ec38ca0-5d59-3da7-aa5d-e0a7d968e8c4",
+                            "licensedCarmotData": {
+                                "assetUuid": "7ec38ca0-5d59-3da7-aa5d-e0a7d968e8c4",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "David J",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Celebrity",
+                                    "canonicalUrl": {
+                                        "url": "https://whereisthebuzz.com/tiktoker-breaks-down-recounting-how-her-history-teacher-groomed-her-at-15-that-actually-did-f-me-up/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/entertainment/celebrity/articles/tiktoker-breaks-down-recounting-her-040357605.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "WHERE IS THE BUZZ",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2024-11/6bb90e10-a391-11ef-bff1-5b7227b3f9bd",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/817344D8C2739DE9C71103FAB67D7D8A1B7B9E0795B148BE8D578AA235989E56/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2024-11%2F6bb90e10-a391-11ef-bff1-5b7227b3f9bd",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "where_is_the_buzz_814",
+                                        "url": "https://whereisthebuzz.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "where_is_the_buzz",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/where-is-the-buzz/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Where Is The Buzz, created by Wayne Ayers, is a leading entertainment news brand spotlighting breaking stories, exclusive interviews, and the voices shaping pop culture. Known for its speed, credibility, and digital savvy, it’s the heartbeat of today’s media landscape.",
+                                        "displayName": "Where is the Buzz?",
+                                        "imageByType": {
+                                            "altText": "Where is the Buzz Logo",
+                                            "caption": "Where is the Buzz Logo",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 525,
+                                            "width": 525,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/witb_logo_3.jpeg_a97e9e1024692c3f81024df75af60d4dac661cd97e8fb9ab54d4c222cc062e37.jpeg",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/EF70C97112BD07E7ED94BF814627D8860EBFB5F25BFD61B575704C1400D0826F/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fwitb_logo_3.jpeg_a97e9e1024692c3f81024df75af60d4dac661cd97e8fb9ab54d4c222cc062e37.jpeg",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "db36729f-0983-3a55-91b9-057a70e08c0b",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T04:03:57.000Z",
+                                    "summary": "A TikToker who goes by Nadia Salmon posted a video recounting being groomed by a former history teacher beginning when she was around 15 years old. @luckyfrogprincess #luckyfrogprincess #tadpoles ♬ original… The post TikToker Breaks Down Recounting How Her History Teacher Groomed Her at 15: “That Actually Did F— Me Up” appeared first on Where Is The Buzz | Breaking News, Entertainment, Exclusive Interviews & More.",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_category=Nadia Salmon",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "canonical-site-section-source=llm",
+                                        "Nadia Salmon",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=News",
+                                        "ymedia:category=100000008",
+                                        "canonical-srl-source=llm",
+                                        "News",
+                                        "yentertainment:region=us",
+                                        "ymedia:provider_id=where_is_the_buzz_814"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "Nadia Salmon",
+                                        "height": 404,
+                                        "width": 626,
+                                        "url": "https://media.zenfs.com/en/where_is_the_buzz_814/f894952ca564bd33f34bfc370032e34e",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A9B1A23A8609DB0A1207197FAD5D9798828589B7D2A0E8F057DC6FF1B01D9DAB/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Ff894952ca564bd33f34bfc370032e34e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/BDE9B253AD389423CBA9CEB2D29D6DED88091F1483C6856926B45DDC54D71706/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Ff894952ca564bd33f34bfc370032e34e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/F0EBF66A4135C967845332585503E1DCB7A5CA2320BCAE153CC42BA1A5B91B6A/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Ff894952ca564bd33f34bfc370032e34e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/13A908316E28A9F44D8DCC08EEB6775A489FE0BECB95E39BA830FB40E159D115/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Ff894952ca564bd33f34bfc370032e34e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A67FC2981C03AD8A3D9E9D1AA88ADFC5B69BA56A0279B23BBF014892343599E4/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Ff894952ca564bd33f34bfc370032e34e",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "TikToker Breaks Down Recounting How Her History Teacher Groomed Her at 15: “That Actually Did F— Me Up”",
+                                    "readingMeta": {
+                                        "wordCount": 1041,
+                                        "wpm200": 313,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "7ec38ca0-5d59-3da7-aa5d-e0a7d968e8c4",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "103281d9-1c41-320c-a8cd-cd728b6b6cc4",
+                        "category": "Sports",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_nnreduceddim",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "103281d9-1c41-320c-a8cd-cd728b6b6cc4",
+                            "licensedCarmotData": {
+                                "assetUuid": "103281d9-1c41-320c-a8cd-cd728b6b6cc4",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Paolo Songco",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://athlonsports.com/olympics/u-s-figure-skater-alysa-liu-good-news-world-championships-decision",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/alysa-liu-withdraws-world-championships-004023514.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Athlon Sports",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-03/769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/BAE6872C15DAEA54D440B3CA5BCEC822EBCB3CCB15F4EC022E9C58DCAA3DA2B4/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-03%2F769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "athlon_sports_articles_610",
+                                        "url": "https://athlonsports.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "athlon_sports",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/athlon-sports/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Athlon Sports is a digital media and print publication brand, owned by The Arena Group, which is focused on providing in-depth analysis and the latest sports news and information. Athlon is the leading publisher of preseason sports annuals, with a portfolio that includes college football, pro football, NFL Draft, fantasy football, MLB, NBA, WNBA, NHL and soccer.",
+                                        "displayName": "Athlon Sports",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-03/769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/BAE6872C15DAEA54D440B3CA5BCEC822EBCB3CCB15F4EC022E9C58DCAA3DA2B4/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-03%2F769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "2ab98bb0-41af-3b1b-83c6-f581c4ca49fa",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T00:40:23.000Z",
+                                    "summary": "Alysa Liu was nowhere to be found at O2 Arena this week for the highly anticipated 2026 World Figure Skating Championships. The United States figure skating star decided to withdraw from the competition, thereby forfeiting her right to defend her title from last year. Liu admitted that her schedule has been very hectic following her historic success at the 2026 Milan Cortina Winter Olympics.",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:provider_id=athlon_sports_articles_610",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:category=100000008",
+                                        "ymedia:category=100000007",
+                                        "Olympics",
+                                        "canonical-srl-source=llm",
+                                        "ymedia:signal=summary_source:cap",
+                                        "ymedia:provider_category=Olympics",
+                                        "ysports:region=us",
+                                        "yentertainment:region=us"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 800,
+                                        "width": 1200,
+                                        "url": "https://media.zenfs.com/en/athlon_sports_articles_610/94dad15f2bbcb640cd9718d48b199ffa",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/0C263A4CF6962B14F9EF27B13C158121E7C4B265BB709532C631B529E81797C7/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F94dad15f2bbcb640cd9718d48b199ffa",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/5F76E560A2A5F12EFED0DE12544E7BA019E0491D06207920D0C70F86AA86F324/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F94dad15f2bbcb640cd9718d48b199ffa",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/7FC18B6692F51AFBF484E55D3FF9FC1D3406184F20DCC17461A13449ACF2A603/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F94dad15f2bbcb640cd9718d48b199ffa",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/7185C5FC98613A99F5703EA95AD9A5E2F12DC8B2C5BADE3C945CD0241355540A/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F94dad15f2bbcb640cd9718d48b199ffa",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/BE5A8EA71C91584B805B740AE56D97E631ED5794CA5279381DE28E65FF393954/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F94dad15f2bbcb640cd9718d48b199ffa",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Alysa Liu Withdraws from World Championships but Celebrates Coach's Big Award",
+                                    "readingMeta": {
+                                        "wordCount": 349,
+                                        "wpm200": 105,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "103281d9-1c41-320c-a8cd-cd728b6b6cc4",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "95fe9245-bd9c-376e-a873-5462c3043b19",
+                        "category": "Relationships",
+                        "categoryGroup": "lifestyle",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "95fe9245-bd9c-376e-a873-5462c3043b19",
+                            "licensedCarmotData": {
+                                "assetUuid": "95fe9245-bd9c-376e-a873-5462c3043b19",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Meredith Wilshere",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Lifestyle",
+                                    "canonicalUrl": {
+                                        "url": "https://people.com/man-surprises-girlfriend-with-trolley-of-loved-ones-for-proposal-exclusive-11934266",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/lifestyle/articles/woman-tears-she-flies-dallas-213000515.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "People",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2020-11/2bcc7fd0-2b81-11eb-b8bf-81d014a63a87",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/61F6ABCD5B8E2ABA0D1B3115101BB334F89946E340C06F67124D0DC845A6F376/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2020-11%2F2bcc7fd0-2b81-11eb-b8bf-81d014a63a87",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "people_218",
+                                        "url": "https://www.people.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "people",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/people/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "PEOPLE defines celebrity, drives conversation and inspires action. We are your everyday escape, taking you inside the lives of the world’s most intriguing people and making you an integral part of the cultural conversation. We enrich your life with indispensable service and social connection.",
+                                        "displayName": "People",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2020-11/2bcc7fd0-2b81-11eb-b8bf-81d014a63a87",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/61F6ABCD5B8E2ABA0D1B3115101BB334F89946E340C06F67124D0DC845A6F376/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2020-11%2F2bcc7fd0-2b81-11eb-b8bf-81d014a63a87",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "c8b1150b-d2bf-37c3-b659-f30bbd6b6d3b",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-29T21:30:00.000Z",
+                                    "summary": "Montserrat Luna thought she was having a normal date night with her boyfriend",
+                                    "tags": [
+                                        "yatt:Tier=10",
+                                        "yfrontpage:region=ca",
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymovies:region=gb",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:provider_category=Real People Relationships",
+                                        "ymedia:hosted=yes",
+                                        "ymovies:region=ca",
+                                        "ynews:region=my",
+                                        "ymedia:provider_id=people_218",
+                                        "us_non_politics_provider",
+                                        "canonical-srl-source=llm",
+                                        "ynews:region=au",
+                                        "yentertainment:region=us",
+                                        "yentertainment:region=ca",
+                                        "yentertainment:region=gb",
+                                        "ymedia:category=100000005",
+                                        "ynews:region=gb",
+                                        "ymedia:category=100000002",
+                                        "ymedia:category=non_fin_tier3",
+                                        "Real People Relationships",
+                                        "ynews:region=ca",
+                                        "ymedia:category=100000008",
+                                        "ynews:region=nz",
+                                        "ynews:region=sg",
+                                        "yrogers:region=ca"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "Montserrat Luna and Benjamin BattlesonCredit: Montserrat Luna",
+                                        "height": 1000,
+                                        "width": 1500,
+                                        "url": "https://media.zenfs.com/en/people_218/a70fca64c3cf5666f4a68a051da2f113",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/383C0B5136DC04B72F95DC273CA3A2DE91344864E52EAE8A3AAA3AB7BD8723AE/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fpeople_218%2Fa70fca64c3cf5666f4a68a051da2f113",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/89C8C366265E5FC7324F909C41AA261E212DFCBDDE8DDA30F2D189002A0EC9E9/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fpeople_218%2Fa70fca64c3cf5666f4a68a051da2f113",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/20F5F0DD9A5BF52F5F877F8F35830ADD489BDB5710F0479089EA7F468D643B95/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fpeople_218%2Fa70fca64c3cf5666f4a68a051da2f113",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/D2D0D29D3F7BD1045362E6EF45968CBE01C29D450D27C8D731D0141DED8CC4BA/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fpeople_218%2Fa70fca64c3cf5666f4a68a051da2f113",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A81CFD4A3BEE805A70E9A116BFC75EC1C549E1E7AE02A2A144B8FDE494B4F5BF/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fpeople_218%2Fa70fca64c3cf5666f4a68a051da2f113",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Woman in Tears After She Flies to Dallas for Dinner with Boyfriend and Instead Gets Shock of Her Life (Exclusive)",
+                                    "readingMeta": {
+                                        "wordCount": 663,
+                                        "wpm200": 199,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "95fe9245-bd9c-376e-a873-5462c3043b19",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "dcd06120-c322-33e3-9270-c83a481e9053",
+                        "category": "Sports",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "dcd06120-c322-33e3-9270-c83a481e9053",
+                            "licensedCarmotData": {
+                                "assetUuid": "dcd06120-c322-33e3-9270-c83a481e9053",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Jeff Hauser",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://www.sportingnews.com/us/ncaa-football/uconn/news/mike-krzyzewski-reacts-braylon-mullins-and-uconns-final-four-moment-congratulations-son/96fa1bbaaccb09e882d89561",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/mike-krzyzewski-reacts-braylon-mullins-183846952.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "The Sporting News",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-07/99afc130-569a-11f0-bfdf-9ad58b40b5c3",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/053400993E5C0FD79CF5B1FE16DD68140F1078DDF7192AB565614C09BA5DAF98/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-07%2F99afc130-569a-11f0-bfdf-9ad58b40b5c3",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "the_sporting_news_articles_584",
+                                        "url": "https://www.sportingnews.com/us",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "the_sporting_news",
+                                        "brandUrl": null,
+                                        "description": "",
+                                        "displayName": "The Sporting News",
+                                        "imageByType": null,
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": false,
+                                        "uuid": "0f040722-7db6-3b5b-839d-8b308c03f8af",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T18:38:46.000Z",
+                                    "summary": "The former Duke coach watched in disbelief like the rest of us.",
+                                    "tags": [
+                                        "yfrontpage:region=ca",
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_id=the_sporting_news_articles_584",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:provider_category=NCAA Football",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:category=100000008",
+                                        "canonical-srl-source=llm",
+                                        "NCAA Football",
+                                        "sponsorship:yscamarch",
+                                        "ysports:region=us",
+                                        "ysports:region=ca"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 428,
+                                        "width": 760,
+                                        "url": "https://media.zenfs.com/en/the_sporting_news_articles_584/468bbbfb114d2d120a89b5423c4d00b6",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/61022E955C114B70A8628B7E65CBED60F7427D439B241FAC05795153AB3A8F0E/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthe_sporting_news_articles_584%2F468bbbfb114d2d120a89b5423c4d00b6",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/61DDB6081CED4C0ADED27349E64BCA33CFF7B387FAF67B8F8804F9755806A4E8/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthe_sporting_news_articles_584%2F468bbbfb114d2d120a89b5423c4d00b6",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/91F0D9A517AD0E9B3A421148291CB52019C612E07D3BF74CDEDCEEBB39A9A6CC/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthe_sporting_news_articles_584%2F468bbbfb114d2d120a89b5423c4d00b6",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/7B5669315681EEC29D940E29E6170C4C53A50B7F5EEDCC81F4235662A9147A53/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthe_sporting_news_articles_584%2F468bbbfb114d2d120a89b5423c4d00b6",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/111475C836421D41545A88D013B119F7C1C50CB0A4F2A5D7752BF8BCB7E699E2/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthe_sporting_news_articles_584%2F468bbbfb114d2d120a89b5423c4d00b6",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Mike Krzyzewski reacts to Braylon Mullins and UConn's Final Four moment: 'Congratulations, son'",
+                                    "readingMeta": {
+                                        "wordCount": 283,
+                                        "wpm200": 85,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "dcd06120-c322-33e3-9270-c83a481e9053",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "62a15869-f9b0-30b6-adb2-0527c35ab42d",
+                        "category": "News",
+                        "categoryGroup": "social issues",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "62a15869-f9b0-30b6-adb2-0527c35ab42d",
+                            "licensedCarmotData": {
+                                "assetUuid": "62a15869-f9b0-30b6-adb2-0527c35ab42d",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Apoorv Rastogi",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Politics",
+                                    "canonicalUrl": {
+                                        "url": "https://www.mandatory.com/news/1750495-pete-hegseth-aide-donald-trump-black-woman-report",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/news/articles/pete-hegseth-aide-reportedly-said-142739776.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 228,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Mandatory",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2022-11/f6877100-5b0c-11ed-bcec-a437872cc0fd",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/AF5CF76679A43EBD81002AA538BC9E0F4DE04D4E706843BBC08607DCCE831F3F/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2022-11%2Ff6877100-5b0c-11ed-bcec-a437872cc0fd",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "mandatory_995",
+                                        "url": "https://www.mandatory.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "mandatory",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/mandatory/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Mandatory engages young men with content and stories that entertain and inspire while urging our readers, whenever possible, to get actively involved and do some good. Mandatory now means what it says: Showing up isn’t optional anymore.",
+                                        "displayName": "Mandatory",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2022-11/f6877100-5b0c-11ed-bcec-a437872cc0fd",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/AF5CF76679A43EBD81002AA538BC9E0F4DE04D4E706843BBC08607DCCE831F3F/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2022-11%2Ff6877100-5b0c-11ed-bcec-a437872cc0fd",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "981ec912-6e14-39ac-9948-90ca468220e0",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T14:27:39.000Z",
+                                    "summary": "In a surprising turn of events, Donald Trump’s defense secretary, Pete Hegseth, and the latter’s chief of staff, Ricky Buria, have come under fire after the duo showcased alleged racist behavior towards certain military personnel. Recent reports have claimed that Buria seemingly opposed the promotion of a particular official, and even remarked that the president […] The post Pete Hegseth’s Aide Reportedly Said This About Donald Trump & Black Women appeared first on Mandatory.",
+                                    "tags": [
+                                        "Pop Culture News",
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_id=mandatory_995",
+                                        "ymedia:seo-autolinking=allowed",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ylifestyle:region=us",
+                                        "pop culture",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=Pete Hegseth",
+                                        "ymedia:provider_category=News",
+                                        "ymedia:provider_category=pop culture",
+                                        "ymedia:category=100000008",
+                                        "Pete Hegseth",
+                                        "canonical-srl-source=llm",
+                                        "News",
+                                        "ymedia:provider_category=Pop Culture News",
+                                        "yatt:region=us"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 360,
+                                        "width": 640,
+                                        "url": "https://media.zenfs.com/en/mandatory_995/18895855a552ad9b179f17bbf9871f1e",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A347AB725AD3DCEDB7327B16F00FB92A52DDA16D34348E468EA4425F5E17125B/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmandatory_995%2F18895855a552ad9b179f17bbf9871f1e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/92A65E220A3EDBB4F27AB558774F1AACF2529819A29A162580DB7BB24A1A7437/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmandatory_995%2F18895855a552ad9b179f17bbf9871f1e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/07AC6BA50C504C59DCB1CDBF217C79788C0F51150DB3EE24AFA5D56080AE3BD8/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmandatory_995%2F18895855a552ad9b179f17bbf9871f1e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/EC4ECCB38C2DB36757C84054A95EE915E5D399BCA0B0F9080A5393838EBFD1CF/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmandatory_995%2F18895855a552ad9b179f17bbf9871f1e",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/C54E3D4E2BC0F59B58A9A39D1713EED0A6567E9D2117A030914879A3B9162C9E/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fmandatory_995%2F18895855a552ad9b179f17bbf9871f1e",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Pete Hegseth’s Aide Reportedly Said This About Donald Trump & Black Women",
+                                    "readingMeta": {
+                                        "wordCount": 381,
+                                        "wpm200": 115,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "62a15869-f9b0-30b6-adb2-0527c35ab42d",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "f7fde4c6-0de2-3267-89bb-009f3ef1cd76",
+                        "category": "WNBA",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "f7fde4c6-0de2-3267-89bb-009f3ef1cd76",
+                            "licensedCarmotData": {
+                                "assetUuid": "f7fde4c6-0de2-3267-89bb-009f3ef1cd76",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Manhaz Muntaha",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://athlonsports.com/wnba/sophie-cunninghams-bikini-post-raises-a-question-for-fans",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/sophie-cunninghams-bikini-post-raises-001510743.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 40,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Athlon Sports",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-03/769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/BAE6872C15DAEA54D440B3CA5BCEC822EBCB3CCB15F4EC022E9C58DCAA3DA2B4/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-03%2F769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "athlon_sports_articles_610",
+                                        "url": "https://athlonsports.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "athlon_sports",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/athlon-sports/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Athlon Sports is a digital media and print publication brand, owned by The Arena Group, which is focused on providing in-depth analysis and the latest sports news and information. Athlon is the leading publisher of preseason sports annuals, with a portfolio that includes college football, pro football, NFL Draft, fantasy football, MLB, NBA, WNBA, NHL and soccer.",
+                                        "displayName": "Athlon Sports",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-03/769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/BAE6872C15DAEA54D440B3CA5BCEC822EBCB3CCB15F4EC022E9C58DCAA3DA2B4/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-03%2F769c71e0-0a49-11f0-9fc7-65afaf1cae64",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "2ab98bb0-41af-3b1b-83c6-f581c4ca49fa",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-28T00:15:10.000Z",
+                                    "summary": "Fever forward Sophie Cunningham teased fans with a beach social media poll amid WNBA expansion draft uncertainty.",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:provider_id=athlon_sports_articles_610",
+                                        "ymedia:provider_category=Indiana Fever",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:category=100000008",
+                                        "ymedia:category=100000007",
+                                        "Indiana Fever",
+                                        "ymedia:provider_category=WNBA",
+                                        "canonical-srl-source=llm",
+                                        "ymedia:provider_category=Sophie Cunningham",
+                                        "Sophie Cunningham",
+                                        "ysports:region=us",
+                                        "yentertainment:region=us",
+                                        "WNBA"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 800,
+                                        "width": 1200,
+                                        "url": "https://media.zenfs.com/en/athlon_sports_articles_610/77b5e39c1e160aaf18e7ab1565dc7064",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/97918BA81373BF5438756278BA44F104DFAE80EFBF645105147A62786E96B12E/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F77b5e39c1e160aaf18e7ab1565dc7064",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/22D889F06D11818B0087CCFA373C8F85AE6FA03C75A27483CDE80BB1F3FF16B0/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F77b5e39c1e160aaf18e7ab1565dc7064",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/278A2E07866FF4994EDC2EE15475867F57ADB7A3825DCDC7BE112DAAE3F6703C/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F77b5e39c1e160aaf18e7ab1565dc7064",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/6C065C9DFF27A13452331EEA82C6D2129D9C35AA19719821987A7697B42625E6/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F77b5e39c1e160aaf18e7ab1565dc7064",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/8328429359DD8DFBF8F0366B789923EDFEEF7F50E25DE6137EE6A169990371DE/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fathlon_sports_articles_610%2F77b5e39c1e160aaf18e7ab1565dc7064",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Sophie Cunningham's Bikini Post Raises a Question for Fans",
+                                    "readingMeta": {
+                                        "wordCount": 317,
+                                        "wpm200": 96,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "f7fde4c6-0de2-3267-89bb-009f3ef1cd76",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "c94d79a9-5e9b-3300-9688-1722a5800746",
+                        "category": "Health",
+                        "categoryGroup": "health",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_trendingscore",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "c94d79a9-5e9b-3300-9688-1722a5800746",
+                            "licensedCarmotData": {
+                                "assetUuid": "c94d79a9-5e9b-3300-9688-1722a5800746",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Ishani Jayara",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Celebrity",
+                                    "canonicalUrl": {
+                                        "url": "https://www.essentiallysports.com/nfl-active-news-packers-ive-tried-to-stay-silent-packers-qb-jordan-loves-wife-makes-emotional-revelation-amid-pregnancy/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/entertainment/celebrity/articles/ve-tried-stay-silent-packers-122831066.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "EssentiallySports",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/EssentiallySports-Circle.png",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/145443537F7F54E2D37FD1F1286DBE7E307403CDC0EB14F4514261A85AFD7DBC/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2FEssentiallySports-Circle.png",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "essentiallysports_articles_591",
+                                        "url": "https://www.essentiallysports.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "essentiallysports",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/essentiallysports/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Essentially Sports is a global sports media platform launched in 2014, focusing on human interest stories and the \"moment behind the moment\" in sports. It covers various sports, including NBA, UFC, and tennis, targeting underserved fans and niche communities.",
+                                        "displayName": "EssentiallySports",
+                                        "imageByType": {
+                                            "altText": "EssentiallySports Logo",
+                                            "caption": "EssentiallySports Logo",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 480,
+                                            "width": 480,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/essentiallysports_logo.png_b87f8e0f1eb9e9d01300e3e72f5de50494941f658108871cf51412202c4deb5e.png",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/E9C429BF745449DBCDA9B6067652D58C309A97DCD75CB922024FF7E12F947243/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fessentiallysports_logo.png_b87f8e0f1eb9e9d01300e3e72f5de50494941f658108871cf51412202c4deb5e.png",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "d44bc5d7-fe20-34af-90df-89208688133c",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T12:28:31.000Z",
+                                    "summary": "As the NFL offseason buzzes with trade rumors, contract extensions, and roster shakeups, a more personal story has quietly captured fans’ attention. The Green Bay Packers quarterback Jordan Love and his wife are expecting their first child.",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_id=essentiallysports_articles_591",
+                                        "sports",
+                                        "ymedia:provider_category=sports",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "canonical-srl-source=llm",
+                                        "canonical-site-section-source=llm",
+                                        "ysports:region=us",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:category=100000008"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "Image Credits: via social media @ronikastone ©Image Credits: via social media @ronikastone",
+                                        "height": 533,
+                                        "width": 800,
+                                        "url": "https://media.zenfs.com/en/essentiallysports_articles_591/1ff3664d308f59cf6a52b5b8eb458504",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/CC9A331F21BFF41019E946D1CF4178DF033A8267FC49922D674FF30EE751A9EE/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fessentiallysports_articles_591%2F1ff3664d308f59cf6a52b5b8eb458504",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/D9B5E8DCF760A2F41D1826C8EE00DB2EB892BED6E400405461951B439126A9CC/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fessentiallysports_articles_591%2F1ff3664d308f59cf6a52b5b8eb458504",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/85BBF13C9E616E6853AAF131E6280DDAB5A09E2B2851CEDB834697C67E160129/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fessentiallysports_articles_591%2F1ff3664d308f59cf6a52b5b8eb458504",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A8728C76BA9F1BD88ACBE1926F2D650D1E0945E065E2BE70A20A3803A5B0B725/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fessentiallysports_articles_591%2F1ff3664d308f59cf6a52b5b8eb458504",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/9536547EB679CF833CFC9143E591E7D4DDA51DE8BCD3BB74DF0D41302AA6AB0C/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fessentiallysports_articles_591%2F1ff3664d308f59cf6a52b5b8eb458504",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "“I’ve Tried To Stay Silent:” Packers QB Jordan Love’s Wife Makes Emotional Request Amid Pregnancy",
+                                    "readingMeta": {
+                                        "wordCount": 802,
+                                        "wpm200": 241,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "c94d79a9-5e9b-3300-9688-1722a5800746",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "06fc4516-5933-34ce-9088-329982127de0",
+                        "category": "News",
+                        "categoryGroup": "travel",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_trendingscore",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "06fc4516-5933-34ce-9088-329982127de0",
+                            "licensedCarmotData": {
+                                "assetUuid": "06fc4516-5933-34ce-9088-329982127de0",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Veronika Bondarenko",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Business",
+                                    "canonicalUrl": {
+                                        "url": "https://www.thestreet.com/travel/airline-files-for-chapter-11-bankruptcy-cancels-all-flights",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://finance.yahoo.com/economy/policy/articles/airline-files-chapter-11-bankruptcy-173123776.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "TheStreet",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2024-01/54520a30-c429-11ee-aa3b-e213162bfc58",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/32F2B840CD7CE7DE0F49F01015156B8B4F5B338C5888D1094BCBDC90E7A984B2/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2024-01%2F54520a30-c429-11ee-aa3b-e213162bfc58",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "thestreet_881",
+                                        "url": "https://www.thestreet.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "thestreet_com",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/thestreet/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "TheStreet has been educating and informing readers since it was founded in 1996. Our team of talented writers and editors creates intriguing content across a variety of subjects, including the stock market, economy, and personal finance, including Social Security and Medicare. We also craft content across key sectors and topics, including corporate bankruptcy, retail and consumer discretionary, technology, and housing, and industries, including restaurants, automotive, and travel. ",
+                                        "displayName": "TheStreet",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2024-01/54520a30-c429-11ee-aa3b-e213162bfc58",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/32F2B840CD7CE7DE0F49F01015156B8B4F5B338C5888D1094BCBDC90E7A984B2/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2024-01%2F54520a30-c429-11ee-aa3b-e213162bfc58",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "b75bf983-d160-3cc8-bc54-1fa7b093311b",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-28T17:31:23.000Z",
+                                    "summary": "Given their smaller customer bases, regional airlines are particularly vulnerable to economic ebbs. Carriers that ended up in bankruptcy or total shutdown over the last year include the United Kingdom's Eastern Airways and Blue Channels, Sweden's Braathens Aviation, and Iceland's low-cost carrier ...",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_id=thestreet_881",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "Transportation",
+                                        "Airlines & Aviation",
+                                        "ymedia:provider_category=Airlines & Aviation",
+                                        "ymedia:provider_category=Transportation",
+                                        "ymedia:category=fin_whitelistedproviders",
+                                        "ymedia:hosted=yes",
+                                        "yfrontpage:region=sg",
+                                        "Economy",
+                                        "yfrontpage:region=my",
+                                        "yfinance:region=au",
+                                        "Bankruptcy",
+                                        "ymedia:category=100000002",
+                                        "ymedia:provider_category=Economy",
+                                        "canonical-site-section-source=llm",
+                                        "ymedia:category=fin_tier3",
+                                        "ymedia:jarvis_allow_list=news_goldlist_tier3",
+                                        "yfrontpage:region=au",
+                                        "ymedia:category=100000008",
+                                        "ymedia:category=100000007",
+                                        "ymedia:provider_category=Travel",
+                                        "Travel",
+                                        "yfinance:region=sg",
+                                        "ymedia:provider_category=Bankruptcy",
+                                        "yfinance:region=us"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 675,
+                                        "width": 1200,
+                                        "url": "https://media.zenfs.com/en/thestreet_881/60584335dd8227286a8aeacf3332f668",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/E743AE486DC5B207FFB036BB74D659A3FC119FE81B9DD0D58C227A6009C8DBAB/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthestreet_881%2F60584335dd8227286a8aeacf3332f668",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/F4736BBC939B87D3BEDA5FDEE8BB7F3192B2E69E12928F8C1F00050170CCB5AF/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthestreet_881%2F60584335dd8227286a8aeacf3332f668",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/49B1C768AA0052871D69E9454DA149D8CF3A57DF9997694AE5706352C5849268/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthestreet_881%2F60584335dd8227286a8aeacf3332f668",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/5201F286E692E8081F5E75A497EB95527C32E0206097E2D6F1315E946C0E0BBC/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthestreet_881%2F60584335dd8227286a8aeacf3332f668",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/8A379C68D0A94FD0CA2968F15B1E57215212CACD06CFE7555BF4D327FC9B4E04/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fthestreet_881%2F60584335dd8227286a8aeacf3332f668",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Airline files for Chapter 11 bankruptcy, cancels all flights",
+                                    "readingMeta": {
+                                        "wordCount": 559,
+                                        "wpm200": 168,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "06fc4516-5933-34ce-9088-329982127de0",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "990ed166-ab8d-3bb6-b3a5-1a4634b2b8c1",
+                        "category": "News",
+                        "categoryGroup": "crime",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "990ed166-ab8d-3bb6-b3a5-1a4634b2b8c1",
+                            "licensedCarmotData": {
+                                "assetUuid": "990ed166-ab8d-3bb6-b3a5-1a4634b2b8c1",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Adriana Guerrero",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "U.S.",
+                                    "canonicalUrl": {
+                                        "url": "https://whereisthebuzz.com/mexican-woman-accused-of-assaulting-partner-with-belt-after-he-refused-sex-police-say/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/news/articles/mexican-woman-accused-assaulting-partner-175627187.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 1163,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "WHERE IS THE BUZZ",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2024-11/6bb90e10-a391-11ef-bff1-5b7227b3f9bd",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/817344D8C2739DE9C71103FAB67D7D8A1B7B9E0795B148BE8D578AA235989E56/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2024-11%2F6bb90e10-a391-11ef-bff1-5b7227b3f9bd",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "where_is_the_buzz_814",
+                                        "url": "https://whereisthebuzz.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "where_is_the_buzz",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/where-is-the-buzz/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Where Is The Buzz, created by Wayne Ayers, is a leading entertainment news brand spotlighting breaking stories, exclusive interviews, and the voices shaping pop culture. Known for its speed, credibility, and digital savvy, it’s the heartbeat of today’s media landscape.",
+                                        "displayName": "Where is the Buzz?",
+                                        "imageByType": {
+                                            "altText": "Where is the Buzz Logo",
+                                            "caption": "Where is the Buzz Logo",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 525,
+                                            "width": 525,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/witb_logo_3.jpeg_a97e9e1024692c3f81024df75af60d4dac661cd97e8fb9ab54d4c222cc062e37.jpeg",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/EF70C97112BD07E7ED94BF814627D8860EBFB5F25BFD61B575704C1400D0826F/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fwitb_logo_3.jpeg_a97e9e1024692c3f81024df75af60d4dac661cd97e8fb9ab54d4c222cc062e37.jpeg",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "db36729f-0983-3a55-91b9-057a70e08c0b",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-28T17:56:27.000Z",
+                                    "summary": "A woman, 25, was apprehended in Chihuahua, México, for allegedly assaulting her partner with a belt during an altercation over sexual activity, authorities said. The Hidalgo del Parral Municipal Police… The post Mexican Woman Accused of Assaulting Partner With Belt After He Refused Sex, Police Say appeared first on Where Is The Buzz | Breaking News, Entertainment, Exclusive Interviews & More.",
+                                    "tags": [
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "Sara Michelle",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=News",
+                                        "ymedia:category=100000008",
+                                        "canonical-srl-source=llm",
+                                        "News",
+                                        "ymedia:provider_category=Sara Michelle",
+                                        "yentertainment:region=us",
+                                        "ymedia:provider_id=where_is_the_buzz_814"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "Sara Michelle",
+                                        "height": 614,
+                                        "width": 1024,
+                                        "url": "https://media.zenfs.com/en/where_is_the_buzz_814/e2497b64ab84a2a6646862006d17c8f9",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/85FC3CB227ED497F1242B2C6ED186A65490F263BC7296E49433E64CA103B0C12/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Fe2497b64ab84a2a6646862006d17c8f9",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/2C6CEF61CCB91BFC157C4858249C687FBF0ACDF10594AAD9FF8BD83DC5430FEF/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Fe2497b64ab84a2a6646862006d17c8f9",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/7BEA806F3FA06F3074647ABBD00A9B1B1A3191DD0491E918B914318FB01F4245/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Fe2497b64ab84a2a6646862006d17c8f9",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/386B5A61F5876AB422BE8C599BD5E49DEFDB0758A72DE94867029D65FAA3B605/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Fe2497b64ab84a2a6646862006d17c8f9",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/EFF71CA4BD3C40BCB6B1600EEE0DE2E924AD5AC9AA2187E64A1DF08CD2D45EE0/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fwhere_is_the_buzz_814%2Fe2497b64ab84a2a6646862006d17c8f9",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Mexican Woman Accused of Assaulting Partner With Belt After He Refused Sex, Police Say",
+                                    "readingMeta": {
+                                        "wordCount": 210,
+                                        "wpm200": 63,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "990ed166-ab8d-3bb6-b3a5-1a4634b2b8c1",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "e7740c35-3566-3b63-8692-3937b9d69016",
+                        "category": "Business & finance",
+                        "categoryGroup": "business",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_cf",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "e7740c35-3566-3b63-8692-3937b9d69016",
+                            "licensedCarmotData": {
+                                "assetUuid": "e7740c35-3566-3b63-8692-3937b9d69016",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Olivia Richman",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Business",
+                                    "canonicalUrl": {
+                                        "url": "https://guessingheadlights.com/man-files-for-bankruptcy-then-immediately-tries-to-finance-a-90000-hummer-ev-with-zero-down/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://finance.yahoo.com/markets/currencies/articles/man-files-bankruptcy-then-immediately-154636228.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Guessing Headlights",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 800,
+                                            "width": 800,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-05/3e1e9f90-380d-11f0-8eb0-6cbdcdffebed",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/0F65C5418CF8815D34543D15099353CFB5ADC103BF8661706FD591D6C7C9C9A3/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-05%2F3e1e9f90-380d-11f0-8eb0-6cbdcdffebed",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "guessing_headlights_178",
+                                        "url": "https://guessingheadlights.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "guessing_headlights",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/guessing-headlights/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Guessing Headlights covers the latest in auto news, guides, trends, and viral stories, alongside travel and lifestyle features. We focus on the stories shaping car culture, the road ahead, and the experiences that connect how we drive, explore, and live.",
+                                        "displayName": "Guessing Headlights",
+                                        "imageByType": {
+                                            "altText": "Guessing Headlights",
+                                            "caption": "Guessing Headlights",
+                                            "credit": "Guessing Headlights",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/gh_logo.png_de6a0c0f88b25ac8cb4f7ccdb4fec43fd90bab7894c1f1f3a32fd41e8fe7ceca.png",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/3596FEA23FAC36B2285120A7AFA431B551327DA6CD253269B71B61BFEE7F4C0D/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fgh_logo.png_de6a0c0f88b25ac8cb4f7ccdb4fec43fd90bab7894c1f1f3a32fd41e8fe7ceca.png",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "224d5d2b-1d3f-31ff-99f7-3eb29420a5a1",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-22T15:46:36.000Z",
+                                    "summary": "Nothing says \"fresh start\" like shopping for a six-figure truck the week after filing for bankruptcy. No down payment, no credit, no problem (apparently).",
+                                    "tags": [
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:category=100000002",
+                                        "canonical-srl-source=llm",
+                                        "_enrichment_ccm-models-lib-version-0.0.930",
+                                        "ymedia:category=non_fin_tier3",
+                                        "canonical-site-section-source=llm",
+                                        "Auto News",
+                                        "ymedia:hosted=yes",
+                                        "yautos:region=us",
+                                        "ymedia:provider_category=Auto News",
+                                        "ymedia:category=100000008",
+                                        "ymedia:provider_id=guessing_headlights_178"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "gm salesperson tiktok",
+                                        "height": 1499,
+                                        "width": 1800,
+                                        "url": "https://media.zenfs.com/en/guessing_headlights_178/4f4a1745e54b7abfcaef525f2263a7df",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/7DDFE40BEDC915ACBF0A8201AE7E8D870EBB00FAC249C7556A38BCF67BA05529/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fguessing_headlights_178%2F4f4a1745e54b7abfcaef525f2263a7df",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/8FFAB173F8EEBD5AD99C346218C9BA17A334E62EB3AB48FAC3BF2AFC39BF90B5/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fguessing_headlights_178%2F4f4a1745e54b7abfcaef525f2263a7df",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/848F5C4E3FFB7C321FCEF9813CB1B34905D4FBEF3EC7895ABE24F26AE07C3079/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fguessing_headlights_178%2F4f4a1745e54b7abfcaef525f2263a7df",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/B07CDAFC7B31301B63C01C0BBF00432F184AE32825BB3B4F9801072F4B934AFB/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fguessing_headlights_178%2F4f4a1745e54b7abfcaef525f2263a7df",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/4095C9710A713FC22DCD6DB02FB88130218CDA3F14D18A995DB1052C7B96C4FE/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fguessing_headlights_178%2F4f4a1745e54b7abfcaef525f2263a7df",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Man Files for Bankruptcy, Then Immediately Tries to Finance a $90,000 Hummer EV With Zero Down",
+                                    "readingMeta": {
+                                        "wordCount": 505,
+                                        "wpm200": 152,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "e7740c35-3566-3b63-8692-3937b9d69016",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "65ffe3d4-3c19-3090-abb2-03e916c5af8b",
+                        "category": "Entertainment",
+                        "categoryGroup": "arts",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_nnreduceddim",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "65ffe3d4-3c19-3090-abb2-03e916c5af8b",
+                            "licensedCarmotData": {
+                                "assetUuid": "65ffe3d4-3c19-3090-abb2-03e916c5af8b",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Whitney Danhauer",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Celebrity",
+                                    "canonicalUrl": {
+                                        "url": "https://starmagazine.com/former-dancing-with-the-stars-pro-survives-plane-crash-at-laguardia-that-left-2-pilots-dead/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://www.yahoo.com/news/articles/former-dancing-stars-pro-survives-195107632.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Star",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-06/87856dc0-3fe3-11f0-be9f-cb9ee3a16e17",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/128EEE99A7A8EF525D06627F2249D7CC8A94EB28EABAF4B86394D9CF17A39F66/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-06%2F87856dc0-3fe3-11f0-be9f-cb9ee3a16e17",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "star_860",
+                                        "url": "https://www.starmagazine.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "star",
+                                        "brandUrl": {
+                                            "url": "https://profiles.yahoo.com/brands/star/",
+                                            "__typename": "CarmotUrlInfo"
+                                        },
+                                        "description": "Star is a trusted voice in celebrity and pop culture, offering stylish, insider coverage of Hollywood, entertainment and fabulous lifestyles. With sharp reporting, exclusive access and a pulse on what readers crave, Star is your go-to destination for all things showbiz.",
+                                        "displayName": "Star",
+                                        "imageByType": {
+                                            "altText": "Star logo",
+                                            "caption": "Star logo",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 480,
+                                            "width": 480,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/star-square-logo-480x480.png_0a8dff9b303d64f783cf1a8b07ffc0f6754ffd05b8c22bced9505ed645b4bba4.png",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/A7E98B8ACADD9D31F1B57C326B1378BB9307D08306A928F9FBB036F4EAB7CE1A/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fstar-square-logo-480x480.png_0a8dff9b303d64f783cf1a8b07ffc0f6754ffd05b8c22bced9505ed645b4bba4.png",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": true,
+                                        "uuid": "f2850304-2686-3ce2-9523-923ff3af4174",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T19:51:07.000Z",
+                                    "summary": "Former Dancing with the Stars pro Charlotte Jørgensen revealed she survived the horrific plane crash at LaGuardia Airport earlier this month. “A week ago tonight, after a fabulous weekend in Montreal, I boarded Air Canada 8646 bound for La Guardia NYC,” Jørgensen wrote via Instagram on Sunday, March 29, while sharing a photo of the […]",
+                                    "tags": [
+                                        "Celebrity News",
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "canonical-srl-source=llm",
+                                        "yentertainment:region=us",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=Celebrity News",
+                                        "ymedia:category=100000008",
+                                        "ymedia:provider_id=star_860"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 720,
+                                        "width": 1280,
+                                        "url": "https://media.zenfs.com/en/star_860/e0028a1fcb689313b5787c8ab1b9bd34",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/582922E0528C41F14249CA0A18E2C332B40B22A98E338987F3D4F1DA6B2C921F/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fstar_860%2Fe0028a1fcb689313b5787c8ab1b9bd34",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/02106750A8916CC6835624CE6A7936979326277CB2299B5F2FAAA21819A7DAF7/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fstar_860%2Fe0028a1fcb689313b5787c8ab1b9bd34",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/C0ECB56C2DAF76ACE94804B05F0411690DB77DE28CAA091936F10E2EE13ACD4E/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fstar_860%2Fe0028a1fcb689313b5787c8ab1b9bd34",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/A9628712AF7D81DC827FE0689A52FB5AA1F5DFB720E534A0428A8D4DD425CE9B/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fstar_860%2Fe0028a1fcb689313b5787c8ab1b9bd34",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/2A4981E56C6E4893B65EDDF117E1D08193E8247C3B16EF6E55E6AA3216C79854/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fstar_860%2Fe0028a1fcb689313b5787c8ab1b9bd34",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Former ‘Dancing with the Stars’ Pro Survives Plane Crash at LaGuardia That Left 2 Pilots Dead",
+                                    "readingMeta": {
+                                        "wordCount": 399,
+                                        "wpm200": 120,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "65ffe3d4-3c19-3090-abb2-03e916c5af8b",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "8ac5c77f-16a7-3d72-8504-321d27da8f25",
+                        "category": "NFL",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "8ac5c77f-16a7-3d72-8504-321d27da8f25",
+                            "licensedCarmotData": {
+                                "assetUuid": "8ac5c77f-16a7-3d72-8504-321d27da8f25",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Andy Villamarzo",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://www.on3.com/high-school/news/former-ny-giants-lineman-steps-down-from-new-jersey-high-school-football-job/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/former-ny-giants-lineman-steps-201351689.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "On3",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-07/ef0d0130-6c91-11f0-bda5-ddf80fcef2b7",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/C1882AFFBEEB81E15B0B3ADCF02E8C225483AE0F0FB3206781B83A726D3ACCE3/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-07%2Fef0d0130-6c91-11f0-bda5-ddf80fcef2b7",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "on3_recruiting_articles_521",
+                                        "url": "https://www.on3.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "on3",
+                                        "brandUrl": null,
+                                        "description": "",
+                                        "displayName": "On3",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2025-07/ef0d0130-6c91-11f0-bda5-ddf80fcef2b7",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/C1882AFFBEEB81E15B0B3ADCF02E8C225483AE0F0FB3206781B83A726D3ACCE3/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2025-07%2Fef0d0130-6c91-11f0-bda5-ddf80fcef2b7",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": false,
+                                        "uuid": "cfe8fe0f-2b67-3a46-9fe7-784d7fe1acb6",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T20:13:51.000Z",
+                                    "summary": "Rich Seubert won a Super Bowl title with the New York Giants and after his NFL playing days took on coaching New Jersey high school football at Watchung Hills Reg H (NJ). According to a report by Central Jersey Sports Radio, Seubert has officially stepped down as the Warriors’ head coach after 10 seasons. During his […]",
+                                    "tags": [
+                                        "yfrontpage:region=ca",
+                                        "yfrontpage:region=us",
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_category=Rivals",
+                                        "ymedia:provider_category=Rich Seubert",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "Rivals",
+                                        "High School Football",
+                                        "ymedia:jarvis_allow_list=us_sports_02",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=High School",
+                                        "ymedia:category=100000008",
+                                        "Rich Seubert",
+                                        "High School",
+                                        "canonical-srl-source=llm",
+                                        "ymedia:provider_id=on3_recruiting_articles_521",
+                                        "ysports:region=us",
+                                        "ysports:region=ca",
+                                        "ymedia:provider_category=High School Football"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 538,
+                                        "width": 1024,
+                                        "url": "https://media.zenfs.com/en/on3_recruiting_articles_521/a50b1fe2cd29bddda627ecacb69ee481",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/709D3320A39346330470ED8FC7DF4143417BC0F1752FF61E0E7D3AF7A3176A88/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fon3_recruiting_articles_521%2Fa50b1fe2cd29bddda627ecacb69ee481",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/4758C8D6A9700C71BE5E3FAB39A9FB7D45E3341569DE5DC74A3DF32C2AED897A/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fon3_recruiting_articles_521%2Fa50b1fe2cd29bddda627ecacb69ee481",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/1F4095DF4A9BF7A236B8CD7E18B04230617835D44E3775FA05F21C002EAF56CE/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fon3_recruiting_articles_521%2Fa50b1fe2cd29bddda627ecacb69ee481",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/6A7ED8EAFF6D3275983528319772CEBF14E7BEE970F7CA20ECD462C86E4335E5/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fon3_recruiting_articles_521%2Fa50b1fe2cd29bddda627ecacb69ee481",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/107B6FFB05E906238D84411A56FD27760C0E2A759B3268C55C94F44931DE1101/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fon3_recruiting_articles_521%2Fa50b1fe2cd29bddda627ecacb69ee481",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Former NY Giants lineman steps down from New Jersey high school football job",
+                                    "readingMeta": {
+                                        "wordCount": 345,
+                                        "wpm200": 104,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "8ac5c77f-16a7-3d72-8504-321d27da8f25",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "459c3c1f-19d2-34dd-ad75-811e8e68b8e7",
+                        "category": "Sports",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_nnreduceddim",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "459c3c1f-19d2-34dd-ad75-811e8e68b8e7",
+                            "licensedCarmotData": {
+                                "assetUuid": "459c3c1f-19d2-34dd-ad75-811e8e68b8e7",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "Caroline Price, Contributor",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://www.forbes.com/sites/carolineprice/2026/03/28/what-went-wrong-us-women-fail-to-medal-at-world-figure-skating-championships/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/went-wrong-u-women-fail-200333857.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 19,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "Forbes",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 400,
+                                            "width": 400,
+                                            "url": "https://d29szjachogqwa.cloudfront.net/images/user-uploaded/forbes-circle.png",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/D6709B1DAA7B2C486717B6D2483FF13CBEF50D26C3EC526F55FB0BEE33ACA83B/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fd29szjachogqwa.cloudfront.net%2Fimages%2Fuser-uploaded%2Fforbes-circle.png",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "forbes_contributor_845",
+                                        "url": "https://www.forbes.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "forbes",
+                                        "brandUrl": null,
+                                        "description": "",
+                                        "displayName": "Forbes",
+                                        "imageByType": null,
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": false,
+                                        "uuid": "0899ea4f-ed96-3f5b-8226-d7e81eccea9e",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-28T20:03:33.000Z",
+                                    "summary": "Just a month after Alysa Liu claimed gold, the U.S. women came up empty-handed at the World Figure Skating Championships. Even with experienced Olympians Amber Glenn and Isabeau Levito, technical errors ended their medal hopes.",
+                                    "tags": [
+                                        "standard",
+                                        "yfrontpage:region=us",
+                                        "yfrontpage:region=ca",
+                                        "ymedia:signal=summary_source:provider",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "ymedia:hosted=yes",
+                                        "ymedia:provider_category=standard",
+                                        "yfrontpage:region=sg",
+                                        "ynews:region=my",
+                                        "ymedia:provider_category=Business",
+                                        "yfrontpage:region=my",
+                                        "canonical-srl-source=llm",
+                                        "sponsorship:yscamarch",
+                                        "/business",
+                                        "ynews:region=au",
+                                        "SportsMoney",
+                                        "Business",
+                                        "ymedia:provider_id=forbes_contributor_845",
+                                        "/sportsmoney",
+                                        "ymedia:category=100000002",
+                                        "ymedia:category=non_fin_tier2",
+                                        "ynews:region=us",
+                                        "ynews:region=ca",
+                                        "yfrontpage:region=au",
+                                        "ymedia:category=100000008",
+                                        "ymedia:provider_category=/sportsmoney",
+                                        "ymedia:provider_category=SportsMoney",
+                                        "ynews:region=sg",
+                                        "ymedia:provider_category=/business"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "ISU Figure Skating World Championships 2026 - Day3 - Women's Free Skate",
+                                        "height": 640,
+                                        "width": 959,
+                                        "url": "https://media.zenfs.com/en/forbes_contributor_845/e1c602c1972cbe52cb1212888a0355f4",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/185288CFB120086FC93DF9DA0D6503571D646553FC1CBB7B880B2D853147BC93/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fforbes_contributor_845%2Fe1c602c1972cbe52cb1212888a0355f4",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/BAAAAEC9F76A6A6F738780C6918BDFE8DD564DDCBB6E98C18B6077E001E24998/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fforbes_contributor_845%2Fe1c602c1972cbe52cb1212888a0355f4",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/9D22C800C7F68CE4C4A889FFF11E85EE8ECF367CA2F88175A55513000D644389/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fforbes_contributor_845%2Fe1c602c1972cbe52cb1212888a0355f4",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/79E9A42766C3CACADBFDFE7797FADDAD8D665402F99AE163F95AC0F66BB63B5B/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fforbes_contributor_845%2Fe1c602c1972cbe52cb1212888a0355f4",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/800A4532BAFFE665863A52BE4F349A00F82B4FBE7356B0B7505DF943467B5AF8/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fforbes_contributor_845%2Fe1c602c1972cbe52cb1212888a0355f4",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "What Went Wrong? U.S. Women Fail To Medal At World Figure Skating Championships",
+                                    "readingMeta": {
+                                        "wordCount": 894,
+                                        "wpm200": 269,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "459c3c1f-19d2-34dd-ad75-811e8e68b8e7",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                },
+                {
+                    "node": {
+                        "uuid": "a8513a6b-923d-3a88-a652-92a018b61e39",
+                        "category": "NBA",
+                        "categoryGroup": "sports",
+                        "badges": null,
+                        "metadata": {
+                            "ccode": "type_modeled__recall_twotower",
+                            "__typename": "NewsRecommendationItemMetadata"
+                        },
+                        "content": {
+                            "uuid": "a8513a6b-923d-3a88-a652-92a018b61e39",
+                            "licensedCarmotData": {
+                                "assetUuid": "a8513a6b-923d-3a88-a652-92a018b61e39",
+                                "carmotData": {
+                                    "author": {
+                                        "alias": null,
+                                        "byline": null,
+                                        "displayName": "HoopsHype",
+                                        "image": null,
+                                        "uuid": "",
+                                        "__typename": "CarmotAuthor"
+                                    },
+                                    "bypassModal": false,
+                                    "categoryLabel": "Sports",
+                                    "canonicalUrl": {
+                                        "url": "https://www.hoopshype.com/story/sports/nba/rumors/2026/03/30/dwyane-wade-on-victor-wembanyama-if-he-stays-healthy-hes-going-to-accomplish-all-the-things/89383337007/",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "clickThroughUrl": {
+                                        "url": "https://sports.yahoo.com/articles/dwyane-wade-victor-wembanyama-stays-110349898.html",
+                                        "__typename": "CarmotUrlInfo"
+                                    },
+                                    "contentType": "story",
+                                    "editorialTags": [],
+                                    "isCreatorContent": false,
+                                    "isOpinion": false,
+                                    "isHosted": true,
+                                    "liveBlog": null,
+                                    "openWebCommentMetrics": {
+                                        "metrics": {
+                                            "commentCount": 0,
+                                            "__typename": "OpenWebCommentMetrics"
+                                        },
+                                        "__typename": "OpenWebCommentMetricsResult"
+                                    },
+                                    "provider": {
+                                        "displayName": "HoopsHype",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 192,
+                                            "width": 192,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2020-12/4984fbc0-341d-11eb-aefa-a927e42d1f7c",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/1174C641E659C61F99699AF5797A7B5C42901DFFBF1A1E1824584B3E8F4CDB9C/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2020-12%2F4984fbc0-341d-11eb-aefa-a927e42d1f7c",
+                                                    "tag": null,
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "sourceId": "hoops_hype_usa_today_sports_articles_974",
+                                        "url": "https://hoopshype.com/",
+                                        "__typename": "CarmotProvider"
+                                    },
+                                    "providerBrand": {
+                                        "brandId": "hoops_hype",
+                                        "brandUrl": null,
+                                        "description": "",
+                                        "displayName": "HoopsHype",
+                                        "imageByType": {
+                                            "altText": "",
+                                            "caption": "",
+                                            "credit": "",
+                                            "headline": "",
+                                            "height": 192,
+                                            "width": 192,
+                                            "url": "https://s.yimg.com/os/creatr-uploaded-images/2020-12/4984fbc0-341d-11eb-aefa-a927e42d1f7c",
+                                            "carmotMysterioImages": [
+                                                {
+                                                    "height": 80,
+                                                    "width": 80,
+                                                    "url": "https://s.yimg.com/lo/mysterio/api/1174C641E659C61F99699AF5797A7B5C42901DFFBF1A1E1824584B3E8F4CDB9C/subgraphmysterio/smartcrop_w80_h80;format_webp/https:%2F%2Fs.yimg.com%2Fos%2Fcreatr-uploaded-images%2F2020-12%2F4984fbc0-341d-11eb-aefa-a927e42d1f7c",
+                                                    "__typename": "MysterioImage"
+                                                }
+                                            ],
+                                            "__typename": "CarmotImage"
+                                        },
+                                        "isCreator": false,
+                                        "secondaryTypes": [],
+                                        "showPage": false,
+                                        "uuid": "c9532fdf-af0e-3a2d-aa66-eba269378c78",
+                                        "__typename": "CarmotProviderBrand"
+                                    },
+                                    "presentation": "",
+                                    "pubDate": "2026-03-30T11:03:49.000Z",
+                                    "summary": "Dwyane Wade on Victor Wembanyama: If he stays healthy, he's going to accomplish all the things",
+                                    "tags": [
+                                        "ymedia:signal=summary_source:provider",
+                                        "ymedia:provider_id=hoops_hype_usa_today_sports_articles_974",
+                                        "sports",
+                                        "ymedia:provider_category=sports",
+                                        "ysports:region=au",
+                                        "ymedia:category=100000002",
+                                        "_enrichment_ccm-models-lib-version-0.0.933",
+                                        "yct:001000012",
+                                        "ymedia:category=000000203",
+                                        "ymedia:hosted=yes",
+                                        "nba",
+                                        "yct:001001127",
+                                        "ymedia:category=100000008",
+                                        "ymedia:provider_category=nba",
+                                        "canonical-srl-source=llm",
+                                        "ysports:region=us",
+                                        "ysports:region=ca",
+                                        "ysports:region=gb"
+                                    ],
+                                    "thumbnail": {
+                                        "caption": "",
+                                        "height": 900,
+                                        "width": 1280,
+                                        "url": "https://media.zenfs.com/en/hoops_hype_usa_today_sports_articles_974/163618ce4432ff93db221a39ba8bb8e8",
+                                        "carmotMysterioImages": [
+                                            {
+                                                "height": 556,
+                                                "width": 1114,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/F740982B32BFC447968791A59CAF458FD343D7A69E52E196406EC77E3255DCBF/subgraphmysterio/smartcrop_w1114_h556_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fhoops_hype_usa_today_sports_articles_974%2F163618ce4432ff93db221a39ba8bb8e8",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 620,
+                                                "width": 1104,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/AF62EAA2CBF36335E3042FC295B2A0BCD1695566A8133B6AF856E9B6C39AA62A/subgraphmysterio/smartcrop_w1104_h620_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fhoops_hype_usa_today_sports_articles_974%2F163618ce4432ff93db221a39ba8bb8e8",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 1102,
+                                                "width": 620,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/F4B26CFA4CEF52D17BE02DE8054D66BBA2E090266AB067384A4526920F9CDF55/subgraphmysterio/smartcrop_w620_h1102_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fhoops_hype_usa_today_sports_articles_974%2F163618ce4432ff93db221a39ba8bb8e8",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 360,
+                                                "width": 720,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/08463B0FBCF46378BE17C63AC479F7DB3EEACB48D36AB9ACA2273FCACD143798/subgraphmysterio/smartcrop_w720_h360_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fhoops_hype_usa_today_sports_articles_974%2F163618ce4432ff93db221a39ba8bb8e8",
+                                                "__typename": "MysterioImage"
+                                            },
+                                            {
+                                                "height": 260,
+                                                "width": 260,
+                                                "url": "https://s.yimg.com/lo/mysterio/api/F540638720BEF726A1B793DCBD0E2469B4AC6EA866C8EF260964CC4046CED951/subgraphmysterio/smartcrop_w260_h260_faces;format_webp/https:%2F%2Fmedia.zenfs.com%2Fen%2Fhoops_hype_usa_today_sports_articles_974%2F163618ce4432ff93db221a39ba8bb8e8",
+                                                "__typename": "MysterioImage"
+                                            }
+                                        ],
+                                        "__typename": "CarmotImage"
+                                    },
+                                    "title": "Dwyane Wade on Victor Wembanyama: If he stays healthy, he's going to accomplish all the things",
+                                    "readingMeta": {
+                                        "wordCount": 134,
+                                        "wpm200": 41,
+                                        "__typename": "ReadingMeta"
+                                    },
+                                    "uuid": "a8513a6b-923d-3a88-a652-92a018b61e39",
+                                    "__typename": "CarmotData"
+                                },
+                                "asset": {
+                                    "__typename": "Story"
+                                },
+                                "__typename": "LicensedAsset"
+                            },
+                            "__typename": "CarmotContent"
+                        },
+                        "__typename": "NewsRecommendation"
+                    },
+                    "__typename": "NewsRecommendationEdge"
+                }
+            ],
+            "__typename": "NewsRecommendationConnection"
+        }
+    }
+}
