@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   Zap,
   ChevronLeft,
@@ -10,16 +9,15 @@ import {
   VolumeX,
   List,
   LayoutGrid,
-  TrendingUp,
-  TrendingDown,
   Cloud,
   Sun,
   CloudRain,
   MoreHorizontal,
   ArrowRight,
 } from "lucide-react";
+import { getFeed, type FeedStory } from "@/lib/yahoo-feed";
 
-// --- Mock Data ---
+// --- Static / non-feed sections (weather, games, top cards stay as mock) ---
 
 const topCards = [
   {
@@ -88,81 +86,6 @@ const topCards = [
   },
 ];
 
-const trendingStories = [
-  {
-    id: 1,
-    rank: 1,
-    title: "Tiger Woods faces fallout after DUI arrest",
-    image: "https://placehold.co/60x60/e11d48/ffffff?text=TW",
-  },
-  {
-    id: 2,
-    rank: 2,
-    title: "AI stock sell-off and oil crisis shake Wall Street",
-    image: "https://placehold.co/60x60/1e40af/ffffff?text=AI",
-    isNew: true,
-  },
-  {
-    id: 3,
-    rank: 3,
-    title: "Air Canada CEO exits after language outcry",
-    image: "https://placehold.co/60x60/047857/ffffff?text=AC",
-  },
-  {
-    id: 4,
-    rank: 4,
-    title: "Supreme Court debate on birthright citizenship",
-    image: "https://placehold.co/60x60/4b5563/ffffff?text=SC",
-  },
-  {
-    id: 5,
-    rank: 5,
-    title: "Texas high school shooting leaves teacher injured",
-    image: "https://placehold.co/60x60/92400e/ffffff?text=TX",
-    isNew: true,
-  },
-];
-
-const subNews = [
-  {
-    id: 1,
-    title: "4 ways Iran could respond if the U.S. invades Kharg Island",
-    source: "The Hill",
-    comments: "4.8K",
-    image: "https://placehold.co/300x180/1e3a8a/ffffff?text=Iran",
-    sourceColor: "bg-blue-800",
-  },
-  {
-    id: 2,
-    title: "Kathie Lee Gifford gets frank on aging: 'Golden years? It's a lie.'",
-    source: "Yahoo Entertainment",
-    comments: null,
-    image: "https://placehold.co/300x180/831843/ffffff?text=KG",
-    sourceColor: "bg-purple-600",
-  },
-  {
-    id: 3,
-    title: "Duke coach Jon Scheyer creates instant meme after UConn's wild buzzer-beater",
-    source: "Yahoo Sports",
-    comments: "406",
-    image: "https://placehold.co/300x180/14532d/ffffff?text=Duke",
-    sourceColor: "bg-green-700",
-  },
-];
-
-const forYouStories = [
-  {
-    id: 1,
-    category: "Celebrity",
-    categoryColor: "text-pink-600",
-    title: "Howie Mandel struggles through Kelly Ripa apology, says he doesn't...",
-    source: "Entertainment W...",
-    comments: "1.2K",
-    readTime: "3 min read",
-    image: "https://placehold.co/120x120/b45309/ffffff?text=HM",
-  },
-];
-
 const games = [
   {
     id: 1,
@@ -180,6 +103,18 @@ const games = [
   },
 ];
 
+// --- Helper ---
+
+function formatComments(n: number): string | null {
+  if (!n) return null;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
+
+function providerInitial(name: string): string {
+  return name.charAt(0).toUpperCase();
+}
+
 // --- Components ---
 
 function TopCardRow() {
@@ -194,29 +129,29 @@ function TopCardRow() {
             <span className="text-[10px] text-gray-500 font-medium truncate">
               {card.label}
             </span>
-            {card.badge && (
-              <span className={`text-[10px] font-bold ${card.badgeColor}`}>
+            {"badge" in card && card.badge && (
+              <span className={`text-[10px] font-bold ${"badgeColor" in card ? card.badgeColor : ""}`}>
                 {card.badge}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3">
-            {card.icon}
+            {"icon" in card && card.icon}
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 leading-tight truncate">
                 {card.title}
               </p>
-              {card.subtitle && (
+              {"subtitle" in card && card.subtitle && (
                 <p
-                  className={`text-xs text-gray-500 truncate ${
-                    card.subtitleColor || ""
-                  }`}
+                  className={`text-xs text-gray-500 truncate ${"subtitleColor" in card ? card.subtitleColor ?? "" : ""}`}
                 >
                   {card.subtitle}
                 </p>
               )}
             </div>
-            {card.action && <div className="ml-auto">{card.action}</div>}
+            {"action" in card && card.action && (
+              <div className="ml-auto">{card.action}</div>
+            )}
           </div>
         </div>
       ))}
@@ -224,7 +159,7 @@ function TopCardRow() {
   );
 }
 
-function TrendingPanel() {
+function TrendingPanel({ stories }: { stories: FeedStory[] }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
@@ -232,27 +167,30 @@ function TrendingPanel() {
         <h2 className="text-lg font-bold text-gray-900">Trending</h2>
       </div>
       <div className="flex flex-col gap-4">
-        {trendingStories.map((story) => (
-          <div key={story.id} className="flex items-start gap-3 group cursor-pointer">
+        {stories.map((story, i) => (
+          <a
+            key={story.uuid}
+            href={story.clickThroughUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-3 group cursor-pointer"
+          >
             <span className="text-sm font-bold text-gray-900 mt-1 w-4">
-              {story.rank}
+              {i + 1}
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 leading-snug group-hover:underline">
                 {story.title}
               </p>
-              {story.isNew && (
-                <span className="inline-block mt-1 text-[10px] font-bold bg-yellow-300 text-black px-1.5 py-0.5 rounded">
-                  New
-                </span>
-              )}
             </div>
-            <img
-              src={story.image}
-              alt=""
-              className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-            />
-          </div>
+            {story.thumbnailSquareUrl && (
+              <img
+                src={story.thumbnailSquareUrl}
+                alt=""
+                className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+          </a>
         ))}
       </div>
       <button className="mt-4 text-sm font-semibold text-gray-900 hover:underline flex items-center gap-1">
@@ -262,19 +200,16 @@ function TrendingPanel() {
   );
 }
 
-function HeroCarousel() {
+function HeroCarousel({ story }: { story: FeedStory }) {
   return (
     <div className="relative rounded-2xl overflow-hidden bg-gray-900 aspect-[16/10] group">
       <img
-        src="https://placehold.co/800x500/1f2937/ffffff?text=Hero+Image"
-        alt="Hero"
+        src={story.thumbnailWideUrl ?? "https://placehold.co/800x500/1f2937/ffffff?text=News"}
+        alt={story.title}
         className="w-full h-full object-cover opacity-80"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute top-3 right-3 flex items-center gap-2">
-        <span className="text-xs text-white/90 bg-black/40 px-2 py-1 rounded-full">
-          4 of 15
-        </span>
         <button className="w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60">
           <MoreHorizontal className="w-4 h-4" />
         </button>
@@ -282,16 +217,23 @@ function HeroCarousel() {
       <div className="absolute bottom-0 left-0 right-0 p-5">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-bold text-white/80 uppercase tracking-wide">
-            wp
+            {providerInitial(story.provider)}
           </span>
-          <span className="text-xs text-white/80">Washington Post</span>
-          <span className="flex items-center gap-1 text-xs text-white/80">
-            <MessageCircle className="w-3 h-3" /> 267
-          </span>
+          <span className="text-xs text-white/80">{story.provider}</span>
+          {story.commentCount > 0 && (
+            <span className="flex items-center gap-1 text-xs text-white/80">
+              <MessageCircle className="w-3 h-3" /> {formatComments(story.commentCount)}
+            </span>
+          )}
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4">
-          Trump allies cheer as the Ellisons expand their media empire
-        </h2>
+        <a
+          href={story.clickThroughUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-2xl md:text-3xl font-bold text-white leading-tight mb-4 hover:underline"
+        >
+          {story.title}
+        </a>
         <div className="flex items-center gap-2">
           <button className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 backdrop-blur-sm">
             <ChevronLeft className="w-5 h-5" />
@@ -305,14 +247,20 @@ function HeroCarousel() {
   );
 }
 
-function NewsGrid() {
+function NewsGrid({ stories }: { stories: FeedStory[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-      {subNews.map((news) => (
-        <div key={news.id} className="group cursor-pointer">
+      {stories.map((news) => (
+        <a
+          key={news.uuid}
+          href={news.clickThroughUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group cursor-pointer"
+        >
           <div className="rounded-xl overflow-hidden mb-2">
             <img
-              src={news.image}
+              src={news.thumbnailMediumUrl ?? "https://placehold.co/300x180/374151/ffffff?text=News"}
               alt=""
               className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
             />
@@ -321,25 +269,31 @@ function NewsGrid() {
             {news.title}
           </h3>
           <div className="flex items-center gap-2 mt-2">
-            <span
-              className={`w-5 h-5 rounded-full ${news.sourceColor} text-white text-[8px] font-bold flex items-center justify-center`}
-            >
-              {news.source[0]}
-            </span>
-            <span className="text-xs text-gray-500">{news.source}</span>
-            {news.comments && (
+            {news.providerLogoUrl ? (
+              <img
+                src={news.providerLogoUrl}
+                alt={news.provider}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+            ) : (
+              <span className="w-5 h-5 rounded-full bg-gray-600 text-white text-[8px] font-bold flex items-center justify-center">
+                {providerInitial(news.provider)}
+              </span>
+            )}
+            <span className="text-xs text-gray-500">{news.provider}</span>
+            {news.commentCount > 0 && (
               <span className="flex items-center gap-1 text-xs text-gray-500">
-                <MessageCircle className="w-3 h-3" /> {news.comments}
+                <MessageCircle className="w-3 h-3" /> {formatComments(news.commentCount)}
               </span>
             )}
           </div>
-        </div>
+        </a>
       ))}
     </div>
   );
 }
 
-function ForYouFeed() {
+function ForYouFeed({ stories }: { stories: FeedStory[] }) {
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-3">
@@ -355,35 +309,52 @@ function ForYouFeed() {
         </div>
       </div>
       <div className="flex flex-col gap-4">
-        {forYouStories.map((story) => (
-          <div
-            key={story.id}
+        {stories.map((story) => (
+          <a
+            key={story.uuid}
+            href={story.clickThroughUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex gap-4 bg-white rounded-xl border border-gray-100 p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
           >
             <div className="flex-1 min-w-0">
-              <span className={`text-xs font-bold ${story.categoryColor}`}>
+              <span className="text-xs font-bold text-pink-600">
                 {story.category}
               </span>
               <h4 className="text-base font-bold text-gray-900 leading-snug mt-1 hover:underline">
                 {story.title}
               </h4>
               <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                <span className="w-5 h-5 rounded-full bg-teal-500 text-white text-[8px] font-bold flex items-center justify-center">
-                  EW
-                </span>
-                <span>{story.source}</span>
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="w-3 h-3" /> {story.comments}
-                </span>
-                <span>· {story.readTime}</span>
+                {story.providerLogoUrl ? (
+                  <img
+                    src={story.providerLogoUrl}
+                    alt={story.provider}
+                    className="w-5 h-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-teal-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {providerInitial(story.provider)}
+                  </span>
+                )}
+                <span>{story.provider}</span>
+                {story.commentCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="w-3 h-3" /> {formatComments(story.commentCount)}
+                  </span>
+                )}
+                {story.readTimeMin > 0 && (
+                  <span>· {story.readTimeMin} min read</span>
+                )}
               </div>
             </div>
-            <img
-              src={story.image}
-              alt=""
-              className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-            />
-          </div>
+            {story.thumbnailSquareUrl && (
+              <img
+                src={story.thumbnailSquareUrl}
+                alt=""
+                className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+          </a>
         ))}
       </div>
     </div>
@@ -450,12 +421,8 @@ function VideoAd() {
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <h4 className="text-white font-bold text-lg tracking-wide">
-            BUILDING
-          </h4>
-          <p className="text-white/80 text-xs uppercase tracking-widest">
-            High-Performance
-          </p>
+          <h4 className="text-white font-bold text-lg tracking-wide">BUILDING</h4>
+          <p className="text-white/80 text-xs uppercase tracking-widest">High-Performance</p>
           <h3 className="text-white font-bold text-2xl">TEAMS</h3>
         </div>
       </div>
@@ -502,7 +469,7 @@ function PopularGames() {
   );
 }
 
-function BusinessPanel() {
+function BusinessPanel({ story }: { story: FeedStory }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
@@ -511,23 +478,46 @@ function BusinessPanel() {
         </div>
         <h2 className="text-lg font-bold text-gray-900">Business</h2>
       </div>
-      <div className="rounded-xl overflow-hidden mb-2">
-        <img
-          src="https://placehold.co/300x160/ea580c/ffffff?text=Olive+Garden"
-          alt=""
-          className="w-full h-36 object-cover"
-        />
-      </div>
-      <h3 className="text-sm font-bold text-gray-900 leading-snug hover:underline cursor-pointer">
-        When My Career Stalled, I Got A Job At Olive Garden. I Was Shocked By What I...
-      </h3>
+      <a
+        href={story.clickThroughUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block group"
+      >
+        <div className="rounded-xl overflow-hidden mb-2">
+          <img
+            src={story.thumbnailMediumUrl ?? "https://placehold.co/300x160/ea580c/ffffff?text=Business"}
+            alt=""
+            className="w-full h-36 object-cover group-hover:scale-105 transition-transform"
+          />
+        </div>
+        <h3 className="text-sm font-bold text-gray-900 leading-snug hover:underline cursor-pointer">
+          {story.title}
+        </h3>
+      </a>
     </div>
   );
 }
 
 // --- Main Page ---
 
-export default function Home() {
+export default async function Home() {
+  let feed;
+  try {
+    feed = await getFeed();
+  } catch {
+    feed = { stories: [], endCursor: "", hasNextPage: false };
+  }
+
+  const { stories } = feed;
+
+  // Slice feed into sections
+  const heroStory = stories[0];
+  const newsGridStories = stories.slice(1, 4);
+  const trendingStories = stories.slice(0, 5);
+  const businessStory = stories[4] ?? stories[0];
+  const forYouStories = stories.slice(5);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <main className="max-w-7xl mx-auto px-4 py-6">
@@ -540,15 +530,15 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column */}
           <div className="lg:col-span-3 flex flex-col gap-6">
-            <TrendingPanel />
-            <BusinessPanel />
+            <TrendingPanel stories={trendingStories} />
+            {businessStory && <BusinessPanel story={businessStory} />}
           </div>
 
           {/* Center Column */}
           <div className="lg:col-span-6 flex flex-col gap-4">
-            <HeroCarousel />
-            <NewsGrid />
-            <ForYouFeed />
+            {heroStory && <HeroCarousel story={heroStory} />}
+            {newsGridStories.length > 0 && <NewsGrid stories={newsGridStories} />}
+            {forYouStories.length > 0 && <ForYouFeed stories={forYouStories} />}
           </div>
 
           {/* Right Column */}
