@@ -41,6 +41,8 @@ interface GeneratedAdResponse {
 interface GeneratedAdImage {
   success: boolean;
   ad?: string;
+  image?: string;
+  mimeType?: string;
 }
 
 export default function AdCreatorPage() {
@@ -426,9 +428,23 @@ export default function AdCreatorPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="whitespace-pre-wrap bg-muted/50 rounded-lg p-6 border">
-                    {generatedAdImage.ad}
-                  </div>
+                  {generatedAdImage.image ? (
+                    <div className="rounded-lg overflow-hidden border">
+                      <img 
+                        src={generatedAdImage.image} 
+                        alt="Generated Ad" 
+                        className="w-full h-auto"
+                      />
+                    </div>
+                  ) : generatedAdImage.ad ? (
+                    <div className="whitespace-pre-wrap bg-muted/50 rounded-lg p-6 border">
+                      {generatedAdImage.ad}
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground text-center py-8">
+                      No image or text was generated. Please try again.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

@@ -90,11 +90,24 @@ Make sure the text is legible and the overall design is polished and professiona
 
     const response = await agent.generate([{ role: "user", content: contentParts }]);
 
+    // Check if the response contains generated files (images)
+    // The AI SDK returns generated images in the `files` array
+    const files = (response as any).files;
+    let imageData: string | undefined;
+    let mimeType: string | undefined;
+
+    if (files && Array.isArray(files) && files.length > 0) {
+      // Get the first generated image
+      const generatedFile = files[0];
+      imageData = generatedFile.base64;
+      mimeType = generatedFile.mimeType;
+    }
+
     return NextResponse.json({
       success: true,
-      ad: response.text,
-      // If the model returns an image, it would be in the response
-      // For Gemini 3.1 Flash Image Preview, the image generation is part of the response
+      ad: response.text || undefined,
+      image: imageData ? `data:${mimeType};base64,${imageData}` : undefined,
+      mimeType,
     });
   } catch (error) {
     console.error("Ad Image Creator API Error:", error);
