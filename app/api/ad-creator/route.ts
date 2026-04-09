@@ -98,11 +98,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response = await agent.generate({ message: content });
+    const response = await agent.generate([{ role: "user", content }]);
+
+    // Parse the response to handle JSON output
+    let parsedResponse;
+    let rawText = response.text || "";
+    
+    // Try to extract JSON from markdown code blocks if present
+    const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      rawText = jsonMatch[1].trim();
+    } else {
+      // Remove any ``` markers if present without json label
+      rawText = rawText.replace(/```/g, "").trim();
+    }
+    
+    try {
+      parsedResponse = JSON.parse(rawText);
+    } catch {
+      // If parsing fails, return the raw text
+      parsedResponse = { raw: response.text };
+    }
 
     return NextResponse.json({
       success: true,
-      ad: response.text,
+      ideas: parsedResponse.ideas || parsedResponse,
+      raw: response.text,
     });
   } catch (error) {
     console.error("Ad Creator API Error:", error);

@@ -13,6 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, ImageIcon, Lightbulb, Target, Palette } from "lucide-react";
 
 interface ReferenceImage {
   id: string;
@@ -22,10 +24,23 @@ interface ReferenceImage {
   preview?: string;
 }
 
-interface GeneratedAd {
-  ad: string;
-  resourceId: string;
-  threadId: string;
+interface AdIdea {
+  headline: string;
+  concept: string;
+  visualDescription: string;
+  tone: string;
+  ctaSuggestion: string;
+}
+
+interface GeneratedAdResponse {
+  success: boolean;
+  ideas?: AdIdea[];
+  raw?: string;
+}
+
+interface GeneratedAdImage {
+  success: boolean;
+  ad?: string;
 }
 
 export default function AdCreatorPage() {
@@ -35,7 +50,10 @@ export default function AdCreatorPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [imageDescription, setImageDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedIdeas, setGeneratedIdeas] = useState<AdIdea[] | null>(null);
+  const [generatedAdImage, setGeneratedAdImage] = useState<GeneratedAdImage | null>(null);
+  const [selectedIdea, setSelectedIdea] = useState<AdIdea | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("text");
 
@@ -89,6 +107,9 @@ export default function AdCreatorPage() {
 
     setIsLoading(true);
     setError(null);
+    setGeneratedIdeas(null);
+    setGeneratedAdImage(null);
+    setSelectedIdea(null);
 
     try {
       const payload: {
@@ -117,13 +138,18 @@ export default function AdCreatorPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data: GeneratedAdResponse = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.details || "Failed to generate ad");
+        throw new Error("Failed to generate ad");
       }
 
-      setGeneratedAd(data);
+      if (data.ideas && Array.isArray(data.ideas)) {
+        setGeneratedIdeas(data.ideas);
+      } else {
+        // Fallback: try to parse from raw if ideas not present
+        setError("Received invalid response format from server");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -131,9 +157,35 @@ export default function AdCreatorPage() {
     }
   };
 
-  const copyToClipboard = () => {
-    if (generatedAd?.ad) {
-      navigator.clipboard.writeText(generatedAd.ad);
+  const handleGenerateAdImage = async (idea: AdIdea) => {
+    setIsGeneratingImage(true);
+    setSelectedIdea(idea);
+    setError(null);
+
+    try {
+      const payload = {
+        product: message,
+        adIdea: idea,
+        referenceText,
+      };
+
+      const response = await fetch("/api/ad-image-creator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate ad image");
+      }
+
+      setGeneratedAdImage(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -147,7 +199,7 @@ export default function AdCreatorPage() {
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Create compelling, high-converting ads with AI. Describe your product,
-            add reference materials, and let our AI craft the perfect ad for you.
+            get creative ideas, and generate stunning ad visuals.
           </p>
         </div>
 
@@ -323,10 +375,13 @@ export default function AdCreatorPage() {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         />
                       </svg>
-                      Creating your ad...
+                      Creating ideas...
                     </>
                   ) : (
-                    "Generate Ad"
+                    <>
+                      <Lightbulb className="mr-2 h-5 w-5" />
+                      Generate Ad Ideas
+                    </>
                   )}
                 </Button>
               </form>
@@ -358,71 +413,133 @@ export default function AdCreatorPage() {
               </Card>
             )}
 
-            {/* Generated Ad */}
-            {generatedAd ? (
+            {/* Generated Ad Image */}
+            {generatedAdImage && (
               <Card className="border-primary/20 shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5 text-primary" />
                     <CardTitle>Your Generated Ad</CardTitle>
-                    <CardDescription>
-                      Ready to use for your campaign
-                    </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="gap-2"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                    Copy
-                  </Button>
+                  <CardDescription>
+                    Complete ad with visual and copy
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-neutral dark:prose-invert max-w-none">
-                    <div className="whitespace-pre-wrap bg-muted/50 rounded-lg p-6 border">
-                      {generatedAd.ad}
-                    </div>
+                  <div className="whitespace-pre-wrap bg-muted/50 rounded-lg p-6 border">
+                    {generatedAdImage.ad}
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              /* Empty State */
+            )}
+
+            {/* Generated Ideas */}
+            {generatedIdeas && generatedIdeas.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Ad Ideas</h3>
+                  <Badge variant="secondary">{generatedIdeas.length}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Tap on an idea to generate the complete ad with an image
+                </p>
+                
+                {generatedIdeas.map((idea, index) => (
+                  <Card
+                    key={index}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      selectedIdea?.headline === idea.headline
+                        ? "ring-2 ring-primary"
+                        : ""
+                    }`}
+                    onClick={() => handleGenerateAdImage(idea)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-lg leading-tight">
+                          {idea.headline}
+                        </CardTitle>
+                        <Badge variant="outline" className="text-xs">
+                          {idea.tone}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        {idea.concept}
+                      </p>
+                      
+                      <div className="flex items-start gap-2 text-sm">
+                        <Palette className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <p className="text-muted-foreground line-clamp-2">
+                          {idea.visualDescription}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 pt-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">
+                          {idea.ctaSuggestion}
+                        </span>
+                      </div>
+
+                      <Button
+                        className="w-full mt-2"
+                        variant={selectedIdea?.headline === idea.headline ? "default" : "secondary"}
+                        disabled={isGeneratingImage && selectedIdea?.headline === idea.headline}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGenerateAdImage(idea);
+                        }}
+                      >
+                        {isGeneratingImage && selectedIdea?.headline === idea.headline ? (
+                          <>
+                            <svg
+                              className="animate-spin -ml-1 mr-2 h-4 w-4"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon className="mr-2 h-4 w-4" />
+                            Generate Ad with Image
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!generatedIdeas && !generatedAdImage && !error && (
               <Card className="border-dashed">
                 <CardContent className="pt-12 pb-12 text-center">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-8 w-8 text-muted-foreground"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
+                    <Lightbulb className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No ad generated yet</h3>
+                  <h3 className="text-lg font-medium mb-2">No ideas yet</h3>
                   <p className="text-muted-foreground">
-                    Fill out the form and click "Generate Ad" to create your
-                    advertisement
+                    Fill out the form and click &quot;Generate Ad Ideas&quot; to get creative concepts
                   </p>
                 </CardContent>
               </Card>
