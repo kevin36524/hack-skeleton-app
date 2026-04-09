@@ -13,14 +13,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       message,
-      resourceId = "anonymous",
-      threadId = "default",
       referenceText,
       referenceImages,
     }: {
       message: string;
-      resourceId?: string;
-      threadId?: string;
       referenceText?: string;
       referenceImages?: ReferenceImage[];
     } = body;
@@ -102,21 +98,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const response = await agent.generate(
-      { message: content },
-      {
-        memory: {
-          resource: resourceId,
-          thread: threadId,
-        },
-      }
-    );
+    const response = await agent.generate({ message: content });
 
     return NextResponse.json({
       success: true,
       ad: response.text,
-      resourceId,
-      threadId,
     });
   } catch (error) {
     console.error("Ad Creator API Error:", error);

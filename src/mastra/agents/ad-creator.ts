@@ -1,6 +1,4 @@
 import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
-import { LibSQLStore } from "@mastra/libsql";
 
 export const adCreator = new Agent({
   id: "ad-creator",
@@ -49,12 +47,4 @@ Always ask clarifying questions if:
 
 Your goal is to create ads that don't just inform—they inspire action.`,
   model: "google/gemini-3.1-flash-image-preview",
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: "file:./mastra-memory.db",
-    }),
-    options: {
-      lastMessages: 20,
-    }
-  }),
 });
