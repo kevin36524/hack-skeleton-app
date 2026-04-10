@@ -10,7 +10,8 @@
     "lint": "eslint",
     "feature": "tsx scripts/feature-assistant.ts",
     "feature:quick": "tsx scripts/feature-assistant.ts --model claude-haiku-4-5-20251001",
-    "feature:advanced": "tsx scripts/feature-assistant.ts --model claude-opus-4-1"
+    "feature:advanced": "tsx scripts/feature-assistant.ts --model claude-opus-4-1",
+    "deployCloudRun": "gcloud auth activate-service-account --key-file=twiliotest-admin-key.json && gcloud run deploy ad-creator-basic --source . --platform managed --region us-central1 --allow-unauthenticated --service-account calproxy-service-account@twiliotest-8d802.iam.gserviceaccount.com --project twiliotest-8d802 --env-vars-file env.yaml"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.44",
