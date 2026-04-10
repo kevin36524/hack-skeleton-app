@@ -21,6 +21,9 @@ export async function POST(request: NextRequest) {
       referenceText,
       brandColors,
       logoUrl,
+      referenceImages,
+      feedback,
+      currentImage,
     }: {
       product: string;
       targetAudience?: string;
@@ -29,6 +32,9 @@ export async function POST(request: NextRequest) {
       referenceText?: string;
       brandColors?: string[];
       logoUrl?: string;
+      referenceImages?: Array<{ base64: string }>;
+      feedback?: string;
+      currentImage?: string;
     } = body;
 
     if (!product || typeof product !== "string") {
@@ -45,7 +51,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const promptText = `Create a complete advertisement with an integrated image for the following:
+    const hasReferenceImages = (referenceImages && referenceImages.length > 0) || logoUrl;
+    const isRefinement = !!(feedback || currentImage);
+
+    const promptText = isRefinement
+      ? `You are refining an existing advertisement image based on user feedback.
+${currentImage ? "\nThe current ad image is attached. Use it as the starting point." : ""}
+${referenceImages && referenceImages.length > 0 ? "\nAdditional reference image(s) are also attached for inspiration." : ""}
+
+**User Feedback:** ${feedback || "Please improve the image quality and design."}
+
+**Original Ad Concept:**
+- Headline: "${adIdea.headline}"
+- Concept: ${adIdea.concept}
+- Visual Direction: ${adIdea.visualDescription}
+- Tone: ${adIdea.tone}
+
+**Product/Service:** ${product}
+${referenceText ? `\n**Additional Guidance:** ${referenceText}` : ""}
+
+Please generate an improved version of the ad that addresses the user's feedback while keeping what worked well. Make sure the text is legible and the design is polished and professional.`
+      : `Create a complete advertisement with an integrated image for the following:
 
 **Product/Service:** ${product}
 
@@ -58,6 +84,7 @@ ${targetAudience ? `\n**Target Audience:** ${targetAudience}` : ""}
 ${platform ? `\n**Platform:** ${platform}` : ""}
 ${brandColors ? `\n**Brand Colors:** ${brandColors.join(", ")}` : ""}
 ${referenceText ? `\n**Additional Guidance:** ${referenceText}` : ""}
+${hasReferenceImages ? `\n**Reference Images:** Use the attached reference image(s) as visual inspiration for style, color palette, composition, or brand elements. Do not copy them directly — use them to inform the creative direction.` : ""}
 
 Please generate a complete ad image that includes:
 1. The visual imagery described in the concept
@@ -69,15 +96,35 @@ Make sure the text is legible and the overall design is polished and professiona
 
     const contents: any[] = [{ text: promptText }];
 
+    if (currentImage) {
+      const match = currentImage.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        contents.push({ inlineData: { mimeType: match[1], data: match[2] } });
+      }
+    }
+
     if (logoUrl) {
       contents.push({
         inlineData: {
           mimeType: "image/png",
-          data: logoUrl.startsWith("data:")
-            ? logoUrl.split(",")[1]
-            : logoUrl,
+          data: logoUrl.startsWith("data:") ? logoUrl.split(",")[1] : logoUrl,
         },
       });
+    }
+
+    if (referenceImages && referenceImages.length > 0) {
+      for (const img of referenceImages) {
+        let mimeType = "image/jpeg";
+        let data = img.base64;
+        if (data.includes(",")) {
+          const match = data.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            mimeType = match[1];
+            data = match[2];
+          }
+        }
+        contents.push({ inlineData: { mimeType, data } });
+      }
     }
 
     const response = await ai.models.generateContent({

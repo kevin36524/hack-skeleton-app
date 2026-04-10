@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ImageIcon, Lightbulb, Target, Palette, ThumbsUp, ThumbsDown, MessageSquare, RefreshCw } from "lucide-react";
+import { Sparkles, ImageIcon, Lightbulb, Target, Palette, ThumbsUp, ThumbsDown, MessageSquare, RefreshCw, Paperclip, X } from "lucide-react";
 
 interface ReferenceImage {
   id: string;
@@ -61,6 +61,10 @@ export default function AdCreatorPage() {
   const [ideaFeedback, setIdeaFeedback] = useState<Record<number, { rating: "up" | "down" | null; comment: string }>>({});
   const [showFeedbackInput, setShowFeedbackInput] = useState<Record<number, boolean>>({});
   const [isRefiningIdea, setIsRefiningIdea] = useState<Record<number, boolean>>({});
+  const [ideaImages, setIdeaImages] = useState<Record<number, Array<{ id: string; preview: string }>>>({});
+  const [imageRefineFeedback, setImageRefineFeedback] = useState("");
+  const [imageRefineImages, setImageRefineImages] = useState<Array<{ id: string; preview: string }>>([]);
+  const [isRefiningAdImage, setIsRefiningAdImage] = useState(false);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +133,93 @@ export default function AdCreatorPage() {
     }));
   }, []);
 
+  const handleIdeaImageUpload = useCallback((index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIdeaImages((prev) => ({
+          ...prev,
+          [index]: [
+            ...(prev[index] || []),
+            { id: Math.random().toString(36).substring(7), preview: reader.result as string },
+          ],
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+    // Reset the input so the same file can be re-added after removal
+    e.target.value = "";
+  }, []);
+
+  const removeIdeaImage = useCallback((index: number, imageId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdeaImages((prev) => ({
+      ...prev,
+      [index]: (prev[index] || []).filter((img) => img.id !== imageId),
+    }));
+  }, []);
+
+  const handleImageRefineUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageRefineImages((prev) => [
+          ...prev,
+          { id: Math.random().toString(36).substring(7), preview: reader.result as string },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  }, []);
+
+  const removeImageRefineImage = useCallback((id: string) => {
+    setImageRefineImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
+
+  const handleRefineAdImage = useCallback(async () => {
+    if (!selectedIdea || !generatedAdImage) return;
+    setIsRefiningAdImage(true);
+    setError(null);
+
+    try {
+      const payload = {
+        product: message,
+        adIdea: selectedIdea,
+        referenceText,
+        feedback: imageRefineFeedback.trim() || undefined,
+        currentImage: generatedAdImage.image,
+        referenceImages: imageRefineImages.length > 0
+          ? imageRefineImages.map((img) => ({ base64: img.preview }))
+          : undefined,
+      };
+
+      const response = await fetch("/api/ad-image-creator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to refine ad image");
+      }
+
+      setGeneratedAdImage(data);
+      setImageRefineFeedback("");
+      setImageRefineImages([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsRefiningAdImage(false);
+    }
+  }, [selectedIdea, generatedAdImage, message, referenceText, imageRefineFeedback, imageRefineImages]);
+
   const handleRefineIdea = useCallback(async (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const comment = ideaFeedback[index]?.comment?.trim();
@@ -161,7 +252,7 @@ export default function AdCreatorPage() {
           updated[index] = data.idea;
           return updated;
         });
-        // Clear the comment and hide input after successful refine
+        // Clear feedback state for this card after successful refine
         setIdeaFeedback((prev) => ({ ...prev, [index]: { rating: prev[index]?.rating || null, comment: "" } }));
         setShowFeedbackInput((prev) => ({ ...prev, [index]: false }));
       }
@@ -247,16 +338,18 @@ export default function AdCreatorPage() {
     await generateIdeas(feedback);
   };
 
-  const handleGenerateAdImage = async (idea: AdIdea) => {
+  const handleGenerateAdImage = async (idea: AdIdea, index: number) => {
     setIsGeneratingImage(true);
     setSelectedIdea(idea);
     setError(null);
 
     try {
+      const images = (ideaImages[index] || []).map((img) => ({ base64: img.preview }));
       const payload = {
         product: message,
         adIdea: idea,
         referenceText,
+        referenceImages: images.length > 0 ? images : undefined,
       };
 
       const response = await fetch("/api/ad-image-creator", {
@@ -518,9 +611,9 @@ export default function AdCreatorPage() {
                 <CardContent>
                   {generatedAdImage.image ? (
                     <div className="rounded-lg overflow-hidden border">
-                      <img 
-                        src={generatedAdImage.image} 
-                        alt="Generated Ad" 
+                      <img
+                        src={generatedAdImage.image}
+                        alt="Generated Ad"
                         className="w-full h-auto"
                       />
                     </div>
@@ -533,6 +626,76 @@ export default function AdCreatorPage() {
                       No image or text was generated. Please try again.
                     </div>
                   )}
+
+                  {/* Image refinement comment box */}
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    <Label className="text-sm font-medium">Refine this image</Label>
+                    <Textarea
+                      placeholder="Describe what you'd like to change... (e.g. make the background darker, use warmer colors, add more contrast)"
+                      value={imageRefineFeedback}
+                      onChange={(e) => setImageRefineFeedback(e.target.value)}
+                      className="min-h-[80px] resize-none text-sm"
+                    />
+                    {/* Reference image attachments */}
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="image-refine-upload"
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer w-fit transition-colors"
+                      >
+                        <Paperclip className="h-3.5 w-3.5" />
+                        Attach reference images
+                        <input
+                          id="image-refine-upload"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImageRefineUpload}
+                        />
+                      </label>
+                      {imageRefineImages.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {imageRefineImages.map((img) => (
+                            <div key={img.id} className="relative group">
+                              <img
+                                src={img.preview}
+                                alt="Reference"
+                                className="w-14 h-14 object-cover rounded border"
+                              />
+                              <button
+                                type="button"
+                                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => removeImageRefineImage(img.id)}
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={isRefiningAdImage || (!imageRefineFeedback.trim() && imageRefineImages.length === 0)}
+                      onClick={handleRefineAdImage}
+                    >
+                      {isRefiningAdImage ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Refining image...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Refine Image
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -577,7 +740,7 @@ export default function AdCreatorPage() {
                         ? "ring-2 ring-primary"
                         : ""
                     }`}
-                    onClick={() => handleGenerateAdImage(idea)}
+                    onClick={() => handleGenerateAdImage(idea, index)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -608,9 +771,54 @@ export default function AdCreatorPage() {
                         </span>
                       </div>
 
-                      {/* Feedback row */}
+                      {/* Reference images for ad generation */}
                       <div
                         className="pt-2 border-t space-y-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Reference images for ad generation</span>
+                          <label
+                            htmlFor={`idea-image-upload-${index}`}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                          >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            Attach
+                            <input
+                              id={`idea-image-upload-${index}`}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handleIdeaImageUpload(index, e)}
+                            />
+                          </label>
+                        </div>
+                        {(ideaImages[index] || []).length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {(ideaImages[index] || []).map((img) => (
+                              <div key={img.id} className="relative group">
+                                <img
+                                  src={img.preview}
+                                  alt="Reference"
+                                  className="w-14 h-14 object-cover rounded border"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => removeIdeaImage(index, img.id, e)}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Feedback row */}
+                      <div
+                        className="space-y-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center gap-2">
@@ -687,7 +895,7 @@ export default function AdCreatorPage() {
                         disabled={isGeneratingImage && selectedIdea?.headline === idea.headline}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleGenerateAdImage(idea);
+                          handleGenerateAdImage(idea, index);
                         }}
                       >
                         {isGeneratingImage && selectedIdea?.headline === idea.headline ? (
