@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+env.yaml
 
 # vercel
 .vercel
@@ -41,4 +42,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 scripts
+# SQLite database files
 *.db
+*.db-shm
+*.db-wal
+
+twiliotest-admin-key.json

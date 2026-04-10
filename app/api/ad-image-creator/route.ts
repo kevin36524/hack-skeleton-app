@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mastra } from "@/src/mastra";
+import { GoogleGenAI } from "@google/genai";
 
 interface AdIdea {
   headline: string;
@@ -7,6 +7,8 @@ interface AdIdea {
   visualDescription: string;
   tone: string;
 }
+
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,20 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const agent = mastra.getAgent("adImageCreator");
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: "Ad Image Creator agent not found" },
-        { status: 500 }
-      );
-    }
-
-    // Build the prompt for the image creator agent
-    const contentParts: any[] = [
-      {
-        type: "text",
-        text: `Create a complete advertisement with an integrated image for the following:
+    const promptText = `Create a complete advertisement with an integrated image for the following:
 
 **Product/Service:** ${product}
 
@@ -76,36 +65,46 @@ Please generate a complete ad image that includes:
 3. Any supporting body text or call-to-action
 4. Colors and styling that match the tone and brand guidelines
 
-Make sure the text is legible and the overall design is polished and professional.`,
-      },
-    ];
+Make sure the text is legible and the overall design is polished and professional.`;
 
-    // Add logo if provided
+    const contents: any[] = [{ text: promptText }];
+
     if (logoUrl) {
-      contentParts.push({
-        type: "image",
-        image: logoUrl,
+      contents.push({
+        inlineData: {
+          mimeType: "image/png",
+          data: logoUrl.startsWith("data:")
+            ? logoUrl.split(",")[1]
+            : logoUrl,
+        },
       });
     }
 
-    const response = await agent.generate([{ role: "user", content: contentParts }]);
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{ role: "user", parts: contents }],
+      config: {
+        responseModalities: ["IMAGE", "TEXT"],
+      },
+    });
 
-    // Check if the response contains generated files (images)
-    // The AI SDK returns generated images in the `files` array
-    const files = (response as any).files;
     let imageData: string | undefined;
     let mimeType: string | undefined;
+    let adText: string | undefined;
 
-    if (files && Array.isArray(files) && files.length > 0) {
-      // Get the first generated image
-      const generatedFile = files[0];
-      imageData = generatedFile.base64;
-      mimeType = generatedFile.mimeType;
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    for (const part of parts) {
+      if (part.inlineData) {
+        imageData = part.inlineData.data;
+        mimeType = part.inlineData.mimeType;
+      } else if (part.text) {
+        adText = part.text;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      ad: response.text || undefined,
+      ad: adText,
       image: imageData ? `data:${mimeType};base64,${imageData}` : undefined,
       mimeType,
     });
@@ -123,17 +122,8 @@ Make sure the text is legible and the overall design is polished and professiona
 
 // Health check endpoint
 export async function GET() {
-  try {
-    const agent = mastra.getAgent("adImageCreator");
-    return NextResponse.json({
-      status: "ok",
-      agent: agent ? "available" : "unavailable",
-      agentName: agent?.name,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { status: "error", message: "Agent not available" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    status: "ok",
+    model: "gemini-2.5-flash-image",
+  });
 }
