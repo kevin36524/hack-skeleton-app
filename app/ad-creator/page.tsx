@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ImageIcon, Lightbulb, Target, Palette } from "lucide-react";
+import { Sparkles, ImageIcon, Lightbulb, Target, Palette, ThumbsUp, ThumbsDown, MessageSquare, RefreshCw } from "lucide-react";
 
 interface ReferenceImage {
   id: string;
@@ -58,6 +58,9 @@ export default function AdCreatorPage() {
   const [selectedIdea, setSelectedIdea] = useState<AdIdea | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("text");
+  const [ideaFeedback, setIdeaFeedback] = useState<Record<number, { rating: "up" | "down" | null; comment: string }>>({});
+  const [showFeedbackInput, setShowFeedbackInput] = useState<Record<number, boolean>>({});
+  const [isRefiningIdea, setIsRefiningIdea] = useState<Record<number, boolean>>({});
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,24 +106,88 @@ export default function AdCreatorPage() {
     );
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
+  const toggleRating = useCallback((index: number, rating: "up" | "down", e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIdeaFeedback((prev) => ({
+      ...prev,
+      [index]: {
+        rating: prev[index]?.rating === rating ? null : rating,
+        comment: prev[index]?.comment || "",
+      },
+    }));
+  }, []);
 
+  const toggleFeedbackInput = useCallback((index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowFeedbackInput((prev) => ({ ...prev, [index]: !prev[index] }));
+  }, []);
+
+  const updateFeedbackComment = useCallback((index: number, comment: string) => {
+    setIdeaFeedback((prev) => ({
+      ...prev,
+      [index]: { rating: prev[index]?.rating || null, comment },
+    }));
+  }, []);
+
+  const handleRefineIdea = useCallback(async (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const comment = ideaFeedback[index]?.comment?.trim();
+    if (!comment || !generatedIdeas) return;
+
+    setIsRefiningIdea((prev) => ({ ...prev, [index]: true }));
+    setError(null);
+
+    try {
+      const response = await fetch("/api/ad-idea-refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product: message,
+          originalIdea: generatedIdeas[index],
+          comment,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to refine idea");
+      }
+
+      if (data.idea) {
+        setGeneratedIdeas((prev) => {
+          if (!prev) return prev;
+          const updated = [...prev];
+          updated[index] = data.idea;
+          return updated;
+        });
+        // Clear the comment and hide input after successful refine
+        setIdeaFeedback((prev) => ({ ...prev, [index]: { rating: prev[index]?.rating || null, comment: "" } }));
+        setShowFeedbackInput((prev) => ({ ...prev, [index]: false }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsRefiningIdea((prev) => ({ ...prev, [index]: false }));
+    }
+  }, [ideaFeedback, generatedIdeas, message]);
+
+  const generateIdeas = async (feedback?: Array<{ headline: string; rating: "up" | "down" | null; comment: string }>) => {
     setIsLoading(true);
     setError(null);
     setGeneratedIdeas(null);
     setGeneratedAdImage(null);
     setSelectedIdea(null);
+    setIdeaFeedback({});
+    setShowFeedbackInput({});
 
     try {
       const payload: {
         message: string;
         referenceText?: string;
         referenceImages?: { url?: string; base64?: string; description?: string }[];
-      } = {
-        message,
-      };
+        feedback?: Array<{ headline: string; rating: "up" | "down" | null; comment: string }>;
+      } = { message };
 
       if (referenceText.trim()) {
         payload.referenceText = referenceText;
@@ -132,6 +199,10 @@ export default function AdCreatorPage() {
           base64: img.preview,
           description: img.description,
         }));
+      }
+
+      if (feedback && feedback.length > 0) {
+        payload.feedback = feedback;
       }
 
       const response = await fetch("/api/ad-creator", {
@@ -149,7 +220,6 @@ export default function AdCreatorPage() {
       if (data.ideas && Array.isArray(data.ideas)) {
         setGeneratedIdeas(data.ideas);
       } else {
-        // Fallback: try to parse from raw if ideas not present
         setError("Received invalid response format from server");
       }
     } catch (err) {
@@ -157,6 +227,24 @@ export default function AdCreatorPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    await generateIdeas();
+  };
+
+  const handleRegenerateWithFeedback = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const feedback = Object.entries(ideaFeedback)
+      .filter(([, fb]) => fb.rating || fb.comment.trim())
+      .map(([indexStr, fb]) => ({
+        headline: generatedIdeas![parseInt(indexStr)].headline,
+        rating: fb.rating,
+        comment: fb.comment,
+      }));
+    await generateIdeas(feedback);
   };
 
   const handleGenerateAdImage = async (idea: AdIdea) => {
@@ -452,13 +540,33 @@ export default function AdCreatorPage() {
             {/* Generated Ideas */}
             {generatedIdeas && generatedIdeas.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Ad Ideas</h3>
-                  <Badge variant="secondary">{generatedIdeas.length}</Badge>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Ad Ideas</h3>
+                    <Badge variant="secondary">{generatedIdeas.length}</Badge>
+                  </div>
+                  {Object.values(ideaFeedback).some((fb) => fb.rating || fb.comment.trim()) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRegenerateWithFeedback}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <svg className="animate-spin mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Regenerate with Feedback
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Tap on an idea to generate the complete ad with an image
+                  Rate ideas to guide regeneration, or tap to generate the ad with an image
                 </p>
                 
                 {generatedIdeas.map((idea, index) => (
@@ -498,6 +606,79 @@ export default function AdCreatorPage() {
                         <span className="text-sm font-medium text-primary">
                           {idea.ctaSuggestion}
                         </span>
+                      </div>
+
+                      {/* Feedback row */}
+                      <div
+                        className="pt-2 border-t space-y-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Rate this idea:</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className={`h-7 px-2 ${ideaFeedback[index]?.rating === "up" ? "text-green-600 bg-green-50" : "text-muted-foreground"}`}
+                            onClick={(e) => toggleRating(index, "up", e)}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs">Like</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className={`h-7 px-2 ${ideaFeedback[index]?.rating === "down" ? "text-red-500 bg-red-50" : "text-muted-foreground"}`}
+                            onClick={(e) => toggleRating(index, "down", e)}
+                          >
+                            <ThumbsDown className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs">Dislike</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className={`h-7 px-2 ml-auto ${showFeedbackInput[index] ? "text-primary" : "text-muted-foreground"}`}
+                            onClick={(e) => toggleFeedbackInput(index, e)}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                            <span className="text-xs">Comment</span>
+                          </Button>
+                        </div>
+                        {showFeedbackInput[index] && (
+                          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <Textarea
+                              placeholder="What would you change? (e.g. make it more energetic, different tone...)"
+                              value={ideaFeedback[index]?.comment || ""}
+                              onChange={(e) => updateFeedbackComment(index, e.target.value)}
+                              className="min-h-[60px] resize-none text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="w-full"
+                              disabled={!ideaFeedback[index]?.comment?.trim() || isRefiningIdea[index]}
+                              onClick={(e) => handleRefineIdea(index, e)}
+                            >
+                              {isRefiningIdea[index] ? (
+                                <>
+                                  <svg className="animate-spin mr-2 h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  Refining idea...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                                  Regenerate this idea
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
                       <Button

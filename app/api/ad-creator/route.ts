@@ -15,10 +15,12 @@ export async function POST(request: NextRequest) {
       message,
       referenceText,
       referenceImages,
+      feedback,
     }: {
       message: string;
       referenceText?: string;
       referenceImages?: ReferenceImage[];
+      feedback?: Array<{ headline: string; rating: "up" | "down" | null; comment: string }>;
     } = body;
 
     if (!message || typeof message !== "string") {
@@ -60,6 +62,21 @@ export async function POST(request: NextRequest) {
       contextParts.push(`Reference Images:\n${imageDescriptions}`);
     }
     
+    if (feedback && feedback.length > 0) {
+      const feedbackLines = feedback
+        .filter((fb) => fb.rating || fb.comment?.trim())
+        .map((fb) => {
+          const sentiment = fb.rating === "up" ? "👍 Liked" : fb.rating === "down" ? "👎 Disliked" : "💬 Comment";
+          const line = `- "${fb.headline}" (${sentiment})`;
+          return fb.comment?.trim() ? `${line}: ${fb.comment}` : line;
+        });
+      if (feedbackLines.length > 0) {
+        contextParts.push(
+          `User feedback on previous ad ideas — use this to improve the new concepts:\n${feedbackLines.join("\n")}`
+        );
+      }
+    }
+
     if (contextParts.length > 0) {
       textContent = `${message}\n\n---\n${contextParts.join("\n\n")}`;
     }
