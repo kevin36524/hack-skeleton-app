@@ -19,6 +19,7 @@ export const deleteMessages = createTool({
     success: z.boolean(),
     deletedCount: z.number(),
   }),
+  requireApproval: true,
   execute: async ({ messageIds, trashFolderId }, context) => {
     const token = getToken(context);
     const mailboxId = await getMailboxId(token, context);

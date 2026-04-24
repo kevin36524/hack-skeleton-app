@@ -71,6 +71,7 @@ Use "__DELETE__" as a value to remove a field entirely (e.g. clearing messageSco
       })
       .describe('Fields to update — only provided fields are changed'),
   }),
+  requireApproval: true,
   outputSchema: z.object({
     success: z.boolean(),
     space: z.any().optional(),
