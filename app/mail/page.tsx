@@ -9,7 +9,7 @@ import { AccountSwitcher } from '@/components/account-switcher';
 import { FolderSidebar, Space } from '@/components/folder-sidebar';
 import { MessageList } from '@/components/message-list';
 import { MessageDetail } from '@/components/message-detail';
-import { LogOut, Mail, RefreshCw, Menu, X, Bot } from 'lucide-react';
+import { LogOut, Mail, RefreshCw, Menu, X, Bot, Newspaper } from 'lucide-react';
 import { MobileHeader } from '@/components/mobile-header';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AgentChat, ReferenceType } from '@/components/agent-chat';
@@ -193,6 +193,16 @@ function MailPageContent() {
                   onAccountSelected={handleAccountSelected}
                 />
                 <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/mail/digest')}
+                  className="flex items-center space-x-1"
+                  title="Inbox Digest"
+                >
+                  <Newspaper className="h-4 w-4" />
+                  <span className="ml-1.5">Digest</span>
+                </Button>
                 <Button
                   variant={chatOpen ? 'default' : 'ghost'}
                   size="sm"
