@@ -1,5 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import Anthropic from '@anthropic-ai/sdk';
+import { mastra } from '@/src/mastra';
 import { yahooGet } from '@/src/mastra/helpers/yahoo-api';
 import { getMailboxId } from '@/src/mastra/helpers/get-mailbox-id';
 import type { JobCall } from '../types';
@@ -11,6 +11,7 @@ import {
   updateIngestJob,
   updateProfileBackfillStatus,
   incrementIngestJobCost,
+  updatePhase4Summary,
 } from '../db';
 import { stageA } from '../extraction/stage-a';
 import { resolvePersonOrOrg, resolveEvent } from '../extraction/identity-resolution';
@@ -25,12 +26,20 @@ export async function phase4TopOfMind(
   uid: string,
   token: string,
   jobId: string,
+  userEmail: string,
   logCall?: (c: JobCall) => void
 ): Promise<void> {
+  console.log(`[phase4] start uid=${uid} jobId=${jobId}`);
   const mailboxId = await getMailboxId(token);
-  const client = new Anthropic();
+  const topOfMindAgent = mastra.getAgent('lifeGraphTopOfMindAgent');
   const now = new Date();
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  function internalDateMs(internalDate: string | undefined): number {
+    if (!internalDate) return 0;
+    const n = parseInt(internalDate, 10);
+    return isNaN(n) ? 0 : n * 1000;
+  }
 
   const foldersUrl = `/mailboxes/@.id==${mailboxId}/folders`;
   const foldersResp = await yahooGet<{ folders: Array<{ id: string; name: string; types?: string[] }> }>(
@@ -39,7 +48,8 @@ export async function phase4TopOfMind(
   );
   logCall?.({ ts: Date.now(), method: 'GET', url: foldersUrl, status: 200 });
   const inboxFolder = foldersResp.folders.find(
-    (f: { types?: string[]; name: string }) => f.types?.includes('Inbox') || f.name === 'Inbox'
+    (f: { types?: string[]; name: string }) =>
+      f.types?.some((t) => t.toUpperCase() === 'INBOX') || f.name === 'Inbox'
   );
   if (!inboxFolder) {
     await finalize(uid, jobId);
@@ -67,7 +77,8 @@ export async function phase4TopOfMind(
 
       for (const msg of resp.messages) {
         const internalDate = msg.headers?.internalDate;
-        if (internalDate && new Date(internalDate) < fourteenDaysAgo) continue;
+        const msgMs = internalDateMs(internalDate);
+        if (msgMs && msgMs < fourteenDaysAgo.getTime()) continue;
         allMessages.push({
           id: msg.id,
           from: { name: msg.headers?.from?.[0]?.name ?? '', email: msg.headers?.from?.[0]?.email ?? '' },
@@ -99,53 +110,31 @@ export async function phase4TopOfMind(
         logCall?.({ ts: Date.now(), method: 'GET', url: bodyUrl, status: 'err' });
       }
 
-      const deliveryTime = msg.internalDate ? new Date(msg.internalDate) : new Date();
+      const deliveryMs = internalDateMs(msg.internalDate);
+      const deliveryTime = deliveryMs ? new Date(deliveryMs) : new Date();
       const { noteId, contentTier } = await stageA(uid, {
         id: msg.id,
         deliveryTime,
         from: msg.from,
         subject: msg.subject,
         body,
-      });
+      }, userEmail);
       if (contentTier !== 'skip') noteIds.push(noteId);
     } catch (err) {
       console.warn(`[phase4] Stage A error for msg ${msg.id}:`, err);
     }
   }
 
-  const systemPrompt = `You are a structured-data extractor for a personal assistant's Life Graph.
-Given a batch of email notes, focus ONLY on commitments (deadlines, action items, meetings) due within the next 30 days.
-
-Return a JSON object with:
-{
-  "commitments": [
-    {
-      "label": "Send Q2 report to Sarah",
-      "dueDate": "2026-05-01",
-      "owedByUser": true,
-      "owedToEntityLabel": "Sarah Chen"
-    }
-  ],
-  "events": [
-    {
-      "label": "Starbucks meeting with Sarah",
-      "startTime": "2026-04-30T10:00:00",
-      "participantEmails": ["sarah@stripe.com"]
-    }
-  ]
-}
-
-Rules:
-- All datetimes must be ISO 8601 strings. Resolve relative references against each note's deliveryTime.
-- Only include items due within 30 days. Omit anything further out or uncertain.
-- Return only valid JSON, no markdown.`;
+  let totalCommitments = 0;
+  let totalEvents = 0;
 
   for (let b = 0; b < noteIds.length; b += STAGE_B_BATCH_SIZE) {
     const batch = noteIds.slice(b, b + STAGE_B_BATCH_SIZE);
     const notes = await Promise.all(batch.map((nid) => getNote(uid, nid)));
     const validNotes = notes.filter((n) => n !== null);
 
-    const noteContent = validNotes
+    const ownerHeader = userEmail ? `Mailbox owner: ${userEmail}\n\n` : '';
+    const noteContent = ownerHeader + validNotes
       .map(
         (n) =>
           `[Note ${n!.sourceMessageId} | ${n!.deliveryTime.toDate().toISOString().slice(0, 10)} | From: ${n!.from.name} <${n!.from.email}>]\n${n!.notesText}\nsignals: [${n!.signals.join(', ')}]`
@@ -155,14 +144,8 @@ Rules:
     if (!noteContent.trim()) continue;
 
     try {
-      const message = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: noteContent }],
-      });
-
-      const raw = message.content[0].type === 'text' ? message.content[0].text : '{}';
+      const response = await topOfMindAgent.generate(noteContent);
+      const raw = response.text ?? '{}';
       let extracted: {
         commitments?: Array<{ label: string; dueDate?: string; owedByUser?: boolean; owedToEntityLabel?: string }>;
         events?: Array<{ label: string; startTime?: string; participantEmails?: string[] }>;
@@ -207,6 +190,7 @@ Rules:
           schemaVersion: 1,
         };
         await upsertEntity(uid, entity);
+        totalCommitments++;
       }
 
       for (const e of extracted.events ?? []) {
@@ -251,6 +235,7 @@ Rules:
             schemaVersion: 1,
           };
           await upsertEntity(uid, entity);
+          totalEvents++;
         }
       }
 
@@ -260,6 +245,13 @@ Rules:
       console.warn(`[phase4] Stage B error for batch ${b}:`, err);
     }
   }
+
+  await updatePhase4Summary(uid, jobId, {
+    messagesScanned: allMessages.length,
+    notesProduced: noteIds.length,
+    commitmentsFound: totalCommitments,
+    eventsFound: totalEvents,
+  });
 
   await finalize(uid, jobId);
 }

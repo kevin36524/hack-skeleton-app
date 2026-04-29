@@ -1,6 +1,6 @@
 import { yahooGet } from '@/src/mastra/helpers/yahoo-api';
 import { getMailboxId } from '@/src/mastra/helpers/get-mailbox-id';
-import { listEntitiesByDrawer, updateIngestJob, updateProfileBackfillStatus } from '../db';
+import { listEntitiesByDrawer, updateIngestJob, updateProfileBackfillStatus, updatePhase3Summary } from '../db';
 import { stageA } from '../extraction/stage-a';
 import { convert } from 'html-to-text';
 import type { ListConversationsApiResponse, FullMessageBodyResponse } from '@/lib/types/api';
@@ -8,6 +8,12 @@ import type { JobCall } from '../types';
 
 
 const MAX_MESSAGES = parseInt(process.env.LIFE_GRAPH_PHASE3_MAX_MESSAGES ?? '200', 10);
+
+function internalDateMs(internalDate: string | undefined): number {
+  if (!internalDate) return 0;
+  const n = parseInt(internalDate, 10);
+  return isNaN(n) ? 0 : n * 1000;
+}
 
 interface ThreadMessage {
   id: string;
@@ -20,6 +26,7 @@ export async function phase3ThreadSweep(
   uid: string,
   token: string,
   jobId: string,
+  userEmail: string,
   logCall?: (c: JobCall) => void
 ): Promise<void> {
   console.log(`[phase3] start uid=${uid} jobId=${jobId} maxMessages=${MAX_MESSAGES}`);
@@ -36,7 +43,8 @@ export async function phase3ThreadSweep(
   );
   logCall?.({ ts: Date.now(), method: 'GET', url: foldersUrl, status: 200 });
   const inboxFolder = foldersResp.folders.find(
-    (f: { types?: string[]; name: string }) => f.types?.includes('Inbox') || f.name === 'Inbox'
+    (f: { types?: string[]; name: string }) =>
+      f.types?.some((t) => t.toUpperCase() === 'INBOX') || f.name === 'Inbox'
   );
   if (!inboxFolder) {
     console.warn(`[phase3] no inbox folder found, skipping`);
@@ -59,7 +67,8 @@ export async function phase3ThreadSweep(
 
       const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
       for (const msg of resp.messages) {
-        if (msg.headers?.internalDate && new Date(msg.headers.internalDate).getTime() < cutoff) continue;
+        const ms = internalDateMs(msg.headers?.internalDate);
+        if (ms && ms < cutoff) continue;
         const convId = msg.conversationId ?? msg.id;
         const fromEmail = msg.headers?.from?.[0]?.email ?? '';
         if (!threadMap.has(convId)) threadMap.set(convId, []);
@@ -100,7 +109,8 @@ export async function phase3ThreadSweep(
         const rawHtml = bodyResp.simpleBody?.html;
         const body = rawText ?? (rawHtml ? convert(rawHtml, { wordwrap: false }) : '');
 
-        const deliveryTime = msg.internalDate ? new Date(msg.internalDate) : new Date();
+        const msgMs = internalDateMs(msg.internalDate);
+        const deliveryTime = msgMs ? new Date(msgMs) : new Date();
 
         const { contentTier } = await stageA(uid, {
           id: msg.id,
@@ -108,7 +118,7 @@ export async function phase3ThreadSweep(
           from: msg.from,
           subject: msg.subject,
           body,
-        });
+        }, userEmail);
         processed++;
         console.log(`[phase3] processed msg=${msg.id} convId=${convId} tier=${contentTier} (${processed}/${MAX_MESSAGES})`);
       } catch (err) {
@@ -120,6 +130,11 @@ export async function phase3ThreadSweep(
   }
 
   console.log(`[phase3] done — processed ${processed} messages`);
+  await updatePhase3Summary(uid, jobId, {
+    threadsScanned: threadMap.size,
+    eligibleThreads: eligibleThreads.length,
+    messagesProcessed: processed,
+  });
   await updateIngestJob(uid, jobId, { phase: 4 });
   await updateProfileBackfillStatus(uid, { phase: 3 });
 }

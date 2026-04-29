@@ -1,7 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { randomUUID } from 'crypto';
+import { mastra } from '@/src/mastra';
 import { yahooGet } from '@/src/mastra/helpers/yahoo-api';
 import { getMailboxId } from '@/src/mastra/helpers/get-mailbox-id';
 import {
@@ -10,9 +9,10 @@ import {
   updateProfileBackfillStatus,
   incrementIngestJobCost,
   checkCostCap,
+  appendPhase1SenderResults,
 } from '../db';
 import { writeOrSupersedeFact } from '../supersedes';
-import type { Entity, SenderTier } from '../types';
+import type { Entity, SenderTier, SenderProfilingResult } from '../types';
 import type { CandidateSender } from './phase0-structural';
 import type { SearchMessagesApiResponse } from '@/lib/types/api';
 import type { JobCall } from '../types';
@@ -31,13 +31,15 @@ export async function phase1SenderProfiling(
   token: string,
   candidates: CandidateSender[],
   jobId: string,
+  userEmail: string,
   logCall?: (c: JobCall) => void
 ): Promise<string[]> {
   console.log(`[phase1] start uid=${uid} jobId=${jobId} candidates=${candidates.length}`);
   const mailboxId = await getMailboxId(token);
-  const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
+  const classifierAgent = mastra.getAgent('lifeGraphClassifierAgent');
   const entityIds: string[] = [];
   const top200 = candidates.slice(0, 200);
+  const pendingResults: SenderProfilingResult[] = [];
 
   for (let i = 0; i < top200.length; i++) {
     const sender = top200[i];
@@ -45,47 +47,71 @@ export async function phase1SenderProfiling(
 
     const searchQuery = `from:${sender.email}+offset:0+count:10`;
     const searchUrl = `/mailboxes/@.id==${mailboxId}/messages/@.select==q?q=${searchQuery}`;
-    let subjectLines = '';
+    let emailSamples: Array<{ subject: string; snippet: string }> = [];
+    let fetchFailed = false;
     try {
       const resp = await yahooGet<SearchMessagesApiResponse>(token, searchUrl);
       logCall?.({ ts: Date.now(), method: 'GET', url: searchUrl, status: 200 });
-      subjectLines = (resp.messages ?? [])
-        .slice(0, 10)
-        .map((m) => `- ${m.headers?.subject ?? '(no subject)'}: ${m.snippet?.slice(0, 100) ?? ''}`)
-        .join('\n');
-      console.log(`[phase1] fetched ${resp.messages?.length ?? 0} messages for ${sender.email}`);
+      emailSamples = (resp.messages ?? []).slice(0, 10).map((m) => ({
+        subject: m.headers?.subject ?? '(no subject)',
+        snippet: (m.snippet ?? '').slice(0, 120),
+      }));
+      console.log(`[phase1] fetched ${emailSamples.length} messages for ${sender.email}`);
     } catch (err) {
       logCall?.({ ts: Date.now(), method: 'GET', url: searchUrl, status: 'err' });
       console.warn(`[phase1] failed to fetch messages for ${sender.email}: ${err}`);
-      subjectLines = '(could not fetch messages)';
+      fetchFailed = true;
     }
 
-    const prompt = `Sender: ${sender.name} <${sender.email}>\n\nRecent emails:\n${subjectLines}`;
+    const subjectLines = emailSamples
+      .map((s) => `- ${s.subject}: ${s.snippet}`)
+      .join('\n') || '(could not fetch messages)';
+    const ownerLine = userEmail ? `Mailbox owner: ${userEmail}\n` : '';
+    const promptText = `${ownerLine}Sender: ${sender.name} <${sender.email}>\n\nRecent emails:\n${subjectLines}`;
 
     let profile: SenderProfile | null = null;
+    let llmResponse = '';
+    let llmError = '';
+    let parseFailed = false;
     try {
-      const { text } = await generateText({
-        model: google('gemini-2.0-flash'),
-        system: `You are classifying an email sender for a personal assistant. Given a sample of recent emails from one sender, return a JSON object with these exact fields:
-- entityType: "person" | "organization"
-- relationshipClass: "family" | "work" | "school" | "doctor" | "vendor" | "service" | "newsletter" | "unknown"
-- roleLabel: short human label, e.g. "Boss at Stripe", "Kid's school", "Amazon orders"
-- senderTier: "important" | "conditional" | "junk"
-- confidence: 0.0 to 1.0
-
-Respond with only valid JSON, no markdown fences.`,
-        prompt,
-      });
+      const result = await classifierAgent.generate(promptText);
+      const text = result.text ?? '';
+      llmResponse = text;
       profile = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim()) as SenderProfile;
       console.log(`[phase1] classified ${sender.email} → tier=${profile.senderTier} confidence=${profile.confidence} label="${profile.roleLabel}"`);
     } catch (err) {
+      llmError = String(err).slice(0, 200);
       console.warn(`[phase1] LLM classify failed for ${sender.email}: ${err}`);
+      parseFailed = true;
     }
 
-    if (profile && profile.confidence >= 0.5) {
+    const result: SenderProfilingResult = {
+      email: sender.email,
+      name: sender.name,
+      compositeScore: sender.compositeScore,
+      emailSamples: emailSamples.slice(0, 5),
+      promptText,
+      llmResponse,
+      decision: 'rejected',
+    };
+
+    if (fetchFailed) {
+      result.rejectReason = 'fetch_failed';
+    } else if (parseFailed) {
+      result.rejectReason = llmResponse ? 'json_parse_failed' : 'llm_error';
+      result.errorMessage = llmError || undefined;
+    } else if (profile && profile.confidence >= 0.5) {
+      result.decision = 'accepted';
+      result.profile = {
+        entityType: profile.entityType,
+        relationshipClass: profile.relationshipClass,
+        roleLabel: profile.roleLabel,
+        senderTier: profile.senderTier,
+        confidence: profile.confidence,
+      };
+
       const now = Timestamp.now();
       const eid = randomUUID();
-
       const entity: Entity = {
         id: eid,
         type: profile.entityType,
@@ -104,7 +130,6 @@ Respond with only valid JSON, no markdown fences.`,
         payload: {},
         schemaVersion: 1,
       };
-
       await upsertEntity(uid, entity);
       console.log(`[phase1] upserted entity eid=${eid} for ${sender.email}`);
 
@@ -125,18 +150,41 @@ Respond with only valid JSON, no markdown fences.`,
 
       entityIds.push(eid);
     } else {
-      console.log(`[phase1] skipping entity for ${sender.email} — confidence too low or parse failed`);
+      result.rejectReason = 'confidence_too_low';
+      if (profile) {
+        result.profile = {
+          entityType: profile.entityType,
+          relationshipClass: profile.relationshipClass,
+          roleLabel: profile.roleLabel,
+          senderTier: profile.senderTier,
+          confidence: profile.confidence,
+        };
+      }
     }
 
+    pendingResults.push(result);
     await incrementIngestJobCost(uid, jobId, 0.001);
+
+    // Flush pending results to Firestore every 10 senders
+    if (pendingResults.length >= 10) {
+      await appendPhase1SenderResults(uid, jobId, pendingResults.splice(0));
+    }
 
     if ((i + 1) % 10 === 0) {
       const capped = await checkCostCap(uid, jobId);
       if (capped) {
         console.warn(`[phase1] cost cap hit at sender ${i + 1}, stopping`);
+        if (pendingResults.length > 0) {
+          await appendPhase1SenderResults(uid, jobId, pendingResults.splice(0));
+        }
         break;
       }
     }
+  }
+
+  // Flush any remaining results
+  if (pendingResults.length > 0) {
+    await appendPhase1SenderResults(uid, jobId, pendingResults.splice(0));
   }
 
   console.log(`[phase1] done — created ${entityIds.length} entities`);

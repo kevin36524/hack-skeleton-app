@@ -111,6 +111,58 @@ export interface JobCall {
   status: number | 'err';
 }
 
+export interface Phase2LlmCall {
+  agent: 'noteAgent' | 'extractorAgent';
+  batch: number;
+  promptText: string;
+  responseText: string;
+}
+
+export interface Phase2EntityProgress {
+  entityId: string;
+  email: string;
+  label: string;
+  msgsFetched: number;
+  notesProduced: number;
+  factsProduced: number;
+  status: 'running' | 'done' | 'error';
+  errorMessage?: string;
+  apiCalls?: JobCall[];
+  llmCalls?: Phase2LlmCall[];
+}
+
+export interface Phase3Summary {
+  threadsScanned: number;
+  eligibleThreads: number;
+  messagesProcessed: number;
+}
+
+export interface Phase4Summary {
+  messagesScanned: number;
+  notesProduced: number;
+  commitmentsFound: number;
+  eventsFound: number;
+}
+
+export interface SenderProfilingResult {
+  email: string;
+  name: string;
+  compositeScore: number;
+  emailSamples: Array<{ subject: string; snippet: string }>;
+  promptText: string;        // user content sent to LLM (capped at 600 chars)
+  llmResponse: string;       // raw LLM output (capped at 600 chars)
+  decision: 'accepted' | 'rejected' | 'failed';
+  rejectReason?: string;     // "confidence_too_low" | "llm_error" | "json_parse_failed" | "fetch_failed"
+  errorMessage?: string;     // actual error string for debugging
+  profile?: {
+    entityType: 'person' | 'organization';
+    relationshipClass: string;
+    roleLabel: string;
+    senderTier: string;
+    confidence: number;
+  };
+}
+
 export interface IngestJob {
   id: string;
   kind: 'cold_start' | 'warm_batch' | 'retroactive_boost' | 'manual';
@@ -132,6 +184,10 @@ export interface IngestJob {
   }>;
   approvedCandidateEmails?: string[];
   phase1EntityIds?: string[];
+  phase1SenderResults?: SenderProfilingResult[];
+  phase2EntityProgress?: Phase2EntityProgress[];
+  phase3Summary?: Phase3Summary;
+  phase4Summary?: Phase4Summary;
   createdAt: Timestamp;
   completedAt: Timestamp | null;
   token?: string;

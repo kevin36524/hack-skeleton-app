@@ -1,10 +1,10 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import Anthropic from '@anthropic-ai/sdk';
+import { mastra } from '@/src/mastra';
 import { randomUUID } from 'crypto';
 import { getNote, upsertEntity, markNoteStageB, incrementIngestJobCost } from '../db';
 import { writeOrSupersedeFact } from '../supersedes';
 import { resolvePersonOrOrg, resolveEvent } from './identity-resolution';
-import type { Entity, Fact } from '../types';
+import type { Entity } from '../types';
 
 interface StageBResult {
   factIds: string[];
@@ -18,7 +18,6 @@ export async function stageB(
 ): Promise<StageBResult> {
   console.log(`[stage-b] start entityId=${entityId} noteIds=[${noteIds.join(',')}] jobId=${jobId ?? 'none'}`);
 
-  const client = new Anthropic();
   const notes = await Promise.all(noteIds.map((nid) => getNote(uid, nid)));
   const validNotes = notes.filter((n) => n !== null && n.stageBStatus === 'pending');
 
@@ -36,52 +35,11 @@ export async function stageB(
     )
     .join('\n\n');
 
-  const systemPrompt = `You are a structured-data extractor for a personal assistant's Life Graph.
-Given a batch of notes about one person or organization, extract facts in JSON.
+  console.log(`[stage-b] calling lifeGraphExtractorAgent for entityId=${entityId} with ${validNotes.length} notes`);
 
-Return a JSON object with:
-{
-  "stableFactUpdates": [
-    { "slot": "job", "value": "Staff Engineer @ Stripe" },
-    { "slot": "birthday", "value": "1989-06-12" }
-  ],
-  "timeSensitiveFacts": [
-    { "slot": "meeting.time", "value": "2026-04-30T10:00:00", "sourceNoteId": "msg_xxx" },
-    { "slot": "meeting.location", "value": "Starbucks on Market St", "sourceNoteId": "msg_xxx" }
-  ],
-  "commitments": [
-    {
-      "label": "Send Q2 report to Sarah",
-      "dueDate": "2026-05-01",
-      "owedByUser": true,
-      "owedToEntityLabel": "Sarah Chen"
-    }
-  ],
-  "events": [
-    {
-      "label": "Starbucks meeting with Sarah",
-      "startTime": "2026-04-30T10:00:00",
-      "participantEmails": ["sarah@stripe.com"]
-    }
-  ]
-}
-
-Rules:
-- All datetimes must be ISO 8601 strings. Resolve relative references ("next Thursday") against each note's deliveryTime.
-- Only include facts you are confident about. Omit uncertain ones.
-- Slot names: home_address, birthday, food_preference, school_name, job, sender_class, meeting.time, meeting.location, flight.time, deadline.date, parent_of, spouse_of, employs, attends.
-- Return only valid JSON, no markdown.`;
-
-  console.log(`[stage-b] calling Claude Sonnet for entityId=${entityId} with ${validNotes.length} notes`);
-
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: noteContent }],
-  });
-
-  const raw = message.content[0].type === 'text' ? message.content[0].text : '';
+  const extractorAgent = mastra.getAgent('lifeGraphExtractorAgent');
+  const response = await extractorAgent.generate(noteContent);
+  const raw = response.text ?? '';
   console.log(`[stage-b] LLM response length=${raw.length} for entityId=${entityId}`);
 
   let extracted: {

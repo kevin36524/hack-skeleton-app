@@ -33,7 +33,7 @@ const memory = new Memory({
 export const spaceManagementAgent = new Agent({
   id: 'space-management-agent',
   name: 'Space Management Agent',
-  model: 'google/gemini-2.0-flash',
+  model: 'google/gemini-3.1-flash-lite-preview',
   memory,
   instructions: `You are a space management assistant for Yahoo Mail. You help users manage their email "spaces" — smart filters that organize emails by topic, sender, and semantic similarity.
 

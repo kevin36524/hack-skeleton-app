@@ -14,7 +14,7 @@ import { calculateLastVisitTime } from '../tools/calculate-last-visit-time';
 export const digestPrefsAgent = new Agent({
   id: 'digest-prefs-agent',
   name: 'Digest Prefs Agent',
-  model: 'google/gemini-2.0-flash',
+  model: 'google/gemini-3.1-flash-lite-preview',
   tools: { setPreference, calculateLastVisitTime },
   instructions: `You are a digest preferences configurator. The user's current prefs and their request will be provided in the message.
 

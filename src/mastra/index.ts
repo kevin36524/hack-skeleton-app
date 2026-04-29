@@ -14,9 +14,10 @@ import { createStorage } from './storage';
 import { mailTriageAgent } from './agents/mail-triage';
 import { spaceManagementAgent } from './agents/space-management';
 import { digestPrefsAgent } from './agents/digest-prefs';
+import { lifeGraphClassifierAgent, lifeGraphNoteAgent, lifeGraphExtractorAgent, lifeGraphTopOfMindAgent } from './agents/life-graph';
 
 export const mastra = new Mastra({
-  agents: { mailTriageAgent, spaceManagementAgent, digestPrefsAgent },
+  agents: { mailTriageAgent, spaceManagementAgent, digestPrefsAgent, lifeGraphClassifierAgent, lifeGraphNoteAgent, lifeGraphExtractorAgent, lifeGraphTopOfMindAgent },
   storage: createStorage('mastra-storage'),
   logger: new PinoLogger({
     name: 'Mastra',

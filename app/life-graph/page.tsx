@@ -42,6 +42,39 @@ interface JobCall {
   status: number | 'err';
 }
 
+interface Phase2LlmCall {
+  agent: 'noteAgent' | 'extractorAgent';
+  batch: number;
+  promptText: string;
+  responseText: string;
+}
+
+interface Phase2EntityProgress {
+  entityId: string;
+  email: string;
+  label: string;
+  msgsFetched: number;
+  notesProduced: number;
+  factsProduced: number;
+  status: 'running' | 'done' | 'error';
+  errorMessage?: string;
+  apiCalls?: JobCall[];
+  llmCalls?: Phase2LlmCall[];
+}
+
+interface Phase3Summary {
+  threadsScanned: number;
+  eligibleThreads: number;
+  messagesProcessed: number;
+}
+
+interface Phase4Summary {
+  messagesScanned: number;
+  notesProduced: number;
+  commitmentsFound: number;
+  eventsFound: number;
+}
+
 interface JobStatus {
   phase: number;
   status: string;
@@ -49,6 +82,10 @@ interface JobStatus {
   errorCount: number;
   calls?: JobCall[];
   callCount?: number;
+  phase1SenderResults?: SenderProfilingResult[];
+  phase2EntityProgress?: Phase2EntityProgress[];
+  phase3Summary?: Phase3Summary;
+  phase4Summary?: Phase4Summary;
 }
 
 interface CandidateSignals {
@@ -74,7 +111,32 @@ interface Entity {
   drawer: string;
 }
 
+interface SenderProfile {
+  entityType: string;
+  relationshipClass: string;
+  roleLabel: string;
+  senderTier: string;
+  confidence: number;
+}
+
+interface SenderProfilingResult {
+  email: string;
+  name: string;
+  compositeScore: number;
+  emailSamples: Array<{ subject: string; snippet: string }>;
+  promptText: string;
+  llmResponse: string;
+  decision: 'accepted' | 'rejected' | 'failed';
+  rejectReason?: string;
+  profile?: SenderProfile;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const MAILBOX_PREFIX = /^\/mailboxes\/@\.id==[^/]+/;
+function stripMailboxPrefix(url: string): string {
+  return url.replace(MAILBOX_PREFIX, '');
+}
 
 function StatusBadge({ status }: { status: RequestStatus }) {
   if (status === 'idle') return <Badge variant="secondary">idle</Badge>;
@@ -135,7 +197,7 @@ function CallLogTable({ calls, total }: { calls: JobCall[]; total: number }) {
             {visible.map((c, i) => (
               <tr key={i} className="border-b border-muted last:border-0">
                 <td className="px-2 py-0.5 text-blue-500">{c.method}</td>
-                <td className="px-2 py-0.5 truncate max-w-0 w-full" title={c.url}>{c.url}</td>
+                <td className="px-2 py-0.5 truncate max-w-0 w-full" title={c.url}>{stripMailboxPrefix(c.url)}</td>
                 <td className={`px-2 py-0.5 text-right ${
                   c.status === 'err' ? 'text-red-500'
                     : typeof c.status === 'number' && c.status < 300 ? 'text-green-600'
@@ -352,6 +414,388 @@ function EntitiesReview({
   );
 }
 
+// ─── Phase 1 Sender Profiling Log ─────────────────────────────────────────────
+
+function tierColor(tier?: string) {
+  if (tier === 'important') return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
+  if (tier === 'conditional') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300';
+  if (tier === 'junk') return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+  return 'bg-muted text-muted-foreground';
+}
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 70 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-[10px] tabular-nums text-muted-foreground">{pct}%</span>
+    </div>
+  );
+}
+
+function SenderProfilingRow({ result }: { result: SenderProfilingResult }) {
+  const [expanded, setExpanded] = useState(false);
+  const accepted = result.decision === 'accepted';
+
+  return (
+    <>
+      <tr
+        className={`border-b border-muted last:border-0 cursor-pointer hover:bg-muted/40 ${!accepted ? 'opacity-60' : ''}`}
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <td className="px-2 py-1.5 w-5 text-center">
+          {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+        </td>
+        <td className="px-2 py-1.5">
+          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1.5 ${accepted ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'}`}>
+            {accepted ? '✓ accepted' : '✗ rejected'}
+          </span>
+        </td>
+        <td className="px-2 py-1.5 font-mono text-xs max-w-[180px] truncate" title={result.email}>{result.email}</td>
+        <td className="px-2 py-1.5 text-xs text-muted-foreground max-w-[120px] truncate">{result.name || '—'}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums text-xs">{result.compositeScore}</td>
+        <td className="px-2 py-1.5">
+          {result.profile ? (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tierColor(result.profile.senderTier)}`}>
+              {result.profile.senderTier}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">{result.rejectReason ?? '—'}</span>
+          )}
+        </td>
+        <td className="px-2 py-1.5">
+          {result.profile ? <ConfidenceBar value={result.profile.confidence} /> : null}
+        </td>
+        <td className="px-2 py-1.5 text-xs text-muted-foreground">{result.profile?.roleLabel ?? '—'}</td>
+        <td className="px-2 py-1.5 text-xs text-muted-foreground">{result.profile?.relationshipClass ?? '—'}</td>
+      </tr>
+      {expanded && (
+        <tr className="bg-muted/20 border-b border-muted">
+          <td colSpan={9} className="px-4 py-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Email samples shown to LLM</p>
+                {result.emailSamples.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No emails fetched</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {result.emailSamples.map((s, i) => (
+                      <li key={i} className="text-xs">
+                        <span className="font-medium">{s.subject}</span>
+                        {s.snippet && <span className="text-muted-foreground"> — {s.snippet}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">LLM response</p>
+                <pre className="text-[10px] font-mono bg-background border rounded p-2 overflow-auto max-h-28 leading-relaxed whitespace-pre-wrap">
+                  {result.llmResponse || '(no response)'}
+                </pre>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Prompt sent</p>
+              <pre className="text-[10px] font-mono bg-background border rounded p-2 overflow-auto max-h-24 leading-relaxed whitespace-pre-wrap">
+                {result.promptText}
+              </pre>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function Phase1SenderLog({ results }: { results: SenderProfilingResult[] }) {
+  const [filter, setFilter] = useState<'all' | 'accepted' | 'rejected'>('all');
+  const [search, setSearch] = useState('');
+
+  const accepted = results.filter((r) => r.decision === 'accepted').length;
+  const rejected = results.length - accepted;
+
+  const visible = results.filter((r) => {
+    if (filter === 'accepted' && r.decision !== 'accepted') return false;
+    if (filter === 'rejected' && r.decision === 'accepted') return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return r.email.toLowerCase().includes(q) || r.name.toLowerCase().includes(q) || r.profile?.roleLabel?.toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Terminal size={14} className="text-muted-foreground" />
+        <span className="font-medium text-sm">Phase 1 — Sender Profiling Log</span>
+        <Badge className="bg-green-600 text-white text-xs">{accepted} accepted</Badge>
+        <Badge className="bg-red-600 text-white text-xs">{rejected} rejected</Badge>
+        <Badge variant="secondary" className="text-xs">{results.length} total</Badge>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          className="border rounded px-2 py-1 text-xs bg-background w-48"
+          placeholder="Filter by email / name / label…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="flex rounded border overflow-hidden text-xs">
+          {(['all', 'accepted', 'rejected'] as const).map((f) => (
+            <button
+              key={f}
+              className={`px-2 py-1 ${filter === f ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
+              onClick={() => setFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border rounded overflow-hidden">
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted border-b text-muted-foreground">
+              <tr>
+                <th className="px-2 py-1 w-5"></th>
+                <th className="px-2 py-1 text-left w-24">Decision</th>
+                <th className="px-2 py-1 text-left">Email</th>
+                <th className="px-2 py-1 text-left">Name</th>
+                <th className="px-2 py-1 text-right w-14">Score</th>
+                <th className="px-2 py-1 text-left w-24">Tier</th>
+                <th className="px-2 py-1 text-left w-24">Confidence</th>
+                <th className="px-2 py-1 text-left">Label</th>
+                <th className="px-2 py-1 text-left w-24">Class</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((r) => (
+                <SenderProfilingRow key={r.email} result={r} />
+              ))}
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">No results match filter.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Phase 2 Deep Extraction Log ──────────────────────────────────────────────
+
+function Phase2SenderRow({ p }: { p: Phase2EntityProgress }) {
+  const [expanded, setExpanded] = useState(false);
+  const [llmTab, setLlmTab] = useState<number>(0);
+
+  const apiCalls = p.apiCalls ?? [];
+  const llmCalls = p.llmCalls ?? [];
+
+  return (
+    <>
+      <tr
+        className={`border-b border-muted last:border-0 cursor-pointer hover:bg-muted/40 ${p.status === 'error' ? 'opacity-70' : ''}`}
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <td className="px-2 py-1.5 w-5 text-center">
+          {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+        </td>
+        <td className="px-2 py-1.5">
+          {p.status === 'done' && <span className="text-green-600">✓ done</span>}
+          {p.status === 'running' && <span className="text-blue-500 flex items-center gap-1"><Loader2 size={10} className="animate-spin" />running</span>}
+          {p.status === 'error' && <span className="text-red-500" title={p.errorMessage}>✗ error</span>}
+        </td>
+        <td className="px-2 py-1.5 font-medium max-w-[140px] truncate">{p.label}</td>
+        <td className="px-2 py-1.5 font-mono text-muted-foreground max-w-[160px] truncate" title={p.email}>{p.email}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums">{p.msgsFetched}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums">{p.notesProduced}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums font-medium">{p.factsProduced}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+          {apiCalls.length > 0 && <span>{apiCalls.length} api</span>}
+          {llmCalls.length > 0 && <span className="ml-1">{llmCalls.length} llm</span>}
+        </td>
+      </tr>
+
+      {expanded && (
+        <tr className="bg-muted/10 border-b border-muted">
+          <td colSpan={8} className="px-4 py-3 space-y-4">
+
+            {/* API calls */}
+            {apiCalls.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  API Calls ({apiCalls.length})
+                </p>
+                <div className="border rounded overflow-hidden">
+                  <table className="w-full text-xs font-mono">
+                    <thead>
+                      <tr className="border-b bg-muted text-muted-foreground">
+                        <th className="px-2 py-1 text-left w-12">method</th>
+                        <th className="px-2 py-1 text-left">url</th>
+                        <th className="px-2 py-1 text-right w-12">status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiCalls.map((c, idx) => (
+                        <tr key={idx} className="border-b border-muted last:border-0">
+                          <td className="px-2 py-0.5 text-blue-500">{c.method}</td>
+                          <td className="px-2 py-0.5 truncate max-w-0 w-full" title={c.url}>{stripMailboxPrefix(c.url)}</td>
+                          <td className={`px-2 py-0.5 text-right ${c.status === 'err' ? 'text-red-500' : typeof c.status === 'number' && c.status < 300 ? 'text-green-600' : 'text-yellow-600'}`}>
+                            {c.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* LLM calls */}
+            {llmCalls.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  LLM Calls ({llmCalls.length})
+                </p>
+                {/* Tab selector */}
+                <div className="flex gap-1 mb-2 flex-wrap">
+                  {llmCalls.map((c, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setLlmTab(idx); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium border ${llmTab === idx ? 'bg-muted border-muted-foreground/40' : 'border-muted hover:bg-muted/50'}`}
+                    >
+                      {c.agent === 'noteAgent' ? '📝 note' : '🔧 extract'} b{c.batch}
+                    </button>
+                  ))}
+                </div>
+                {llmCalls[llmTab] && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Prompt sent</p>
+                      <pre className="text-[10px] font-mono bg-background border rounded p-2 overflow-auto max-h-96 leading-relaxed whitespace-pre-wrap">
+                        {llmCalls[llmTab].promptText}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Response</p>
+                      <pre className="text-[10px] font-mono bg-background border rounded p-2 overflow-auto max-h-96 leading-relaxed whitespace-pre-wrap">
+                        {llmCalls[llmTab].responseText}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {apiCalls.length === 0 && llmCalls.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No call data recorded yet.</p>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function Phase2DeepLog({ progress, totalEntities }: { progress: Phase2EntityProgress[]; totalEntities: number }) {
+  const done = progress.filter((p) => p.status === 'done').length;
+  const errors = progress.filter((p) => p.status === 'error').length;
+  const inFlight = totalEntities > progress.length;
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Database size={14} className="text-muted-foreground" />
+        <span className="font-medium text-sm">Phase 2 — Deep Extraction</span>
+        <Badge className="bg-green-600 text-white text-xs">{done} done</Badge>
+        {inFlight && <Badge className="bg-blue-500 text-white text-xs"><Loader2 size={10} className="animate-spin mr-1 inline" />processing</Badge>}
+        {errors > 0 && <Badge className="bg-red-600 text-white text-xs">{errors} errors</Badge>}
+        <Badge variant="secondary" className="text-xs">{progress.length}/{totalEntities}</Badge>
+      </div>
+
+      <div className="border rounded overflow-hidden">
+        <div className="max-h-[480px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted border-b text-muted-foreground">
+              <tr>
+                <th className="px-2 py-1 w-5"></th>
+                <th className="px-2 py-1 text-left w-20">Status</th>
+                <th className="px-2 py-1 text-left">Label</th>
+                <th className="px-2 py-1 text-left">Email</th>
+                <th className="px-2 py-1 text-right w-14">Emails</th>
+                <th className="px-2 py-1 text-right w-14">Batches</th>
+                <th className="px-2 py-1 text-right w-14">Facts</th>
+                <th className="px-2 py-1 text-right w-20">Calls</th>
+              </tr>
+            </thead>
+            <tbody>
+              {progress.map((p) => (
+                <Phase2SenderRow key={p.entityId} p={p} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Phase 3 + 4 Summary Cards ─────────────────────────────────────────────────
+
+function StatCard({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="border rounded p-3 bg-muted/30 text-center">
+      <div className="text-xl font-bold tabular-nums">{value}</div>
+      <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function Phase3SummaryCard({ summary }: { summary: Phase3Summary }) {
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2">
+        <Network size={14} className="text-muted-foreground" />
+        <span className="font-medium text-sm">Phase 3 — Thread Sweep</span>
+        <Badge className="bg-green-600 text-white text-xs">complete</Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard label="Threads scanned" value={summary.threadsScanned} />
+        <StatCard label="Eligible threads" value={summary.eligibleThreads} />
+        <StatCard label="Messages processed" value={summary.messagesProcessed} />
+      </div>
+    </div>
+  );
+}
+
+function Phase4SummaryCard({ summary }: { summary: Phase4Summary }) {
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2">
+        <Zap size={14} className="text-muted-foreground" />
+        <span className="font-medium text-sm">Phase 4 — Top-of-Mind Seeding</span>
+        <Badge className="bg-green-600 text-white text-xs">complete</Badge>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        <StatCard label="Msgs scanned" value={summary.messagesScanned} />
+        <StatCard label="Notes produced" value={summary.notesProduced} />
+        <StatCard label="Commitments" value={summary.commitmentsFound} />
+        <StatCard label="Events" value={summary.eventsFound} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function LifeGraphDevPage() {
@@ -374,6 +818,11 @@ export default function LifeGraphDevPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [hitlEntities, setHitlEntities] = useState<Entity[]>([]);
   const [hitlLoading, setHitlLoading] = useState(false);
+  const [phase1SenderResults, setPhase1SenderResults] = useState<SenderProfilingResult[]>([]);
+  const [phase2Progress, setPhase2Progress] = useState<Phase2EntityProgress[]>([]);
+  const [phase2TotalEntities, setPhase2TotalEntities] = useState(0);
+  const [phase3Summary, setPhase3Summary] = useState<Phase3Summary | null>(null);
+  const [phase4Summary, setPhase4Summary] = useState<Phase4Summary | null>(null);
 
   // Graph view
   const [graphEntities, setGraphEntities] = useState<Entity[]>([]);
@@ -457,6 +906,14 @@ export default function LifeGraphDevPage() {
           fetchGraphEntitiesForHitl(acctId);
         }
       }
+      if (status?.phase1SenderResults && status.phase1SenderResults.length > 0) {
+        setPhase1SenderResults(status.phase1SenderResults);
+      }
+      if (status?.phase2EntityProgress && status.phase2EntityProgress.length > 0) {
+        setPhase2Progress(status.phase2EntityProgress);
+      }
+      if (status?.phase3Summary) setPhase3Summary(status.phase3Summary);
+      if (status?.phase4Summary) setPhase4Summary(status.phase4Summary);
       if (status && ['completed', 'failed', 'capped'].includes(status.status)) {
         stopPolling();
       }
@@ -535,6 +992,11 @@ export default function LifeGraphDevPage() {
       setCurrentJobId(jobId);
       setCandidates([]);
       setHitlEntities([]);
+      setPhase1SenderResults([]);
+      setPhase2Progress([]);
+      setPhase2TotalEntities(0);
+      setPhase3Summary(null);
+      setPhase4Summary(null);
       startPolling(jobId, accountId);
       // Kick off the pipeline — browser fires this, server runs all phases regardless of connection
       fetch('/api/life-graph/backfill/run', {
@@ -567,6 +1029,7 @@ export default function LifeGraphDevPage() {
   }
 
   async function approvePhase1() {
+    setPhase2TotalEntities(hitlEntities.length);
     setHitlLoading(true);
     try {
       await fetch('/api/life-graph/backfill/approve', {
@@ -832,6 +1295,26 @@ export default function LifeGraphDevPage() {
                     onDelete={deleteHitlEntity}
                     loading={hitlLoading}
                   />
+                )}
+
+                {/* Phase 1 sender profiling log */}
+                {phase1SenderResults.length > 0 && (
+                  <Phase1SenderLog results={phase1SenderResults} />
+                )}
+
+                {/* Phase 2 deep extraction — per-entity progress */}
+                {phase2Progress.length > 0 && (
+                  <Phase2DeepLog progress={phase2Progress} totalEntities={Math.max(phase2TotalEntities, phase2Progress.length)} />
+                )}
+
+                {/* Phase 3 thread sweep summary */}
+                {phase3Summary && (
+                  <Phase3SummaryCard summary={phase3Summary} />
+                )}
+
+                {/* Phase 4 top-of-mind summary */}
+                {phase4Summary && (
+                  <Phase4SummaryCard summary={phase4Summary} />
                 )}
               </>
             )}

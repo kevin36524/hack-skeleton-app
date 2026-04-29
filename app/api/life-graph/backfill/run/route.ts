@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getUserId } from '@/src/lib/life-graph/get-user-id';
-import { getIngestJob, updateIngestJob, appendJobCalls } from '@/src/lib/life-graph/db';
+import { getIngestJob, updateIngestJob, appendJobCalls, getProfile } from '@/src/lib/life-graph/db';
+import { yahooGet } from '@/src/mastra/helpers/yahoo-api';
+import { getMailboxId } from '@/src/mastra/helpers/get-mailbox-id';
+import type { GetAccountsApiResponse } from '@/lib/types/api';
 import type { JobCall } from '@/src/lib/life-graph/types';
 import type { CandidateSender } from '@/src/lib/life-graph/cold-start/phase0-structural';
 import { phase0Structural } from '@/src/lib/life-graph/cold-start/phase0-structural';
@@ -30,7 +33,23 @@ export async function POST(req: NextRequest) {
   }
 
   const uid = await getUserId(token, accountId);
-  console.log(`[backfill/run] uid=${uid} jobId=${jobId}`);
+  const profile = await getProfile(uid);
+  let userEmail = profile?.email ?? '';
+
+  // If profile exists but email wasn't captured at init time, fetch it now
+  if (!userEmail) {
+    try {
+      const mailboxId = await getMailboxId(token);
+      const resp = await yahooGet<GetAccountsApiResponse>(token, `/mailboxes/@.id==${mailboxId}/accounts`);
+      const account = resp.accounts.find((a) => a.id === accountId);
+      userEmail = account?.email ?? '';
+      console.log(`[backfill/run] resolved userEmail=${userEmail} via accounts API`);
+    } catch (err) {
+      console.warn(`[backfill/run] could not resolve user email: ${err}`);
+    }
+  }
+
+  console.log(`[backfill/run] uid=${uid} jobId=${jobId} userEmail=${userEmail}`);
 
   try {
     const job = await getIngestJob(uid, jobId);
@@ -105,7 +124,7 @@ export async function POST(req: NextRequest) {
         signals: c.signals ?? { sentTo: false, starCount: 0, threadCount: 0, openWithDwellCount: 0 },
       }));
 
-      const entityIds = await phase1SenderProfiling(uid, token, fakeCandidates, jobId, logCall);
+      const entityIds = await phase1SenderProfiling(uid, token, fakeCandidates, jobId, userEmail, logCall);
       await flushCalls();
 
       // phase1SenderProfiling already set job.phase=2 internally
@@ -126,7 +145,7 @@ export async function POST(req: NextRequest) {
     console.log(`[backfill/run] phase 2-4 — deep extraction`);
     const entityIds = job.phase1EntityIds ?? [];
 
-    await phase2DeepExtraction(uid, token, entityIds, jobId, logCall);
+    await phase2DeepExtraction(uid, token, entityIds, jobId, userEmail, logCall);
     await flushCalls();
 
     const jobAfterP2 = await getIngestJob(uid, jobId);
@@ -135,10 +154,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'capped' });
     }
 
-    await phase3ThreadSweep(uid, token, jobId, logCall);
+    await phase3ThreadSweep(uid, token, jobId, userEmail, logCall);
     await flushCalls();
 
-    await phase4TopOfMind(uid, token, jobId, logCall);
+    await phase4TopOfMind(uid, token, jobId, userEmail, logCall);
     await flushCalls();
 
     await updateIngestJob(uid, jobId, { status: 'completed', completedAt: Timestamp.now() });

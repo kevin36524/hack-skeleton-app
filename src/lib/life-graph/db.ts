@@ -1,6 +1,6 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { db } from './firestore-client';
-import type { Profile, Entity, Fact, Note, IngestJob, JobCall, Drawer } from './types';
+import type { Profile, Entity, Fact, Note, IngestJob, JobCall, Drawer, SenderProfilingResult, Phase2EntityProgress, Phase2LlmCall, Phase3Summary, Phase4Summary } from './types';
 
 // --- Path helpers ---
 function profileDoc(uid: string) {
@@ -189,6 +189,35 @@ export async function appendJobCalls(uid: string, jid: string, calls: JobCall[])
     calls: FieldValue.arrayUnion(...(calls as unknown[])),
     callCount: FieldValue.increment(calls.length),
   });
+}
+
+export async function appendPhase1SenderResults(
+  uid: string,
+  jid: string,
+  results: SenderProfilingResult[]
+): Promise<void> {
+  if (results.length === 0) return;
+  await ingestJobDoc(uid, jid).update({
+    phase1SenderResults: FieldValue.arrayUnion(...(results as unknown[])),
+  });
+}
+
+export async function appendPhase2EntityProgress(
+  uid: string,
+  jid: string,
+  progress: Phase2EntityProgress
+): Promise<void> {
+  await ingestJobDoc(uid, jid).update({
+    phase2EntityProgress: FieldValue.arrayUnion(progress as unknown),
+  });
+}
+
+export async function updatePhase3Summary(uid: string, jid: string, summary: Phase3Summary): Promise<void> {
+  await ingestJobDoc(uid, jid).update({ phase3Summary: summary });
+}
+
+export async function updatePhase4Summary(uid: string, jid: string, summary: Phase4Summary): Promise<void> {
+  await ingestJobDoc(uid, jid).update({ phase4Summary: summary });
 }
 
 export async function checkCostCap(uid: string, jid: string): Promise<boolean> {

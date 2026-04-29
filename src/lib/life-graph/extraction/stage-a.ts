@@ -1,6 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { mastra } from '@/src/mastra';
 import { insertNote } from '../db';
 import type { Note, ContentTier } from '../types';
 
@@ -33,7 +32,8 @@ interface StageAInput {
 
 export async function stageA(
   uid: string,
-  message: StageAInput
+  message: StageAInput,
+  userEmail?: string
 ): Promise<{ noteId: string; contentTier: ContentTier }> {
   const contentTier = classifyContentTier(message.subject, message.body);
   console.log(`[stage-a] msg=${message.id} from=${message.from.email} subject="${message.subject.slice(0, 60)}" tier=${contentTier}`);
@@ -42,16 +42,13 @@ export async function stageA(
   let signals: string[] = [];
 
   if (contentTier !== 'skip') {
-    const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
-    const userContent = `From: ${message.from.name} <${message.from.email}>\nSubject: ${message.subject}\n\n${message.body.slice(0, 1500)}`;
+    const noteAgent = mastra.getAgent('lifeGraphNoteAgent');
+    const ownerLine = userEmail ? `Mailbox owner: ${userEmail}\n` : '';
+    const userContent = `${ownerLine}From: ${message.from.name} <${message.from.email}>\nSubject: ${message.subject}\n\n${message.body.slice(0, 1500)}`;
 
-    console.log(`[stage-a] calling Gemini Flash for msg=${message.id}`);
-    const { text } = await generateText({
-      model: google('gemini-2.0-flash'),
-      system:
-        'You are taking notes on an email for a personal assistant. Write a compact prose note (2-5 sentences) capturing what matters: who, what, when, where, any action items or changes to existing plans. Then list 1-5 short signal tags (snake_case) capturing the email\'s nature.\n\nRespond as JSON:\n{ "notes": "<prose>", "signals": ["signal1", "signal2", ...] }',
-      prompt: userContent,
-    });
+    console.log(`[stage-a] calling lifeGraphNoteAgent for msg=${message.id}`);
+    const result = await noteAgent.generate(userContent);
+    const text = result.text ?? '';
 
     try {
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
