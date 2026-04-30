@@ -137,7 +137,7 @@ export async function phase4TopOfMind(
     const noteContent = ownerHeader + validNotes
       .map(
         (n) =>
-          `[Note ${n!.sourceMessageId} | ${n!.deliveryTime.toDate().toISOString().slice(0, 10)} | From: ${n!.from.name} <${n!.from.email}>]\n${n!.notesText}\nsignals: [${n!.signals.join(', ')}]`
+          `[note ${n!.sourceMessageId} | ${n!.deliveryTime.toDate().toISOString().slice(0, 10)} | from ${n!.from.name} <${n!.from.email}>]\n${n!.notesText}`
       )
       .join('\n\n');
 

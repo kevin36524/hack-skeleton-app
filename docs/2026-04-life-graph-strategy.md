@@ -1,4 +1,4 @@
-# Strategy: Yahoo Mail Life Graph
+- [ ] # Strategy: Yahoo Mail Life Graph
 
 **Date:** 2026-04
 **Author:** Kevin Patel (patelkev@yahooinc.com)

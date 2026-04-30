@@ -75,6 +75,12 @@ interface Phase4Summary {
   eventsFound: number;
 }
 
+interface Phase2ConsolidationSummary {
+  stubsMerged: number;
+  duplicatesMerged: number;
+  participantsResolved: number;
+}
+
 interface JobStatus {
   phase: number;
   status: string;
@@ -84,6 +90,7 @@ interface JobStatus {
   callCount?: number;
   phase1SenderResults?: SenderProfilingResult[];
   phase2EntityProgress?: Phase2EntityProgress[];
+  phase2Consolidation?: Phase2ConsolidationSummary;
   phase3Summary?: Phase3Summary;
   phase4Summary?: Phase4Summary;
 }
@@ -102,13 +109,78 @@ interface Candidate {
   signals?: CandidateSignals;
 }
 
+interface FirestoreTs {
+  _seconds?: number;
+  seconds?: number;
+  _nanoseconds?: number;
+  nanoseconds?: number;
+}
+
 interface Entity {
   id: string;
   type: string;
   label: string;
-  emailAddresses: string[];
-  relationshipClass?: string;
   drawer: string;
+  emailAddresses: string[];
+  aliases?: string[];
+  relationshipClass?: string;
+  sourceMessageIds?: string[];
+  firstSeen?: FirestoreTs;
+  lastUpdated?: FirestoreTs;
+  // event fields
+  startTime?: FirestoreTs;
+  endTime?: FirestoreTs;
+  location?: string;
+  participantIds?: string[];
+  participantEmails?: string[];
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+  nextOccurrence?: FirestoreTs;
+  seriesEndDate?: FirestoreTs;
+  // commitment fields
+  dueDate?: FirestoreTs;
+  resolvedAt?: FirestoreTs | null;
+  owedBy?: string;
+  owedTo?: string;
+  lifeThreadStatus?: string;
+  isStub?: boolean;
+}
+
+interface Fact {
+  id: string;
+  entityId: string;
+  slot: string;
+  factType: 'stable' | 'time_sensitive' | 'reminder' | 'relationship';
+  value: unknown;
+  status: 'current' | 'superseded';
+  authority: string;
+  confidence: number;
+  sourceMessageIds: string[];
+  effectiveTime?: FirestoreTs;
+  drawer: string;
+  supersededBy?: string | null;
+  supersedes?: string | null;
+}
+
+interface Note {
+  id: string;
+  sourceMessageId: string;
+  sourceMessageIds?: string[];
+  deliveryTime?: FirestoreTs;
+  from: { name: string; email: string };
+  subject: string;
+  notesText: string;
+  contentTier: string;
+  stageBStatus: string;
+  producedFactIds: string[];
+}
+
+interface GraphCounts {
+  entities: number;
+  facts: number;
+  notes: number;
+  byType: Record<string, number>;
+  byDrawer: Record<string, number>;
 }
 
 interface SenderProfile {
@@ -136,6 +208,31 @@ interface SenderProfilingResult {
 const MAILBOX_PREFIX = /^\/mailboxes\/@\.id==[^/]+/;
 function stripMailboxPrefix(url: string): string {
   return url.replace(MAILBOX_PREFIX, '');
+}
+
+function tsToDate(ts: FirestoreTs | null | undefined): Date | null {
+  if (!ts) return null;
+  const s = ts._seconds ?? ts.seconds;
+  if (typeof s !== 'number') return null;
+  const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+  return new Date(s * 1000 + Math.floor(ns / 1e6));
+}
+
+function fmtDate(ts: FirestoreTs | null | undefined): string {
+  const d = tsToDate(ts);
+  return d ? d.toISOString().slice(0, 10) : '—';
+}
+
+function fmtDateTime(ts: FirestoreTs | null | undefined): string {
+  const d = tsToDate(ts);
+  return d ? d.toISOString().slice(0, 16).replace('T', ' ') : '—';
+}
+
+function fmtValue(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return JSON.stringify(v);
 }
 
 function StatusBadge({ status }: { status: RequestStatus }) {
@@ -761,6 +858,26 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+function Phase2ConsolidationCard({ summary }: { summary: Phase2ConsolidationSummary }) {
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2">
+        <Network size={14} className="text-muted-foreground" />
+        <span className="font-medium text-sm">Phase 2 — Consolidation</span>
+        <Badge className="bg-green-600 text-white text-xs">complete</Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard label="Stubs merged" value={summary.stubsMerged} />
+        <StatCard label="Duplicates merged" value={summary.duplicatesMerged} />
+        <StatCard label="Participants resolved" value={summary.participantsResolved} />
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Stubs created during extraction (relationship targets, commitment counterparties) merged into matching profiled entities. Duplicates deduped by email or label+type. Event participantEmails resolved to entity IDs.
+      </p>
+    </div>
+  );
+}
+
 function Phase3SummaryCard({ summary }: { summary: Phase3Summary }) {
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
@@ -796,6 +913,442 @@ function Phase4SummaryCard({ summary }: { summary: Phase4Summary }) {
   );
 }
 
+// ─── Life Graph view (entities + facts + notes) ──────────────────────────────
+
+const TYPE_ORDER = [
+  'person',
+  'organization',
+  'household',
+  'asset',
+  'event',
+  'commitment',
+  'preference',
+  'life_thread',
+  'alert',
+  'alert_rule',
+  'external_system_alert',
+] as const;
+
+function entityTypeBadge(type: string): string {
+  switch (type) {
+    case 'person': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+    case 'organization': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300';
+    case 'event': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
+    case 'commitment': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300';
+    case 'asset': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+    case 'household': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300';
+    default: return 'bg-muted text-muted-foreground';
+  }
+}
+
+function FactRow({ fact, entityById }: { fact: Fact; entityById: Map<string, Entity> }) {
+  const isRel = fact.factType === 'relationship';
+  const target = isRel && typeof fact.value === 'string' ? entityById.get(fact.value) : null;
+  return (
+    <tr className={`border-b border-muted last:border-0 ${fact.status === 'superseded' ? 'opacity-50' : ''}`}>
+      <td className="px-2 py-1 font-mono text-[11px]">{fact.slot}</td>
+      <td className="px-2 py-1 text-[11px]">
+        {target ? (
+          <span className="inline-flex items-center gap-1">
+            <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${entityTypeBadge(target.type)}`}>
+              {target.type}
+            </span>
+            <span className="font-medium">{target.label}</span>
+          </span>
+        ) : (
+          <span>{fmtValue(fact.value)}</span>
+        )}
+      </td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground">{fact.factType}</td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground">{fmtDate(fact.effectiveTime)}</td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground tabular-nums">
+        {Math.round(fact.confidence * 100)}%
+      </td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground">
+        {fact.status === 'superseded' ? <span className="text-yellow-600">superseded</span> : 'current'}
+      </td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground">
+        {fact.sourceMessageIds.length > 0 ? `${fact.sourceMessageIds.length} src` : '—'}
+      </td>
+    </tr>
+  );
+}
+
+function EntityCard({
+  entity,
+  facts,
+  entityById,
+}: {
+  entity: Entity;
+  facts: Fact[];
+  entityById: Map<string, Entity>;
+}) {
+  const [open, setOpen] = useState(false);
+  const entityFacts = facts.filter((f) => f.entityId === entity.id);
+  const currentFacts = entityFacts.filter((f) => f.status === 'current');
+  const supersededFacts = entityFacts.filter((f) => f.status === 'superseded');
+
+  const owedBy = entity.owedBy ? entityById.get(entity.owedBy) : null;
+  const owedTo = entity.owedTo ? entityById.get(entity.owedTo) : null;
+
+  return (
+    <div className={`border rounded-lg bg-card ${entity.isStub ? 'border-dashed opacity-80' : ''}`}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/30 text-left"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${entityTypeBadge(entity.type)}`}>
+          {entity.type}
+        </span>
+        <span className="font-medium text-sm">{entity.label}</span>
+        {entity.isStub && (
+          <span className="text-[10px] px-1 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300">stub</span>
+        )}
+        {entity.relationshipClass && (
+          <span className="text-[10px] text-muted-foreground">· {entity.relationshipClass}</span>
+        )}
+        {entity.emailAddresses?.[0] && (
+          <span className="text-[11px] font-mono text-muted-foreground ml-1 truncate">
+            {entity.emailAddresses[0]}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          {currentFacts.length > 0 && <span>{currentFacts.length} facts</span>}
+          {entity.dueDate && <span>due {fmtDate(entity.dueDate)}</span>}
+          {entity.startTime && <span>{fmtDateTime(entity.startTime)}</span>}
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t px-4 py-3 space-y-3 text-xs">
+          {/* Identity / metadata */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Identity</p>
+              <dl className="space-y-0.5">
+                <div className="flex gap-2"><dt className="text-muted-foreground w-24">id</dt><dd className="font-mono text-[10px] truncate" title={entity.id}>{entity.id}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted-foreground w-24">drawer</dt><dd>{entity.drawer}</dd></div>
+                {entity.emailAddresses && entity.emailAddresses.length > 0 && (
+                  <div className="flex gap-2"><dt className="text-muted-foreground w-24">emails</dt><dd className="font-mono text-[10px]">{entity.emailAddresses.join(', ')}</dd></div>
+                )}
+                {entity.aliases && entity.aliases.length > 0 && (
+                  <div className="flex gap-2"><dt className="text-muted-foreground w-24">aliases</dt><dd>{entity.aliases.join(', ')}</dd></div>
+                )}
+                <div className="flex gap-2"><dt className="text-muted-foreground w-24">first seen</dt><dd>{fmtDate(entity.firstSeen)}</dd></div>
+                <div className="flex gap-2"><dt className="text-muted-foreground w-24">last updated</dt><dd>{fmtDate(entity.lastUpdated)}</dd></div>
+                {entity.sourceMessageIds && entity.sourceMessageIds.length > 0 && (
+                  <div className="flex gap-2"><dt className="text-muted-foreground w-24">source msgs</dt><dd>{entity.sourceMessageIds.length}</dd></div>
+                )}
+              </dl>
+            </div>
+
+            {/* Type-specific fields */}
+            <div>
+              {entity.type === 'event' && (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Event</p>
+                  <dl className="space-y-0.5">
+                    {entity.startTime && <div className="flex gap-2"><dt className="text-muted-foreground w-24">start</dt><dd>{fmtDateTime(entity.startTime)}</dd></div>}
+                    {entity.endTime && <div className="flex gap-2"><dt className="text-muted-foreground w-24">end</dt><dd>{fmtDateTime(entity.endTime)}</dd></div>}
+                    {entity.location && <div className="flex gap-2"><dt className="text-muted-foreground w-24">location</dt><dd>{entity.location}</dd></div>}
+                    {entity.isRecurring && (
+                      <>
+                        <div className="flex gap-2"><dt className="text-muted-foreground w-24">recurrence</dt><dd>{entity.recurrenceRule ?? '—'}</dd></div>
+                        {entity.nextOccurrence && <div className="flex gap-2"><dt className="text-muted-foreground w-24">next</dt><dd>{fmtDateTime(entity.nextOccurrence)}</dd></div>}
+                        {entity.seriesEndDate && <div className="flex gap-2"><dt className="text-muted-foreground w-24">series ends</dt><dd>{fmtDate(entity.seriesEndDate)}</dd></div>}
+                        {entity.lifeThreadStatus && <div className="flex gap-2"><dt className="text-muted-foreground w-24">status</dt><dd>{entity.lifeThreadStatus}</dd></div>}
+                      </>
+                    )}
+                    {entity.participantIds && entity.participantIds.length > 0 && (
+                      <div className="flex gap-2">
+                        <dt className="text-muted-foreground w-24">participants</dt>
+                        <dd className="flex flex-wrap gap-1">
+                          {entity.participantIds.map((pid) => {
+                            const p = entityById.get(pid);
+                            return p ? (
+                              <span key={pid} className="px-1 py-0.5 rounded bg-muted text-[10px]">{p.label}</span>
+                            ) : (
+                              <span key={pid} className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">{pid.slice(0, 6)}…</span>
+                            );
+                          })}
+                        </dd>
+                      </div>
+                    )}
+                    {entity.participantEmails && entity.participantEmails.length > 0 && (
+                      <div className="flex gap-2">
+                        <dt className="text-muted-foreground w-24">unresolved</dt>
+                        <dd className="flex flex-wrap gap-1">
+                          {entity.participantEmails.map((e) => (
+                            <span key={e} className="px-1 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 text-[10px] font-mono">{e}</span>
+                          ))}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </>
+              )}
+
+              {entity.type === 'commitment' && (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Commitment</p>
+                  <dl className="space-y-0.5">
+                    <div className="flex gap-2"><dt className="text-muted-foreground w-24">due</dt><dd>{fmtDate(entity.dueDate)}</dd></div>
+                    <div className="flex gap-2">
+                      <dt className="text-muted-foreground w-24">owed by</dt>
+                      <dd>{owedBy ? owedBy.label : entity.owedBy ? <span className="font-mono text-[10px]">{entity.owedBy.slice(0, 12)}…</span> : '—'}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="text-muted-foreground w-24">owed to</dt>
+                      <dd>{owedTo ? owedTo.label : entity.owedTo ? <span className="font-mono text-[10px]">{entity.owedTo.slice(0, 12)}…</span> : '—'}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="text-muted-foreground w-24">resolved</dt>
+                      <dd>{entity.resolvedAt ? fmtDate(entity.resolvedAt) : 'open'}</dd>
+                    </div>
+                  </dl>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Facts */}
+          {currentFacts.length === 0 && supersededFacts.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic">No facts recorded.</p>
+          ) : (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                Facts ({currentFacts.length} current{supersededFacts.length > 0 ? ` · ${supersededFacts.length} superseded` : ''})
+              </p>
+              <div className="border rounded overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted text-[10px] text-muted-foreground">
+                      <th className="px-2 py-1 text-left">slot</th>
+                      <th className="px-2 py-1 text-left">value</th>
+                      <th className="px-2 py-1 text-left">type</th>
+                      <th className="px-2 py-1 text-left">effective</th>
+                      <th className="px-2 py-1 text-left">conf</th>
+                      <th className="px-2 py-1 text-left">status</th>
+                      <th className="px-2 py-1 text-left">src</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentFacts.map((f) => <FactRow key={f.id} fact={f} entityById={entityById} />)}
+                    {supersededFacts.map((f) => <FactRow key={f.id} fact={f} entityById={entityById} />)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Source messages */}
+          {entity.sourceMessageIds && entity.sourceMessageIds.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                Source messages ({entity.sourceMessageIds.length})
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {entity.sourceMessageIds.slice(0, 30).map((id) => (
+                  <span key={id} className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]" title={id}>
+                    {id.length > 14 ? id.slice(0, 14) + '…' : id}
+                  </span>
+                ))}
+                {entity.sourceMessageIds.length > 30 && (
+                  <span className="text-[10px] text-muted-foreground">+{entity.sourceMessageIds.length - 30} more</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoteCard({ note }: { note: Note }) {
+  const [open, setOpen] = useState(false);
+  const subject = note.subject || '(no subject)';
+  return (
+    <div className="border rounded-lg bg-card">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/30 text-left"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="font-medium text-sm truncate max-w-[280px]">{subject}</span>
+        <span className="text-[11px] font-mono text-muted-foreground truncate">{note.from?.email}</span>
+        <span className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span>{fmtDate(note.deliveryTime)}</span>
+          <span className={`px-1 py-0.5 rounded ${note.stageBStatus === 'processed' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : note.stageBStatus === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'}`}>
+            {note.stageBStatus}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="border-t px-4 py-3 space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-3 text-[11px]">
+            <div><span className="text-muted-foreground">tier:</span> {note.contentTier}</div>
+            <div><span className="text-muted-foreground">facts produced:</span> {note.producedFactIds?.length ?? 0}</div>
+            <div><span className="text-muted-foreground">source msgs:</span> {note.sourceMessageIds?.length ?? 1}</div>
+            <div><span className="text-muted-foreground">id:</span> <span className="font-mono">{note.id}</span></div>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Note prose</p>
+            <pre className="text-[11px] font-sans bg-background border rounded p-2 overflow-auto max-h-72 leading-relaxed whitespace-pre-wrap">
+              {note.notesText || '(empty)'}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LifeGraphView({
+  entities,
+  facts,
+  notes,
+  counts,
+}: {
+  entities: Entity[];
+  facts: Fact[];
+  notes: Note[];
+  counts: GraphCounts | null;
+}) {
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [search, setSearch] = useState('');
+
+  const entityById = new Map<string, Entity>();
+  for (const e of entities) entityById.set(e.id, e);
+
+  const types = Array.from(new Set(entities.map((e) => e.type))).sort(
+    (a, b) => TYPE_ORDER.indexOf(a as never) - TYPE_ORDER.indexOf(b as never)
+  );
+
+  const filteredEntities = entities.filter((e) => {
+    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!e.label.toLowerCase().includes(q) && !e.emailAddresses?.some((a) => a.toLowerCase().includes(q))) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Sort: recurring/upcoming first, then by lastUpdated desc.
+  filteredEntities.sort((a, b) => {
+    const at = tsToDate(a.lastUpdated)?.getTime() ?? 0;
+    const bt = tsToDate(b.lastUpdated)?.getTime() ?? 0;
+    return bt - at;
+  });
+
+  // Group by type for nicer scanning.
+  const grouped = new Map<string, Entity[]>();
+  for (const e of filteredEntities) {
+    if (!grouped.has(e.type)) grouped.set(e.type, []);
+    grouped.get(e.type)!.push(e);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Counts */}
+      {counts && (
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard label="Entities" value={counts.entities} />
+          <StatCard label="Facts" value={counts.facts} />
+          <StatCard label="Notes" value={counts.notes} />
+        </div>
+      )}
+
+      {counts && Object.keys(counts.byType).length > 0 && (
+        <div className="border rounded-lg p-3 bg-card">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">By type</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(counts.byType)
+              .sort((a, b) => b[1] - a[1])
+              .map(([t, n]) => (
+                <span key={t} className={`px-2 py-0.5 rounded text-[11px] font-medium ${entityTypeBadge(t)}`}>
+                  {t} · {n}
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          className="border rounded px-2 py-1 text-xs bg-background w-56"
+          placeholder="Filter by label / email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="flex rounded border overflow-hidden text-xs">
+          <button
+            className={`px-2 py-1 ${typeFilter === 'all' ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
+            onClick={() => setTypeFilter('all')}
+          >
+            all ({entities.length})
+          </button>
+          {types.map((t) => (
+            <button
+              key={t}
+              className={`px-2 py-1 ${typeFilter === t ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t} ({entities.filter((e) => e.type === t).length})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Entity groups */}
+      {grouped.size === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-8">No entities match the current filter.</p>
+      )}
+      {Array.from(grouped.entries())
+        .sort(([a], [b]) => TYPE_ORDER.indexOf(a as never) - TYPE_ORDER.indexOf(b as never))
+        .map(([type, ents]) => (
+          <div key={type} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${entityTypeBadge(type)}`}>{type}</span>
+              <span className="text-[10px] text-muted-foreground">{ents.length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {ents.map((e) => (
+                <EntityCard key={e.id} entity={e} facts={facts} entityById={entityById} />
+              ))}
+            </div>
+          </div>
+        ))}
+
+      {/* Notes section */}
+      {notes.length > 0 && (
+        <div className="space-y-2 pt-4 border-t">
+          <div className="flex items-center gap-2">
+            <Terminal size={14} className="text-muted-foreground" />
+            <span className="font-medium text-sm">Notes ({notes.length})</span>
+            <span className="text-[10px] text-muted-foreground">
+              {notes.filter((n) => n.stageBStatus === 'processed').length} processed ·{' '}
+              {notes.filter((n) => n.stageBStatus === 'pending').length} pending ·{' '}
+              {notes.filter((n) => n.stageBStatus === 'failed').length} failed
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {[...notes]
+              .sort((a, b) => (tsToDate(b.deliveryTime)?.getTime() ?? 0) - (tsToDate(a.deliveryTime)?.getTime() ?? 0))
+              .map((n) => (
+                <NoteCard key={n.id} note={n} />
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function LifeGraphDevPage() {
@@ -821,11 +1374,15 @@ export default function LifeGraphDevPage() {
   const [phase1SenderResults, setPhase1SenderResults] = useState<SenderProfilingResult[]>([]);
   const [phase2Progress, setPhase2Progress] = useState<Phase2EntityProgress[]>([]);
   const [phase2TotalEntities, setPhase2TotalEntities] = useState(0);
+  const [phase2Consolidation, setPhase2Consolidation] = useState<Phase2ConsolidationSummary | null>(null);
   const [phase3Summary, setPhase3Summary] = useState<Phase3Summary | null>(null);
   const [phase4Summary, setPhase4Summary] = useState<Phase4Summary | null>(null);
 
   // Graph view
   const [graphEntities, setGraphEntities] = useState<Entity[]>([]);
+  const [graphFacts, setGraphFacts] = useState<Fact[]>([]);
+  const [graphNotes, setGraphNotes] = useState<Note[]>([]);
+  const [graphCounts, setGraphCounts] = useState<GraphCounts | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
 
   // Ingest
@@ -912,6 +1469,7 @@ export default function LifeGraphDevPage() {
       if (status?.phase2EntityProgress && status.phase2EntityProgress.length > 0) {
         setPhase2Progress(status.phase2EntityProgress);
       }
+      if (status?.phase2Consolidation) setPhase2Consolidation(status.phase2Consolidation);
       if (status?.phase3Summary) setPhase3Summary(status.phase3Summary);
       if (status?.phase4Summary) setPhase4Summary(status.phase4Summary);
       if (status && ['completed', 'failed', 'capped'].includes(status.status)) {
@@ -995,6 +1553,7 @@ export default function LifeGraphDevPage() {
       setPhase1SenderResults([]);
       setPhase2Progress([]);
       setPhase2TotalEntities(0);
+      setPhase2Consolidation(null);
       setPhase3Summary(null);
       setPhase4Summary(null);
       startPolling(jobId, accountId);
@@ -1067,6 +1626,9 @@ export default function LifeGraphDevPage() {
       );
       const data = await res.json();
       setGraphEntities((data.entities ?? []) as Entity[]);
+      setGraphFacts((data.facts ?? []) as Fact[]);
+      setGraphNotes((data.notes ?? []) as Note[]);
+      setGraphCounts((data.counts ?? null) as GraphCounts | null);
     } finally {
       setGraphLoading(false);
     }
@@ -1087,6 +1649,9 @@ export default function LifeGraphDevPage() {
       setCandidates([]);
       setHitlEntities([]);
       setGraphEntities([]);
+      setGraphFacts([]);
+      setGraphNotes([]);
+      setGraphCounts(null);
       setDeleteConfirm(false);
     } finally {
       setDeleteLoading(false);
@@ -1307,6 +1872,11 @@ export default function LifeGraphDevPage() {
                   <Phase2DeepLog progress={phase2Progress} totalEntities={Math.max(phase2TotalEntities, phase2Progress.length)} />
                 )}
 
+                {/* Phase 2 consolidation summary */}
+                {phase2Consolidation && (
+                  <Phase2ConsolidationCard summary={phase2Consolidation} />
+                )}
+
                 {/* Phase 3 thread sweep summary */}
                 {phase3Summary && (
                   <Phase3SummaryCard summary={phase3Summary} />
@@ -1323,7 +1893,7 @@ export default function LifeGraphDevPage() {
           {/* ── Life Graph tab ────────────────────────────────────────────── */}
           <TabsContent value="graph" className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entities in Life Graph</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Life Graph</p>
               <Button size="sm" variant="outline" onClick={loadGraph} disabled={!accountId || graphLoading}>
                 {graphLoading ? <Loader2 size={13} className="animate-spin mr-1" /> : <RefreshCw size={13} className="mr-1" />}
                 Load
@@ -1335,34 +1905,12 @@ export default function LifeGraphDevPage() {
             )}
 
             {graphEntities.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="px-4 py-2 bg-muted text-xs text-muted-foreground flex justify-between">
-                  <span>{graphEntities.length} entities</span>
-                  <span>Type · Email · Class</span>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-muted border-b">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Label</th>
-                        <th className="px-3 py-2 text-left">Type</th>
-                        <th className="px-3 py-2 text-left">Email</th>
-                        <th className="px-3 py-2 text-left">Class</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {graphEntities.map((e) => (
-                        <tr key={e.id} className="border-b border-muted last:border-0 hover:bg-muted/30">
-                          <td className="px-3 py-2 font-medium">{e.label}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{e.type}</td>
-                          <td className="px-3 py-2 font-mono">{e.emailAddresses[0] ?? '—'}</td>
-                          <td className="px-3 py-2">{e.relationshipClass ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <LifeGraphView
+                entities={graphEntities}
+                facts={graphFacts}
+                notes={graphNotes}
+                counts={graphCounts}
+              />
             )}
 
             {/* Danger zone */}

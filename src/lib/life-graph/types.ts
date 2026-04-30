@@ -61,13 +61,20 @@ export interface Entity {
   relationshipClass?: 'family' | 'work' | 'school' | 'doctor' | 'vendor' | 'service' | 'newsletter' | 'unknown';
   startTime?: Timestamp;
   endTime?: Timestamp;
+  location?: string;
   participantIds?: string[];
+  participantEmails?: string[];
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+  nextOccurrence?: Timestamp;
+  seriesEndDate?: Timestamp;
   dueDate?: Timestamp;
   resolvedAt?: Timestamp | null;
   owedBy?: string;
   owedTo?: string;
   lifeThreadStatus?: 'active' | 'upcoming' | 'dormant' | 'closed';
   lastActivityAt?: Timestamp;
+  isStub?: boolean;
   payload: Record<string, unknown>;
   schemaVersion: number;
 }
@@ -90,14 +97,21 @@ export interface Fact {
   drawer: Drawer;
 }
 
+export interface NoteMessageRecord {
+  id: string;
+  deliveryTime: Timestamp;
+}
+
 export interface Note {
   id: string;
-  sourceMessageId: string;
-  deliveryTime: Timestamp;
+  sourceMessageId: string;                  // primary source message (legacy / single-msg)
+  sourceMessageIds?: string[];              // all source message ids covered by the note
+  messageRecords?: NoteMessageRecord[];     // id → deliveryTime lookup used by Stage B
+  deliveryTime: Timestamp;                  // most-recent source delivery time (BUG-06)
   from: { name: string; email: string };
   subject: string;
-  notesText: string;
-  signals: string[];
+  notesText: string;                        // free-form prose with inline [msg_xxx] annotations
+  signals: string[];                        // legacy, retained for read-side compatibility
   contentTier: ContentTier;
   stageBStatus: 'pending' | 'processed' | 'failed';
   stageBProcessedAt: Timestamp | null;
@@ -129,6 +143,12 @@ export interface Phase2EntityProgress {
   errorMessage?: string;
   apiCalls?: JobCall[];
   llmCalls?: Phase2LlmCall[];
+}
+
+export interface Phase2ConsolidationSummary {
+  stubsMerged: number;
+  duplicatesMerged: number;
+  participantsResolved: number;
 }
 
 export interface Phase3Summary {
@@ -186,6 +206,7 @@ export interface IngestJob {
   phase1EntityIds?: string[];
   phase1SenderResults?: SenderProfilingResult[];
   phase2EntityProgress?: Phase2EntityProgress[];
+  phase2Consolidation?: Phase2ConsolidationSummary;
   phase3Summary?: Phase3Summary;
   phase4Summary?: Phase4Summary;
   createdAt: Timestamp;

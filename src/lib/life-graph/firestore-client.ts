@@ -17,4 +17,24 @@ function getOrCreateApp() {
   return initializeApp({ credential: cert(serviceAccount) }, APP_NAME);
 }
 
-export const db = getFirestore(getOrCreateApp(), 'life-graph-native');
+const firestore = getFirestore(getOrCreateApp(), 'life-graph-native');
+
+// Entities frequently carry optional fields that are left `undefined` when not
+// applicable (event.location, event.endTime, isRecurring, etc.). Without this
+// setting the admin SDK throws on `undefined`, which silently dropped event
+// writes inside Stage B. Skip undefined props instead of erroring.
+//
+// `.settings()` throws if Firestore has already been used — possible under
+// Next.js dev hot-reload, which re-runs this module while the underlying
+// firebase-admin app instance is cached across reloads. Swallow that case.
+try {
+  firestore.settings({ ignoreUndefinedProperties: true });
+  console.log('[firestore-client] settings applied: ignoreUndefinedProperties=true');
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (!/already been (started|initialized)/i.test(msg)) {
+    console.warn(`[firestore-client] settings() failed: ${msg}`);
+  }
+}
+
+export const db = firestore;

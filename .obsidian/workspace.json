@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/2026-04-life-graph-data-model.md",
+                "file": "docs/2026-04-life-graph-strategy.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026-04-life-graph-data-model"
+              "title": "2026-04-life-graph-strategy"
             }
           }
         ]
@@ -78,7 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 520.5
   },
   "right": {
     "id": "4995bf34c66bbf13",
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "docs/2026-04-life-graph-data-model.md",
+                "file": "docs/2026-04-life-graph-strategy.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for 2026-04-life-graph-data-model"
+              "title": "Backlinks for 2026-04-life-graph-strategy"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "docs/2026-04-life-graph-data-model.md",
+                "file": "docs/2026-04-life-graph-strategy.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from 2026-04-life-graph-data-model"
+              "title": "Outgoing links from 2026-04-life-graph-strategy"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/2026-04-life-graph-data-model.md",
+                "file": "docs/2026-04-life-graph-strategy.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of 2026-04-life-graph-data-model"
+              "title": "Outline of 2026-04-life-graph-strategy"
             }
           }
         ]
@@ -185,10 +185,14 @@
   },
   "active": "d53246de14207b8f",
   "lastOpenFiles": [
-    "docs/2026-04-life-graph-ingest-phase1-impl-spec.md",
-    "docs/2026-04-life-graph-ingest-pipeline-design.md",
     "docs/2026-04-life-graph-data-model.md",
+    "docs/2026-04-life-graph-ingest-phase1-impl-spec.md",
+    "docs/agent-api.md",
     "docs/2026-04-life-graph-strategy.md",
+    "docs/2026-04-life-graph-ingest-pipeline-design.md",
+    "docs/2026-04-life-graph-deep-extraction-revised-spec.md",
+    "src/lib/life-graph/cold-start/consolidation.ts",
+    "docs/notes_life_graph",
     "src/mastra/agents/life-graph.ts",
     "app/api/life-graph/entity/[entityId]/route.ts",
     "app/api/life-graph/graph/route.ts",
@@ -196,8 +200,6 @@
     "app/api/life-graph/backfill/approve/route.ts",
     "app/api/life-graph/whoami/route.ts",
     "app/api/life-graph/entity/[entityId]",
-    "app/api/life-graph/entity",
-    "app/api/life-graph/graph",
-    "app/api/life-graph/delete"
+    "app/api/life-graph/entity"
   ]
 }

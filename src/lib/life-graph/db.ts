@@ -46,8 +46,22 @@ export async function getEntity(uid: string, eid: string): Promise<Entity | null
   return snap.exists ? (snap.data() as Entity) : null;
 }
 
+// Strip top-level `undefined` fields. The firestore-client sets
+// `ignoreUndefinedProperties: true`, but under Next.js dev hot-reload the
+// settings call sometimes lands on an already-initialized Firestore instance
+// and is silently swallowed — so writes still throw on undefined values.
+// Stripping here makes upserts robust regardless of when settings ran.
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as T;
+}
+
 export async function upsertEntity(uid: string, entity: Entity): Promise<void> {
-  await entityDoc(uid, entity.id).set({ ...entity, lastUpdated: Timestamp.now() }, { merge: true });
+  const cleaned = stripUndefined({ ...entity, lastUpdated: Timestamp.now() });
+  await entityDoc(uid, entity.id).set(cleaned, { merge: true });
 }
 
 export async function findEntityByEmail(uid: string, email: string): Promise<Entity | null> {
@@ -59,6 +73,17 @@ export async function findEntityByEmail(uid: string, email: string): Promise<Ent
     .limit(1)
     .get();
   return snap.empty ? null : (snap.docs[0].data() as Entity);
+}
+
+// Match by exact label or alias. Used by Stage B / consolidation when no email is available.
+export async function findEntityByLabel(uid: string, label: string): Promise<Entity | null> {
+  const trimmed = label.trim();
+  if (!trimmed) return null;
+  const entities = db.collection('users').doc(uid).collection('entities');
+  const labelSnap = await entities.where('label', '==', trimmed).limit(1).get();
+  if (!labelSnap.empty) return labelSnap.docs[0].data() as Entity;
+  const aliasSnap = await entities.where('aliases', 'array-contains', trimmed).limit(1).get();
+  return aliasSnap.empty ? null : (aliasSnap.docs[0].data() as Entity);
 }
 
 export async function listEntitiesByDrawer(uid: string, drawer: Drawer): Promise<Entity[]> {
@@ -233,6 +258,16 @@ export async function checkCostCap(uid: string, jid: string): Promise<boolean> {
 export async function listEntities(uid: string): Promise<Entity[]> {
   const snap = await db.collection('users').doc(uid).collection('entities').get();
   return snap.docs.map((d) => d.data() as Entity);
+}
+
+export async function listFacts(uid: string): Promise<Fact[]> {
+  const snap = await db.collection('users').doc(uid).collection('facts').get();
+  return snap.docs.map((d) => d.data() as Fact);
+}
+
+export async function listNotes(uid: string): Promise<Note[]> {
+  const snap = await db.collection('users').doc(uid).collection('notes').get();
+  return snap.docs.map((d) => d.data() as Note);
 }
 
 export async function deleteEntity(uid: string, eid: string): Promise<void> {

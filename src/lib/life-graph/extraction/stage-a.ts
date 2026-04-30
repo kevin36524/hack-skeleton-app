@@ -39,39 +39,37 @@ export async function stageA(
   console.log(`[stage-a] msg=${message.id} from=${message.from.email} subject="${message.subject.slice(0, 60)}" tier=${contentTier}`);
 
   let notesText = '';
-  let signals: string[] = [];
 
   if (contentTier !== 'skip') {
     const noteAgent = mastra.getAgent('lifeGraphNoteAgent');
     const ownerLine = userEmail ? `Mailbox owner: ${userEmail}\n` : '';
-    const userContent = `${ownerLine}From: ${message.from.name} <${message.from.email}>\nSubject: ${message.subject}\n\n${message.body.slice(0, 1500)}`;
+    const dateLine = message.deliveryTime.toISOString().slice(0, 10);
+    const userContent =
+      `${ownerLine}` +
+      `[msg id: ${message.id} | ${dateLine}]\n` +
+      `From: ${message.from.name} <${message.from.email}>\n` +
+      `Subject: ${message.subject}\n\n` +
+      message.body.slice(0, 1500);
 
     console.log(`[stage-a] calling lifeGraphNoteAgent for msg=${message.id}`);
     const result = await noteAgent.generate(userContent);
-    const text = result.text ?? '';
-
-    try {
-      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      notesText = parsed.notes ?? '';
-      signals = Array.isArray(parsed.signals) ? parsed.signals : [];
-      console.log(`[stage-a] extracted signals=${signals.join(',')} for msg=${message.id}`);
-    } catch (err) {
-      console.warn(`[stage-a] JSON parse failed for msg=${message.id}, using raw text. err=${err}`);
-      notesText = text.slice(0, 500);
-    }
+    notesText = (result.text ?? '').trim();
+    console.log(`[stage-a] note prose len=${notesText.length} for msg=${message.id}`);
   } else {
     console.log(`[stage-a] skipping LLM for msg=${message.id} (tier=skip)`);
   }
 
+  const deliveryTs = Timestamp.fromDate(message.deliveryTime);
   const note: Note = {
     id: message.id,
     sourceMessageId: message.id,
-    deliveryTime: Timestamp.fromDate(message.deliveryTime),
+    sourceMessageIds: [message.id],
+    messageRecords: [{ id: message.id, deliveryTime: deliveryTs }],
+    deliveryTime: deliveryTs,
     from: message.from,
     subject: message.subject,
     notesText,
-    signals,
+    signals: [],
     contentTier,
     stageBStatus: contentTier === 'skip' ? 'processed' : 'pending',
     stageBProcessedAt: contentTier === 'skip' ? Timestamp.now() : null,
