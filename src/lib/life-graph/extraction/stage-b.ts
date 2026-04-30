@@ -419,7 +419,17 @@ export async function stageB(
       const endDate = e.endTime ? new Date(e.endTime) : null;
       const participantEmails = (e.participantEmails ?? []).filter(Boolean);
 
-      let eid: string | null = startDate ? await resolveEvent(uid, e.label, startDate, participantEmails) : null;
+      let eid: string | null = null;
+      if (startDate) {
+        try {
+          eid = await resolveEvent(uid, e.label, startDate, participantEmails);
+        } catch (err) {
+          // resolveEvent uses a composite query (type + startTime range) that
+          // requires a Firestore index. If the index is missing, fall through
+          // to creating a new event rather than dropping it on the floor.
+          console.warn(`[stage-b] resolveEvent lookup failed for "${e.label}", creating new: ${err}`);
+        }
+      }
       if (eid) {
         console.log(`[stage-b] resolved existing event eid=${eid} label="${e.label}"`);
         continue; // existing event — don't overwrite for now
