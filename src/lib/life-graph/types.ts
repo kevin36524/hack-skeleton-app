@@ -19,8 +19,6 @@ export type Drawer =
   | 'commitments'        // Phase 1 ✓
   | 'top_of_mind_prefs'; // Phase 2
 
-export type FactType = 'stable' | 'time_sensitive' | 'reminder' | 'relationship';
-export type Authority = 'explicit_remember' | 'correction' | 'ambient' | 'email_derived';
 export type SenderTier = 'important' | 'conditional' | 'junk';
 export type ContentTier = 'skip' | 'direct_to_schema' | 'two_stage';
 
@@ -44,6 +42,14 @@ export interface Profile {
   digestLastDeliveredAt: Timestamp | null;
 }
 
+export interface RelationshipEdge {
+  slot: string;             // 'spouse_of' | 'parent_of' | 'employs' | ...
+  toEntityId: string;
+  sourceMessageIds: string[];
+  firstSeen: Timestamp;
+  lastVerified: Timestamp;
+}
+
 export interface Entity {
   id: string;
   type: EntityType;
@@ -59,6 +65,14 @@ export interface Entity {
   entryClock: Timestamp | null;
   decayClock: Timestamp | null;
   relationshipClass?: 'family' | 'work' | 'school' | 'doctor' | 'vendor' | 'service' | 'newsletter' | 'unknown';
+  // Free-form markdown body capturing stable knowledge about this entity.
+  // Replaces the per-slot Fact collection; updated wholesale by the extractor.
+  dossier?: string;
+  // Typed edges to other entities. Replaces factType:'relationship' rows.
+  relationships?: RelationshipEdge[];
+  // Cached sender classification (formerly the sender_class fact).
+  senderClass?: SenderTier;
+  senderClassConfidence?: number;
   startTime?: Timestamp;
   endTime?: Timestamp;
   location?: string;
@@ -79,24 +93,6 @@ export interface Entity {
   schemaVersion: number;
 }
 
-export interface Fact {
-  id: string;
-  entityId: string;
-  slot: string;
-  factType: FactType;
-  value: unknown;
-  status: 'current' | 'superseded';
-  authority: Authority;
-  confidence: number;
-  sourceMessageIds: string[];
-  firstSeen: Timestamp;
-  lastVerified: Timestamp;
-  effectiveTime: Timestamp;
-  supersededBy: string | null;
-  supersedes: string | null;
-  drawer: Drawer;
-}
-
 export interface NoteMessageRecord {
   id: string;
   deliveryTime: Timestamp;
@@ -115,7 +111,6 @@ export interface Note {
   contentTier: ContentTier;
   stageBStatus: 'pending' | 'processed' | 'failed';
   stageBProcessedAt: Timestamp | null;
-  producedFactIds: string[];
 }
 
 export interface JobCall {
@@ -138,7 +133,7 @@ export interface Phase2EntityProgress {
   label: string;
   msgsFetched: number;
   notesProduced: number;
-  factsProduced: number;
+  relationshipsProduced: number;
   status: 'running' | 'done' | 'error';
   errorMessage?: string;
   apiCalls?: JobCall[];

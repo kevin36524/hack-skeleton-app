@@ -178,56 +178,60 @@ export async function consolidateGraph(uid: string): Promise<ConsolidationSummar
 
   if (remap.size > 0) {
     const winners = new Set(Array.from(merged.keys()).map(canonical));
-    // Update facts whose value (relationship target) is a remapped id.
-    const factsSnap = await db.collection('users').doc(uid).collection('facts').get();
-    const batch = db.batch();
-    let writes = 0;
-    for (const doc of factsSnap.docs) {
-      const data = doc.data();
-      const updates: Record<string, unknown> = {};
-      if (typeof data.value === 'string' && remap.has(data.value)) {
-        const c = canonical(data.value);
-        if (winners.has(c)) updates.value = c;
-      }
-      if (typeof data.entityId === 'string' && remap.has(data.entityId)) {
-        const c = canonical(data.entityId);
-        if (winners.has(c)) updates.entityId = c;
-      }
-      if (Object.keys(updates).length > 0) {
-        batch.update(doc.ref, updates);
-        writes++;
-      }
-    }
-    if (writes > 0) await batch.commit();
-    console.log(`[consolidation] rewrote ${writes} fact pointers`);
 
-    // Update commitment owedBy/owedTo on entities.
-    const commitSnap = await db
-      .collection('users')
-      .doc(uid)
-      .collection('entities')
-      .where('type', '==', 'commitment')
-      .get();
-    const cBatch = db.batch();
-    let cWrites = 0;
-    for (const doc of commitSnap.docs) {
+    // Update commitment owedBy/owedTo and inline relationships[].toEntityId on
+    // every entity. Both can point at remapped ids after merges.
+    const entitiesSnap = await db.collection('users').doc(uid).collection('entities').get();
+    const eBatch = db.batch();
+    let relWrites = 0;
+    let commitWrites = 0;
+    for (const doc of entitiesSnap.docs) {
       const data = doc.data() as Entity;
       const updates: Record<string, unknown> = {};
-      if (data.owedBy && remap.has(data.owedBy)) {
-        const c = canonical(data.owedBy);
-        if (winners.has(c)) updates.owedBy = c;
+
+      if (data.type === 'commitment') {
+        if (data.owedBy && remap.has(data.owedBy)) {
+          const c = canonical(data.owedBy);
+          if (winners.has(c)) updates.owedBy = c;
+        }
+        if (data.owedTo && remap.has(data.owedTo)) {
+          const c = canonical(data.owedTo);
+          if (winners.has(c)) updates.owedTo = c;
+        }
       }
-      if (data.owedTo && remap.has(data.owedTo)) {
-        const c = canonical(data.owedTo);
-        if (winners.has(c)) updates.owedTo = c;
+
+      if (data.relationships && data.relationships.length > 0) {
+        let dirty = false;
+        const seen = new Set<string>();
+        const rewritten: Entity['relationships'] = [];
+        for (const r of data.relationships) {
+          let toId = r.toEntityId;
+          if (toId && remap.has(toId)) {
+            const c = canonical(toId);
+            if (winners.has(c)) {
+              toId = c;
+              dirty = true;
+            }
+          }
+          const dedupKey = `${r.slot}::${toId}`;
+          if (seen.has(dedupKey)) {
+            dirty = true;
+            continue;
+          }
+          seen.add(dedupKey);
+          rewritten.push({ ...r, toEntityId: toId });
+        }
+        if (dirty) updates.relationships = rewritten;
       }
+
       if (Object.keys(updates).length > 0) {
-        cBatch.update(doc.ref, updates);
-        cWrites++;
+        eBatch.update(doc.ref, updates);
+        if ('relationships' in updates) relWrites++;
+        if ('owedBy' in updates || 'owedTo' in updates) commitWrites++;
       }
     }
-    if (cWrites > 0) await cBatch.commit();
-    console.log(`[consolidation] rewrote ${cWrites} commitment counterparties`);
+    if (relWrites > 0 || commitWrites > 0) await eBatch.commit();
+    console.log(`[consolidation] rewrote ${relWrites} relationships, ${commitWrites} commitment counterparties`);
   }
 
   return summary;

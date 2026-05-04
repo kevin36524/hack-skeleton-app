@@ -55,7 +55,7 @@ interface Phase2EntityProgress {
   label: string;
   msgsFetched: number;
   notesProduced: number;
-  factsProduced: number;
+  relationshipsProduced: number;
   status: 'running' | 'done' | 'error';
   errorMessage?: string;
   apiCalls?: JobCall[];
@@ -116,6 +116,14 @@ interface FirestoreTs {
   nanoseconds?: number;
 }
 
+interface RelationshipEdge {
+  slot: string;
+  toEntityId: string;
+  sourceMessageIds: string[];
+  firstSeen?: FirestoreTs;
+  lastVerified?: FirestoreTs;
+}
+
 interface Entity {
   id: string;
   type: string;
@@ -127,6 +135,10 @@ interface Entity {
   sourceMessageIds?: string[];
   firstSeen?: FirestoreTs;
   lastUpdated?: FirestoreTs;
+  dossier?: string;
+  relationships?: RelationshipEdge[];
+  senderClass?: string;
+  senderClassConfidence?: number;
   // event fields
   startTime?: FirestoreTs;
   endTime?: FirestoreTs;
@@ -146,22 +158,6 @@ interface Entity {
   isStub?: boolean;
 }
 
-interface Fact {
-  id: string;
-  entityId: string;
-  slot: string;
-  factType: 'stable' | 'time_sensitive' | 'reminder' | 'relationship';
-  value: unknown;
-  status: 'current' | 'superseded';
-  authority: string;
-  confidence: number;
-  sourceMessageIds: string[];
-  effectiveTime?: FirestoreTs;
-  drawer: string;
-  supersededBy?: string | null;
-  supersedes?: string | null;
-}
-
 interface Note {
   id: string;
   sourceMessageId: string;
@@ -172,12 +168,10 @@ interface Note {
   notesText: string;
   contentTier: string;
   stageBStatus: string;
-  producedFactIds: string[];
 }
 
 interface GraphCounts {
   entities: number;
-  facts: number;
   notes: number;
   byType: Record<string, number>;
   byDrawer: Record<string, number>;
@@ -226,13 +220,6 @@ function fmtDate(ts: FirestoreTs | null | undefined): string {
 function fmtDateTime(ts: FirestoreTs | null | undefined): string {
   const d = tsToDate(ts);
   return d ? d.toISOString().slice(0, 16).replace('T', ' ') : '—';
-}
-
-function fmtValue(v: unknown): string {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  return JSON.stringify(v);
 }
 
 function StatusBadge({ status }: { status: RequestStatus }) {
@@ -715,7 +702,7 @@ function Phase2SenderRow({ p }: { p: Phase2EntityProgress }) {
         <td className="px-2 py-1.5 font-mono text-muted-foreground max-w-[160px] truncate" title={p.email}>{p.email}</td>
         <td className="px-2 py-1.5 text-right tabular-nums">{p.msgsFetched}</td>
         <td className="px-2 py-1.5 text-right tabular-nums">{p.notesProduced}</td>
-        <td className="px-2 py-1.5 text-right tabular-nums font-medium">{p.factsProduced}</td>
+        <td className="px-2 py-1.5 text-right tabular-nums font-medium">{p.relationshipsProduced}</td>
         <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
           {apiCalls.length > 0 && <span>{apiCalls.length} api</span>}
           {llmCalls.length > 0 && <span className="ml-1">{llmCalls.length} llm</span>}
@@ -831,7 +818,7 @@ function Phase2DeepLog({ progress, totalEntities }: { progress: Phase2EntityProg
                 <th className="px-2 py-1 text-left">Email</th>
                 <th className="px-2 py-1 text-right w-14">Emails</th>
                 <th className="px-2 py-1 text-right w-14">Batches</th>
-                <th className="px-2 py-1 text-right w-14">Facts</th>
+                <th className="px-2 py-1 text-right w-14">Rels</th>
                 <th className="px-2 py-1 text-right w-20">Calls</th>
               </tr>
             </thead>
@@ -913,7 +900,7 @@ function Phase4SummaryCard({ summary }: { summary: Phase4Summary }) {
   );
 }
 
-// ─── Life Graph view (entities + facts + notes) ──────────────────────────────
+// ─── Life Graph view (entities + notes) ──────────────────────────────────────
 
 const TYPE_ORDER = [
   'person',
@@ -941,12 +928,11 @@ function entityTypeBadge(type: string): string {
   }
 }
 
-function FactRow({ fact, entityById }: { fact: Fact; entityById: Map<string, Entity> }) {
-  const isRel = fact.factType === 'relationship';
-  const target = isRel && typeof fact.value === 'string' ? entityById.get(fact.value) : null;
+function RelationshipRow({ edge, entityById }: { edge: RelationshipEdge; entityById: Map<string, Entity> }) {
+  const target = entityById.get(edge.toEntityId);
   return (
-    <tr className={`border-b border-muted last:border-0 ${fact.status === 'superseded' ? 'opacity-50' : ''}`}>
-      <td className="px-2 py-1 font-mono text-[11px]">{fact.slot}</td>
+    <tr className="border-b border-muted last:border-0">
+      <td className="px-2 py-1 font-mono text-[11px]">{edge.slot}</td>
       <td className="px-2 py-1 text-[11px]">
         {target ? (
           <span className="inline-flex items-center gap-1">
@@ -956,19 +942,12 @@ function FactRow({ fact, entityById }: { fact: Fact; entityById: Map<string, Ent
             <span className="font-medium">{target.label}</span>
           </span>
         ) : (
-          <span>{fmtValue(fact.value)}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{edge.toEntityId.slice(0, 12)}…</span>
         )}
       </td>
-      <td className="px-2 py-1 text-[10px] text-muted-foreground">{fact.factType}</td>
-      <td className="px-2 py-1 text-[10px] text-muted-foreground">{fmtDate(fact.effectiveTime)}</td>
-      <td className="px-2 py-1 text-[10px] text-muted-foreground tabular-nums">
-        {Math.round(fact.confidence * 100)}%
-      </td>
+      <td className="px-2 py-1 text-[10px] text-muted-foreground">{fmtDate(edge.lastVerified)}</td>
       <td className="px-2 py-1 text-[10px] text-muted-foreground">
-        {fact.status === 'superseded' ? <span className="text-yellow-600">superseded</span> : 'current'}
-      </td>
-      <td className="px-2 py-1 text-[10px] text-muted-foreground">
-        {fact.sourceMessageIds.length > 0 ? `${fact.sourceMessageIds.length} src` : '—'}
+        {edge.sourceMessageIds.length > 0 ? `${edge.sourceMessageIds.length} src` : '—'}
       </td>
     </tr>
   );
@@ -976,17 +955,13 @@ function FactRow({ fact, entityById }: { fact: Fact; entityById: Map<string, Ent
 
 function EntityCard({
   entity,
-  facts,
   entityById,
 }: {
   entity: Entity;
-  facts: Fact[];
   entityById: Map<string, Entity>;
 }) {
   const [open, setOpen] = useState(false);
-  const entityFacts = facts.filter((f) => f.entityId === entity.id);
-  const currentFacts = entityFacts.filter((f) => f.status === 'current');
-  const supersededFacts = entityFacts.filter((f) => f.status === 'superseded');
+  const relationships = entity.relationships ?? [];
 
   const owedBy = entity.owedBy ? entityById.get(entity.owedBy) : null;
   const owedTo = entity.owedTo ? entityById.get(entity.owedTo) : null;
@@ -1014,7 +989,7 @@ function EntityCard({
           </span>
         )}
         <div className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
-          {currentFacts.length > 0 && <span>{currentFacts.length} facts</span>}
+          {relationships.length > 0 && <span>{relationships.length} rels</span>}
           {entity.dueDate && <span>due {fmtDate(entity.dueDate)}</span>}
           {entity.startTime && <span>{fmtDateTime(entity.startTime)}</span>}
         </div>
@@ -1112,30 +1087,38 @@ function EntityCard({
             </div>
           </div>
 
-          {/* Facts */}
-          {currentFacts.length === 0 && supersededFacts.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground italic">No facts recorded.</p>
+          {/* Dossier */}
+          {entity.dossier ? (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Dossier</p>
+              <pre className="text-[11px] font-sans bg-background border rounded p-2 overflow-auto max-h-72 leading-relaxed whitespace-pre-wrap">
+                {entity.dossier}
+              </pre>
+            </div>
           ) : (
+            <p className="text-[11px] text-muted-foreground italic">No dossier recorded.</p>
+          )}
+
+          {/* Relationships */}
+          {relationships.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                Facts ({currentFacts.length} current{supersededFacts.length > 0 ? ` · ${supersededFacts.length} superseded` : ''})
+                Relationships ({relationships.length})
               </p>
               <div className="border rounded overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b bg-muted text-[10px] text-muted-foreground">
                       <th className="px-2 py-1 text-left">slot</th>
-                      <th className="px-2 py-1 text-left">value</th>
-                      <th className="px-2 py-1 text-left">type</th>
-                      <th className="px-2 py-1 text-left">effective</th>
-                      <th className="px-2 py-1 text-left">conf</th>
-                      <th className="px-2 py-1 text-left">status</th>
+                      <th className="px-2 py-1 text-left">target</th>
+                      <th className="px-2 py-1 text-left">last seen</th>
                       <th className="px-2 py-1 text-left">src</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentFacts.map((f) => <FactRow key={f.id} fact={f} entityById={entityById} />)}
-                    {supersededFacts.map((f) => <FactRow key={f.id} fact={f} entityById={entityById} />)}
+                    {relationships.map((r, i) => (
+                      <RelationshipRow key={`${r.slot}-${r.toEntityId}-${i}`} edge={r} entityById={entityById} />
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1189,7 +1172,7 @@ function NoteCard({ note }: { note: Note }) {
         <div className="border-t px-4 py-3 space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-3 text-[11px]">
             <div><span className="text-muted-foreground">tier:</span> {note.contentTier}</div>
-            <div><span className="text-muted-foreground">facts produced:</span> {note.producedFactIds?.length ?? 0}</div>
+            <div><span className="text-muted-foreground">stage B:</span> {note.stageBStatus}</div>
             <div><span className="text-muted-foreground">source msgs:</span> {note.sourceMessageIds?.length ?? 1}</div>
             <div><span className="text-muted-foreground">id:</span> <span className="font-mono">{note.id}</span></div>
           </div>
@@ -1207,12 +1190,10 @@ function NoteCard({ note }: { note: Note }) {
 
 function LifeGraphView({
   entities,
-  facts,
   notes,
   counts,
 }: {
   entities: Entity[];
-  facts: Fact[];
   notes: Note[];
   counts: GraphCounts | null;
 }) {
@@ -1255,9 +1236,8 @@ function LifeGraphView({
     <div className="space-y-4">
       {/* Counts */}
       {counts && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <StatCard label="Entities" value={counts.entities} />
-          <StatCard label="Facts" value={counts.facts} />
           <StatCard label="Notes" value={counts.notes} />
         </div>
       )}
@@ -1318,7 +1298,7 @@ function LifeGraphView({
             </div>
             <div className="space-y-1.5">
               {ents.map((e) => (
-                <EntityCard key={e.id} entity={e} facts={facts} entityById={entityById} />
+                <EntityCard key={e.id} entity={e} entityById={entityById} />
               ))}
             </div>
           </div>
@@ -1380,7 +1360,6 @@ export default function LifeGraphDevPage() {
 
   // Graph view
   const [graphEntities, setGraphEntities] = useState<Entity[]>([]);
-  const [graphFacts, setGraphFacts] = useState<Fact[]>([]);
   const [graphNotes, setGraphNotes] = useState<Note[]>([]);
   const [graphCounts, setGraphCounts] = useState<GraphCounts | null>(null);
   const [graphLoading, setGraphLoading] = useState(false);
@@ -1626,7 +1605,6 @@ export default function LifeGraphDevPage() {
       );
       const data = await res.json();
       setGraphEntities((data.entities ?? []) as Entity[]);
-      setGraphFacts((data.facts ?? []) as Fact[]);
       setGraphNotes((data.notes ?? []) as Note[]);
       setGraphCounts((data.counts ?? null) as GraphCounts | null);
     } finally {
@@ -1649,7 +1627,6 @@ export default function LifeGraphDevPage() {
       setCandidates([]);
       setHitlEntities([]);
       setGraphEntities([]);
-      setGraphFacts([]);
       setGraphNotes([]);
       setGraphCounts(null);
       setDeleteConfirm(false);
@@ -1907,7 +1884,6 @@ export default function LifeGraphDevPage() {
             {graphEntities.length > 0 && (
               <LifeGraphView
                 entities={graphEntities}
-                facts={graphFacts}
                 notes={graphNotes}
                 counts={graphCounts}
               />
@@ -1920,7 +1896,7 @@ export default function LifeGraphDevPage() {
                 <span className="text-sm font-medium text-red-700">Danger Zone</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Permanently deletes all Life Graph data for this account — profile, entities, facts, notes, and all ingest jobs.
+                Permanently deletes all Life Graph data for this account — profile, entities, notes, and all ingest jobs.
               </p>
               {!deleteConfirm ? (
                 <Button size="sm" variant="destructive" onClick={() => setDeleteConfirm(true)} disabled={!accountId}>

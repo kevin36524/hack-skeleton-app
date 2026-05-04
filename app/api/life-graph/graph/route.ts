@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserId } from '@/src/lib/life-graph/get-user-id';
-import { listEntities, listFacts, listNotes } from '@/src/lib/life-graph/db';
+import { listEntities, listNotes } from '@/src/lib/life-graph/db';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
@@ -16,15 +16,13 @@ export async function GET(req: NextRequest) {
     }
 
     const uid = await getUserId(token, accountId);
-    const [entities, facts, notes] = await Promise.all([
+    const [entities, notes] = await Promise.all([
       listEntities(uid),
-      listFacts(uid),
       listNotes(uid),
     ]);
 
     const counts = {
       entities: entities.length,
-      facts: facts.length,
       notes: notes.length,
       byType: entities.reduce<Record<string, number>>((acc, e) => {
         acc[e.type] = (acc[e.type] ?? 0) + 1;
@@ -37,9 +35,9 @@ export async function GET(req: NextRequest) {
     };
 
     console.log(
-      `[life-graph/graph] uid=${uid} entities=${entities.length} facts=${facts.length} notes=${notes.length}`
+      `[life-graph/graph] uid=${uid} entities=${entities.length} notes=${notes.length}`
     );
-    return NextResponse.json({ entities, facts, notes, counts });
+    return NextResponse.json({ entities, notes, counts });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[life-graph/graph] error: ${message}`);

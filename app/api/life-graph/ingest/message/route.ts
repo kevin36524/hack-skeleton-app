@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       isStarred: isStarred ?? false,
     }, { path });
 
-    console.log(`[ingest/message] done noteId=${result.noteId} factIds=${result.factIds.length}`);
+    console.log(`[ingest/message] done noteId=${result.noteId} relationshipsAdded=${result.relationshipsAdded}`);
     return NextResponse.json({ ingested: true, ...result });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

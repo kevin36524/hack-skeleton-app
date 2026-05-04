@@ -239,7 +239,7 @@ export async function phase4TopOfMind(
         }
       }
 
-      await Promise.all(validNotes.map((n) => markNoteStageB(uid, n!.id, 'processed', [])));
+      await Promise.all(validNotes.map((n) => markNoteStageB(uid, n!.id, 'processed')));
       await incrementIngestJobCost(uid, jobId, 0.003);
     } catch (err) {
       console.warn(`[phase4] Stage B error for batch ${b}:`, err);

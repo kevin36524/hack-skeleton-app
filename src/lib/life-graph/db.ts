@@ -1,6 +1,6 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { db } from './firestore-client';
-import type { Profile, Entity, Fact, Note, IngestJob, JobCall, Drawer, SenderProfilingResult, Phase2EntityProgress, Phase2LlmCall, Phase3Summary, Phase4Summary } from './types';
+import type { Profile, Entity, Note, IngestJob, JobCall, Drawer, SenderProfilingResult, Phase2EntityProgress, Phase2LlmCall, Phase3Summary, Phase4Summary } from './types';
 
 // --- Path helpers ---
 function profileDoc(uid: string) {
@@ -8,9 +8,6 @@ function profileDoc(uid: string) {
 }
 function entityDoc(uid: string, eid: string) {
   return db.collection('users').doc(uid).collection('entities').doc(eid);
-}
-function factDoc(uid: string, fid: string) {
-  return db.collection('users').doc(uid).collection('facts').doc(fid);
 }
 function noteDoc(uid: string, nid: string) {
   return db.collection('users').doc(uid).collection('notes').doc(nid);
@@ -96,44 +93,6 @@ export async function listEntitiesByDrawer(uid: string, drawer: Drawer): Promise
   return snap.docs.map((d) => d.data() as Entity);
 }
 
-// --- Facts ---
-export async function getFact(uid: string, fid: string): Promise<Fact | null> {
-  const snap = await factDoc(uid, fid).get();
-  return snap.exists ? (snap.data() as Fact) : null;
-}
-
-export async function getCurrentFact(
-  uid: string,
-  entityId: string,
-  slot: string
-): Promise<Fact | null> {
-  const snap = await db
-    .collection('users')
-    .doc(uid)
-    .collection('facts')
-    .where('entityId', '==', entityId)
-    .where('slot', '==', slot)
-    .where('status', '==', 'current')
-    .limit(1)
-    .get();
-  return snap.empty ? null : (snap.docs[0].data() as Fact);
-}
-
-export async function insertFact(uid: string, fact: Fact): Promise<void> {
-  await factDoc(uid, fact.id).set(fact);
-}
-
-export async function appendSourceMessageId(
-  uid: string,
-  fid: string,
-  messageId: string
-): Promise<void> {
-  await factDoc(uid, fid).update({
-    sourceMessageIds: FieldValue.arrayUnion(messageId),
-    lastVerified: Timestamp.now(),
-  });
-}
-
 // --- Notes ---
 export async function getNote(uid: string, nid: string): Promise<Note | null> {
   const snap = await noteDoc(uid, nid).get();
@@ -147,13 +106,11 @@ export async function insertNote(uid: string, note: Note): Promise<void> {
 export async function markNoteStageB(
   uid: string,
   nid: string,
-  status: Note['stageBStatus'],
-  producedFactIds: string[]
+  status: Note['stageBStatus']
 ): Promise<void> {
   await noteDoc(uid, nid).update({
     stageBStatus: status,
     stageBProcessedAt: Timestamp.now(),
-    producedFactIds: FieldValue.arrayUnion(...producedFactIds),
   });
 }
 
@@ -260,11 +217,6 @@ export async function listEntities(uid: string): Promise<Entity[]> {
   return snap.docs.map((d) => d.data() as Entity);
 }
 
-export async function listFacts(uid: string): Promise<Fact[]> {
-  const snap = await db.collection('users').doc(uid).collection('facts').get();
-  return snap.docs.map((d) => d.data() as Fact);
-}
-
 export async function listNotes(uid: string): Promise<Note[]> {
   const snap = await db.collection('users').doc(uid).collection('notes').get();
   return snap.docs.map((d) => d.data() as Note);
@@ -276,7 +228,7 @@ export async function deleteEntity(uid: string, eid: string): Promise<void> {
 
 export async function deleteUserGraph(uid: string): Promise<void> {
   const userRef = db.collection('users').doc(uid);
-  const subcollections = ['profile', 'entities', 'facts', 'notes', 'ingestJobs'];
+  const subcollections = ['profile', 'entities', 'notes', 'ingestJobs'];
   for (const sub of subcollections) {
     const snap = await userRef.collection(sub).get();
     if (snap.empty) continue;

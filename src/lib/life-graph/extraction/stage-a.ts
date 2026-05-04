@@ -73,7 +73,6 @@ export async function stageA(
     contentTier,
     stageBStatus: contentTier === 'skip' ? 'processed' : 'pending',
     stageBProcessedAt: contentTier === 'skip' ? Timestamp.now() : null,
-    producedFactIds: [],
   };
 
   await insertNote(uid, note);

@@ -11,7 +11,6 @@ import {
   checkCostCap,
   appendPhase1SenderResults,
 } from '../db';
-import { writeOrSupersedeFact } from '../supersedes';
 import type { Entity, SenderTier, SenderProfilingResult } from '../types';
 import type { CandidateSender } from './phase0-structural';
 import type { SearchMessagesApiResponse } from '@/lib/types/api';
@@ -127,26 +126,13 @@ export async function phase1SenderProfiling(
         entryClock: null,
         decayClock: null,
         relationshipClass: profile.relationshipClass,
+        senderClass: profile.senderTier,
+        senderClassConfidence: profile.confidence,
         payload: {},
         schemaVersion: 1,
       };
       await upsertEntity(uid, entity);
       console.log(`[phase1] upserted entity eid=${eid} for ${sender.email}`);
-
-      await writeOrSupersedeFact(uid, {
-        entityId: eid,
-        slot: 'sender_class',
-        factType: 'stable',
-        value: profile.senderTier,
-        status: 'current',
-        authority: 'email_derived',
-        confidence: profile.confidence,
-        sourceMessageIds: [],
-        firstSeen: now,
-        lastVerified: now,
-        effectiveTime: now,
-        drawer: 'people_orgs',
-      });
 
       entityIds.push(eid);
     } else {

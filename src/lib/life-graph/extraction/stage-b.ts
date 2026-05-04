@@ -10,12 +10,11 @@ import {
   findEntityByEmail,
   findEntityByLabel,
 } from '../db';
-import { writeOrSupersedeFact } from '../supersedes';
 import { resolveEvent } from './identity-resolution';
-import type { Entity, Note, NoteMessageRecord, Drawer, EntityType } from '../types';
+import type { Entity, Note, NoteMessageRecord, Drawer, EntityType, RelationshipEdge } from '../types';
 
 interface StageBResult {
-  factIds: string[];
+  relationshipsAdded: number;
   extractorPrompt?: string;
   extractorResponse?: string;
 }
@@ -25,13 +24,7 @@ interface ExtractedEntity {
   email?: string;
   type?: string;
   relationshipClass?: string;
-  sourceMessageIds?: string[];
-}
-
-interface ExtractedFact {
-  entityLabel: string;
-  slot: string;
-  value: unknown;
+  dossier?: string;
   sourceMessageIds?: string[];
 }
 
@@ -65,7 +58,6 @@ interface ExtractedCommitment {
 interface ExtractedOutput {
   entityUpdates?: ExtractedEntity[];
   newEntities?: ExtractedEntity[];
-  facts?: ExtractedFact[];
   relationships?: ExtractedRelationship[];
   events?: ExtractedEvent[];
   commitments?: ExtractedCommitment[];
@@ -128,20 +120,6 @@ function buildRecordMap(notes: Note[]): Map<string, Timestamp> {
   return map;
 }
 
-function effectiveTimeFromIds(
-  ids: string[] | undefined,
-  recordMap: Map<string, Timestamp>,
-  fallback: Timestamp
-): Timestamp {
-  if (!ids || ids.length === 0) return fallback;
-  let best: Timestamp | null = null;
-  for (const id of ids) {
-    const t = recordMap.get(id);
-    if (t && (!best || t.toMillis() > best.toMillis())) best = t;
-  }
-  return best ?? fallback;
-}
-
 function nonEmptyIds(ids: string[] | undefined, fallback: string[]): string[] {
   return ids && ids.length > 0 ? ids : fallback;
 }
@@ -151,6 +129,7 @@ interface ResolveSpec {
   email?: string;
   type?: EntityType;
   relationshipClass?: RelClass;
+  dossier?: string;
   sourceMessageIds: string[];
 }
 
@@ -193,6 +172,10 @@ async function resolveOrCreateEntity(
       patch.isStub = false;
       dirty = true;
     }
+    if (spec.dossier && spec.dossier.trim() && spec.dossier !== existing.dossier) {
+      patch.dossier = spec.dossier;
+      dirty = true;
+    }
     if (dirty) {
       patch.lastUpdated = now;
       await upsertEntity(uid, patch as Entity);
@@ -220,6 +203,7 @@ async function resolveOrCreateEntity(
     entryClock: null,
     decayClock: null,
     relationshipClass: spec.relationshipClass,
+    dossier: spec.dossier && spec.dossier.trim() ? spec.dossier : undefined,
     ...(stub ? { isStub: true } : {}),
     payload: {},
     schemaVersion: 1,
@@ -236,6 +220,51 @@ function isUserLabel(label: string, userEmail: string | undefined, userName: str
   if (userEmail && lower === userEmail.toLowerCase()) return true;
   if (userName && lower === userName.toLowerCase()) return true;
   return false;
+}
+
+// Add or refresh a typed edge on an entity. Idempotent on (slot, toEntityId).
+async function upsertRelationship(
+  uid: string,
+  fromId: string,
+  edge: Omit<RelationshipEdge, 'firstSeen' | 'lastVerified'>
+): Promise<boolean> {
+  const ent = await getEntity(uid, fromId);
+  if (!ent) return false;
+  const now = Timestamp.now();
+  const existing = ent.relationships ?? [];
+  const matchIdx = existing.findIndex((r) => r.slot === edge.slot && r.toEntityId === edge.toEntityId);
+
+  let updated: RelationshipEdge[];
+  if (matchIdx >= 0) {
+    const prior = existing[matchIdx];
+    const mergedSourceIds = Array.from(new Set([...(prior.sourceMessageIds ?? []), ...edge.sourceMessageIds]));
+    if (
+      mergedSourceIds.length === (prior.sourceMessageIds ?? []).length &&
+      prior.lastVerified.toMillis() >= now.toMillis() - 1000
+    ) {
+      return false; // nothing new
+    }
+    updated = [...existing];
+    updated[matchIdx] = {
+      ...prior,
+      sourceMessageIds: mergedSourceIds,
+      lastVerified: now,
+    };
+  } else {
+    updated = [
+      ...existing,
+      {
+        slot: edge.slot,
+        toEntityId: edge.toEntityId,
+        sourceMessageIds: edge.sourceMessageIds,
+        firstSeen: now,
+        lastVerified: now,
+      },
+    ];
+  }
+
+  await upsertEntity(uid, { id: fromId, relationships: updated, lastUpdated: now } as Entity);
+  return true;
 }
 
 interface StageBOptions {
@@ -259,14 +288,14 @@ export async function stageB(
 
   if (notes.length === 0) {
     console.log(`[stage-b] no pending notes, returning early`);
-    return { factIds: [] };
+    return { relationshipsAdded: 0 };
   }
 
   const primaryEntity = await getEntity(uid, primaryEntityId);
   if (!primaryEntity) {
     console.warn(`[stage-b] primary entity ${primaryEntityId} not found`);
-    await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'failed', [])));
-    return { factIds: [], extractorPrompt: '', extractorResponse: '' };
+    await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'failed')));
+    return { relationshipsAdded: 0, extractorPrompt: '', extractorResponse: '' };
   }
 
   const recordMap = buildRecordMap(notes);
@@ -281,7 +310,10 @@ export async function stageB(
 
   const ownerLine = options.userEmail ? `Mailbox owner: ${options.userEmail}\n` : '';
   const primaryLine = `Primary entity: ${primaryEntity.label}${primaryEntity.emailAddresses[0] ? ` <${primaryEntity.emailAddresses[0]}>` : ''}`;
-  const extractorInput = `${ownerLine}${primaryLine}\n\nEmail analysis:\n${noteContent}`;
+  const dossierBlock = primaryEntity.dossier
+    ? `\n\nExisting dossier for ${primaryEntity.label}:\n${primaryEntity.dossier}`
+    : '';
+  const extractorInput = `${ownerLine}${primaryLine}${dossierBlock}\n\nEmail analysis:\n${noteContent}`;
 
   console.log(`[stage-b] calling lifeGraphExtractorAgent for entityId=${primaryEntityId} with ${notes.length} notes`);
   const extractorAgent = mastra.getAgent('lifeGraphExtractorAgent');
@@ -293,16 +325,16 @@ export async function stageB(
   try {
     extracted = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
     console.log(
-      `[stage-b] parsed: entityUpdates=${extracted.entityUpdates?.length ?? 0} newEntities=${extracted.newEntities?.length ?? 0} facts=${extracted.facts?.length ?? 0} relationships=${extracted.relationships?.length ?? 0} events=${extracted.events?.length ?? 0} commitments=${extracted.commitments?.length ?? 0}`
+      `[stage-b] parsed: entityUpdates=${extracted.entityUpdates?.length ?? 0} newEntities=${extracted.newEntities?.length ?? 0} relationships=${extracted.relationships?.length ?? 0} events=${extracted.events?.length ?? 0} commitments=${extracted.commitments?.length ?? 0}`
     );
   } catch (err) {
     console.warn(`[stage-b] JSON parse failed for entityId=${primaryEntityId}: ${err}`);
-    await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'failed', [])));
-    return { factIds: [], extractorPrompt: extractorInput, extractorResponse: raw };
+    await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'failed')));
+    return { relationshipsAdded: 0, extractorPrompt: extractorInput, extractorResponse: raw };
   }
 
   const now = Timestamp.now();
-  const factIds: string[] = [];
+  let relationshipsAdded = 0;
 
   // ── 1. Resolve / create entities. Build a label → id map for downstream ops. ─
   const labelToId = new Map<string, string>();
@@ -325,6 +357,7 @@ export async function stageB(
         email: ent.email,
         type: asEntityType(ent.type),
         relationshipClass: asRelClass(ent.relationshipClass),
+        dossier: ent.dossier,
         sourceMessageIds: sourceIds,
       },
       false
@@ -349,68 +382,28 @@ export async function stageB(
     return id;
   }
 
-  // ── 2. Facts ───────────────────────────────────────────────────────────────
-  for (const f of extracted.facts ?? []) {
-    if (!f.entityLabel || !f.slot) continue;
-    try {
-      const sourceIds = nonEmptyIds(f.sourceMessageIds, allSourceIds);
-      const entityId = await resolveLabelOrStub(f.entityLabel, sourceIds);
-      const target = await getEntity(uid, entityId);
-      const drawer: Drawer = target ? target.drawer : 'people_orgs';
-      const eff = effectiveTimeFromIds(f.sourceMessageIds, recordMap, now);
-      console.log(`[stage-b] fact slot=${f.slot} entityId=${entityId} eff=${eff.toDate().toISOString().slice(0, 10)}`);
-      const fid = await writeOrSupersedeFact(uid, {
-        entityId,
-        slot: f.slot,
-        factType: 'stable',
-        value: f.value,
-        status: 'current',
-        authority: 'email_derived',
-        confidence: 0.8,
-        sourceMessageIds: sourceIds,
-        firstSeen: now,
-        lastVerified: now,
-        effectiveTime: eff,
-        drawer,
-      });
-      factIds.push(fid);
-    } catch (err) {
-      console.warn(`[stage-b] failed to write fact slot=${f.slot} for "${f.entityLabel}": ${err}`);
-    }
-  }
-
-  // ── 3. Relationships ───────────────────────────────────────────────────────
+  // ── 2. Relationships (inline edges on the from-entity) ─────────────────────
   for (const r of extracted.relationships ?? []) {
     if (!r.fromEntityLabel || !r.toEntityLabel || !r.slot) continue;
     try {
       const sourceIds = nonEmptyIds(r.sourceMessageIds, allSourceIds);
       const fromId = await resolveLabelOrStub(r.fromEntityLabel, sourceIds);
       const toId = await resolveLabelOrStub(r.toEntityLabel, sourceIds);
-      const fromEnt = await getEntity(uid, fromId);
-      const drawer: Drawer = fromEnt ? fromEnt.drawer : 'people_orgs';
-      const eff = effectiveTimeFromIds(r.sourceMessageIds, recordMap, now);
-      console.log(`[stage-b] relationship ${r.fromEntityLabel} --${r.slot}--> ${r.toEntityLabel}`);
-      const fid = await writeOrSupersedeFact(uid, {
-        entityId: fromId,
+      const added = await upsertRelationship(uid, fromId, {
         slot: r.slot,
-        factType: 'relationship',
-        value: toId,
-        status: 'current',
-        authority: 'email_derived',
-        confidence: 0.85,
+        toEntityId: toId,
         sourceMessageIds: sourceIds,
-        firstSeen: now,
-        lastVerified: now,
-        effectiveTime: eff,
-        drawer,
       });
-      factIds.push(fid);
+      if (added) {
+        relationshipsAdded++;
+        console.log(`[stage-b] relationship ${r.fromEntityLabel} --${r.slot}--> ${r.toEntityLabel}`);
+      }
     } catch (err) {
       console.warn(`[stage-b] failed to write relationship ${r.fromEntityLabel}--${r.slot}-->${r.toEntityLabel}: ${err}`);
     }
   }
 
-  // ── 4. Events ──────────────────────────────────────────────────────────────
+  // ── 3. Events ──────────────────────────────────────────────────────────────
   for (const e of extracted.events ?? []) {
     if (!e.label) continue;
     try {
@@ -485,7 +478,7 @@ export async function stageB(
     }
   }
 
-  // ── 5. Commitments ────────────────────────────────────────────────────────
+  // ── 4. Commitments ────────────────────────────────────────────────────────
   for (const c of extracted.commitments ?? []) {
     if (!c.label) continue;
     try {
@@ -534,15 +527,15 @@ export async function stageB(
     }
   }
 
-  await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'processed', factIds)));
-  console.log(`[stage-b] marked ${notes.length} notes processed, produced ${factIds.length} factIds`);
+  await Promise.all(notes.map((n) => markNoteStageB(uid, n.id, 'processed')));
+  console.log(`[stage-b] marked ${notes.length} notes processed, added ${relationshipsAdded} relationships`);
 
   if (jobId) {
     await incrementIngestJobCost(uid, jobId, 0.003);
     console.log(`[stage-b] incremented job cost $0.003 jobId=${jobId}`);
   }
 
-  return { factIds, extractorPrompt: extractorInput, extractorResponse: raw };
+  return { relationshipsAdded, extractorPrompt: extractorInput, extractorResponse: raw };
 }
 
 // re-export for tests / consolidation tooling

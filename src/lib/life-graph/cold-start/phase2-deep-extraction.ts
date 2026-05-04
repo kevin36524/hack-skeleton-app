@@ -123,7 +123,7 @@ export async function phase2DeepExtraction(
       console.warn(`[phase2] search failed for ${senderEmail}: ${err}`);
       await appendPhase2EntityProgress(uid, jobId, {
         entityId: eid, email: senderEmail, label: entity.label,
-        msgsFetched: 0, notesProduced: 0, factsProduced: 0,
+        msgsFetched: 0, notesProduced: 0, relationshipsProduced: 0,
         status: 'error', errorMessage: String(err).slice(0, 200),
         apiCalls: entityApiCalls,
         llmCalls: [],
@@ -135,7 +135,7 @@ export async function phase2DeepExtraction(
       console.log(`[phase2] no messages found for ${senderEmail}`);
       await appendPhase2EntityProgress(uid, jobId, {
         entityId: eid, email: senderEmail, label: entity.label,
-        msgsFetched: 0, notesProduced: 0, factsProduced: 0, status: 'done',
+        msgsFetched: 0, notesProduced: 0, relationshipsProduced: 0, status: 'done',
         apiCalls: entityApiCalls, llmCalls: [],
       });
       continue;
@@ -176,7 +176,7 @@ export async function phase2DeepExtraction(
       console.log(`[phase2] no messages after cutoff for ${senderEmail}`);
       await appendPhase2EntityProgress(uid, jobId, {
         entityId: eid, email: senderEmail, label: entity.label,
-        msgsFetched: 0, notesProduced: 0, factsProduced: 0, status: 'done',
+        msgsFetched: 0, notesProduced: 0, relationshipsProduced: 0, status: 'done',
         apiCalls: entityApiCalls, llmCalls: [],
       });
       continue;
@@ -186,7 +186,7 @@ export async function phase2DeepExtraction(
 
     // ── Step 3: note agent → persist note → Stage B (single-entity path) ──────
     const noteId = `phase2_${eid}`;
-    let totalFacts = 0;
+    let totalRelationships = 0;
 
     try {
       const noteInput = buildNoteAgentInput(allMsgs, entity.label, senderEmail, userEmail);
@@ -219,7 +219,6 @@ export async function phase2DeepExtraction(
         contentTier: 'two_stage',
         stageBStatus: noteText ? 'pending' : 'failed',
         stageBProcessedAt: null,
-        producedFactIds: [],
       };
       await insertNote(uid, noteDoc);
       console.log(`[phase2] stored note id=${noteId} stageBStatus=${noteDoc.stageBStatus}`);
@@ -229,10 +228,10 @@ export async function phase2DeepExtraction(
         let extractorResponse = '';
         try {
           const stageBResult = await stageB(uid, eid, [noteId], jobId, { userEmail, userName: entity.label });
-          totalFacts = stageBResult.factIds.length;
+          totalRelationships = stageBResult.relationshipsAdded;
           extractorPrompt = stageBResult.extractorPrompt ?? '';
           extractorResponse = stageBResult.extractorResponse ?? '';
-          console.log(`[phase2] stageB produced ${totalFacts} facts for ${senderEmail}`);
+          console.log(`[phase2] stageB added ${totalRelationships} relationships for ${senderEmail}`);
         } catch (err) {
           extractorResponse = `(stageB error: ${String(err).slice(0, 500)})`;
           console.warn(`[phase2] stageB error for ${senderEmail}: ${err}`);
@@ -263,7 +262,7 @@ export async function phase2DeepExtraction(
       label: entity.label,
       msgsFetched: allMsgs.length,
       notesProduced: 1,
-      factsProduced: totalFacts,
+      relationshipsProduced: totalRelationships,
       status: 'done',
       apiCalls: entityApiCalls,
       llmCalls: entityLlmCalls,
@@ -278,7 +277,7 @@ export async function phase2DeepExtraction(
 
     const progress = ((i + 1) / toProcess.length) * (1 - COST_RESERVE_FRAC);
     await updateProfileBackfillStatus(uid, { phase: 2, progress });
-    console.log(`[phase2] entity ${i + 1}/${toProcess.length} done — ${totalFacts} facts, progress=${(progress * 100).toFixed(1)}%`);
+    console.log(`[phase2] entity ${i + 1}/${toProcess.length} done — ${totalRelationships} relationships, progress=${(progress * 100).toFixed(1)}%`);
   }
 
   // ── Step 4: consolidation pass (decisions 6 + 7) ───────────────────────────

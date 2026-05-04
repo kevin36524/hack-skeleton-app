@@ -23,7 +23,7 @@ export async function deepIngest(
   token: string,
   message: DeepIngestInput,
   options: { path: 'hot' | 'warm' }
-): Promise<{ noteId: string; factIds: string[] }> {
+): Promise<{ noteId: string; relationshipsAdded: number }> {
   console.log(`[deep-ingest] uid=${uid} msgId=${message.id} path=${options.path} from=${message.from.email} subject="${message.subject.slice(0, 60)}"`);
   const mailboxId = await getMailboxId(token);
 
@@ -52,7 +52,7 @@ export async function deepIngest(
 
   if (contentTier === 'skip') {
     console.log(`[deep-ingest] msg=${message.id} tier=skip, returning early`);
-    return { noteId, factIds: [] };
+    return { noteId, relationshipsAdded: 0 };
   }
 
   // Step 5 — Stage B gating
@@ -62,19 +62,19 @@ export async function deepIngest(
 
   if (!isHotPath) {
     console.log(`[deep-ingest] msg=${message.id} queued for warm-batch stage-b`);
-    return { noteId, factIds: [] };
+    return { noteId, relationshipsAdded: 0 };
   }
 
   // hot path — run Stage B immediately
   const entityId = await resolvePersonOrOrg(uid, message.from.email, message.from.name);
   if (!entityId) {
     console.log(`[deep-ingest] msg=${message.id} no entity resolved for ${message.from.email}, skipping stage-b`);
-    return { noteId, factIds: [] };
+    return { noteId, relationshipsAdded: 0 };
   }
 
   console.log(`[deep-ingest] running stage-b hot path for msg=${message.id} entityId=${entityId}`);
-  const { factIds } = await stageB(uid, entityId, [noteId]);
-  console.log(`[deep-ingest] msg=${message.id} stage-b produced ${factIds.length} facts`);
+  const { relationshipsAdded } = await stageB(uid, entityId, [noteId]);
+  console.log(`[deep-ingest] msg=${message.id} stage-b added ${relationshipsAdded} relationships`);
 
-  return { noteId, factIds };
+  return { noteId, relationshipsAdded };
 }

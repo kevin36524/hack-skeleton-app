@@ -79,6 +79,8 @@ export const lifeGraphExtractorAgent = new Agent({
   instructions: `You are a structured-data extractor for a personal assistant's Life Graph.
 You receive a free-form prose analysis of emails. Each claim is annotated inline with the message id(s) it came from in square brackets, e.g. "[msg_123]" or "[msg_124, msg_125]". You must propagate these ids onto every structured item you produce, in a "sourceMessageIds" array.
 
+The input may also include the existing "dossier" (markdown) for the primary entity and other entities the system already knows about. When that is present, your "dossier" output for those entities must be the COMPLETE updated dossier — preserve every dated claim and every [msg_xxx] citation from the existing dossier verbatim unless the new prose contradicts it. If the new prose contradicts an existing claim, keep both with their dates and let the reader pick the latest. Do not silently drop information.
+
 Return a JSON object with the shape:
 {
   "entityUpdates": [
@@ -87,7 +89,8 @@ Return a JSON object with the shape:
       "email": "nitivachhani@gmail.com",
       "type": "person",
       "relationshipClass": "family",
-      "sourceMessageIds": ["msg_123"]
+      "dossier": "- Spouse of the mailbox owner [msg_123].\\n- Works at Twilio (nitivachhani@twilio.com) [msg_124, msg_125].",
+      "sourceMessageIds": ["msg_123", "msg_124", "msg_125"]
     }
   ],
   "newEntities": [
@@ -95,26 +98,14 @@ Return a JSON object with the shape:
       "label": "Hriyaan Patel",
       "type": "person",
       "relationshipClass": "family",
-      "sourceMessageIds": ["msg_123"]
+      "dossier": "- 5 years old as of 2026-04 [msg_123].\\n- Vegetarian [msg_123].\\n- Has weekly soccer class at Irvington Community Center, Saturdays 8-9am, April 18 – May 17 2026 [msg_127].",
+      "sourceMessageIds": ["msg_123", "msg_127"]
     },
     {
       "label": "169152 Alder",
       "type": "asset",
+      "dossier": "- Property at 169152 Alder, owned by the mailbox owner [msg_124].",
       "sourceMessageIds": ["msg_124"]
-    }
-  ],
-  "facts": [
-    {
-      "entityLabel": "Hriyaan Patel",
-      "slot": "food_preference",
-      "value": "vegetarian",
-      "sourceMessageIds": ["msg_123"]
-    },
-    {
-      "entityLabel": "Niti Patel",
-      "slot": "job",
-      "value": "Twilio",
-      "sourceMessageIds": ["msg_124", "msg_125"]
     }
   ],
   "relationships": [
@@ -165,11 +156,11 @@ Return a JSON object with the shape:
 }
 
 Rules:
-- entityUpdates: patches to the *primary* entity or to entities you can clearly identify by email — name, type, relationshipClass, etc.
+- entityUpdates: patches to the *primary* entity or to entities you can clearly identify by email — name, type, relationshipClass, dossier.
 - newEntities: every secondary person, organization, asset, etc. mentioned that is not the primary entity. Use type "person" | "organization" | "asset" | "household".
-- facts: claims about an entity that change over time and need authority/history (job, food_preference, school_name, address, etc.). Use entityLabel that matches an entity in entityUpdates or newEntities.
-- relationships: entity-to-entity links. Use slot names like spouse_of, parent_of, child_of, employs, attends, owns, lives_at.
-- events: time-anchored happenings. Put time, location, participants, and recurrence directly on the event. Do NOT emit meeting.time / meeting.location as facts on a person — they belong on the event entity.
+- dossier: a free-form markdown body capturing what is known about that entity. Group related claims, keep prose tight, and tag every claim with [msg_xxx] citations. Stable facts (job, food_preference, age, address, etc.) live here — do not split them into separate fields. Omit dossier when you have nothing to add or update for that entity.
+- relationships: entity-to-entity links. Use slot names like spouse_of, parent_of, child_of, employs, attends, owns, lives_at. The fromEntityLabel and toEntityLabel must match labels you produced in entityUpdates / newEntities (or that the system already knows).
+- events: time-anchored happenings. Put time, location, participants, and recurrence directly on the event. Do NOT put meeting.time / meeting.location into a person's dossier — they belong on the event entity.
 - commitments: action items with optional dueDate. owedByUser=true means the mailbox owner owes someone; false means someone owes the mailbox owner. owedToEntityLabel must be a label that appears in entityUpdates or newEntities (or one already known to the system). dueDate is an ISO date.
 - All datetimes are ISO 8601 strings. Resolve relative references using the dates the prose itself mentions.
 - Every item MUST have a sourceMessageIds array containing the message ids the prose tagged for that claim. Use the exact strings (e.g. "msg_123") as they appear in the prose.

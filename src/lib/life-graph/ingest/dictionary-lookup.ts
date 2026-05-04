@@ -4,8 +4,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { randomUUID } from 'crypto';
 import { yahooGet } from '@/src/mastra/helpers/yahoo-api';
 import { getMailboxId } from '@/src/mastra/helpers/get-mailbox-id';
-import { findEntityByEmail, getCurrentFact, upsertEntity } from '../db';
-import { writeOrSupersedeFact } from '../supersedes';
+import { findEntityByEmail, upsertEntity } from '../db';
 import type { Entity, SenderTier } from '../types';
 import type { SearchMessagesApiResponse } from '@/lib/types/api';
 
@@ -24,13 +23,16 @@ export async function lookupSenderTier(
   console.log(`[dict-lookup] uid=${uid} email=${senderEmail}`);
 
   const entity = await findEntityByEmail(uid, senderEmail);
+  if (entity?.senderClass && (entity.senderClassConfidence ?? 0) >= 0.5) {
+    console.log(`[dict-lookup] cache hit entityId=${entity.id} tier=${entity.senderClass} confidence=${entity.senderClassConfidence}`);
+    return {
+      tier: entity.senderClass,
+      entityId: entity.id,
+      confidence: entity.senderClassConfidence ?? 0,
+    };
+  }
   if (entity) {
-    const fact = await getCurrentFact(uid, entity.id, 'sender_class');
-    if (fact && fact.status === 'current' && fact.confidence >= 0.5) {
-      console.log(`[dict-lookup] cache hit entityId=${entity.id} tier=${fact.value} confidence=${fact.confidence}`);
-      return { tier: fact.value as SenderTier, entityId: entity.id, confidence: fact.confidence };
-    }
-    console.log(`[dict-lookup] entity found but sender_class fact missing/low-confidence, re-profiling`);
+    console.log(`[dict-lookup] entity found but senderClass missing/low-confidence, re-profiling`);
   } else {
     console.log(`[dict-lookup] no entity found for ${senderEmail}, running on-the-fly profiling`);
   }
@@ -86,27 +88,21 @@ Only valid JSON, no markdown.`,
         entryClock: null,
         decayClock: null,
         relationshipClass: profile.relationshipClass,
+        senderClass: tier,
+        senderClassConfidence: confidence,
         payload: {},
         schemaVersion: 1,
       };
       await upsertEntity(uid, newEntity);
       console.log(`[dict-lookup] created new entity eid=${eid} for ${senderEmail}`);
+    } else {
+      await upsertEntity(uid, {
+        id: eid,
+        senderClass: tier,
+        senderClassConfidence: confidence,
+        lastUpdated: now,
+      } as Entity);
     }
-
-    await writeOrSupersedeFact(uid, {
-      entityId: eid,
-      slot: 'sender_class',
-      factType: 'stable',
-      value: tier,
-      status: 'current',
-      authority: 'email_derived',
-      confidence,
-      sourceMessageIds: [],
-      firstSeen: now,
-      lastVerified: now,
-      effectiveTime: now,
-      drawer: 'people_orgs',
-    });
 
     return { tier, entityId: eid, confidence };
   } catch (err) {
