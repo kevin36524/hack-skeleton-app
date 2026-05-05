@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserId } from '@/src/lib/life-graph/get-user-id';
-import { listEntities, listNotes } from '@/src/lib/life-graph/db';
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-  if (!token) {
-    return NextResponse.json({ error: 'No auth token' }, { status: 401 });
+  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+  if (!token) return NextResponse.json({ error: 'No auth token' }, { status: 401 });
+
+  const accountId = req.nextUrl.searchParams.get('accountId');
+  if (!accountId) return NextResponse.json({ error: 'Missing accountId query param' }, { status: 400 });
+
+  if (process.env.LIFE_GRAPH_BACKEND === 'yai') {
+    const { yaiLifeGraphGet } = await import('@/src/lib/life-graph/yai-life-graph-client');
+    const res = await yaiLifeGraphGet(token, '/graph', { accountId });
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
   }
 
-  try {
-    const accountId = req.nextUrl.searchParams.get('accountId');
-    if (!accountId) {
-      return NextResponse.json({ error: 'Missing accountId query param' }, { status: 400 });
-    }
+  // Local implementation
+  const { getUserId } = await import('@/src/lib/life-graph/get-user-id');
+  const { listEntities, listNotes } = await import('@/src/lib/life-graph/db');
 
+  try {
     const uid = await getUserId(token, accountId);
-    const [entities, notes] = await Promise.all([
-      listEntities(uid),
-      listNotes(uid),
-    ]);
+    const [entities, notes] = await Promise.all([listEntities(uid), listNotes(uid)]);
 
     const counts = {
       entities: entities.length,
@@ -34,9 +35,7 @@ export async function GET(req: NextRequest) {
       }, {}),
     };
 
-    console.log(
-      `[life-graph/graph] uid=${uid} entities=${entities.length} notes=${notes.length}`
-    );
+    console.log(`[life-graph/graph] uid=${uid} entities=${entities.length} notes=${notes.length}`);
     return NextResponse.json({ entities, notes, counts });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

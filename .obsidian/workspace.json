@@ -186,6 +186,7 @@
   },
   "active": "d53246de14207b8f",
   "lastOpenFiles": [
+    "src/lib/life-graph/yai-life-graph-client.ts",
     "docs/2026-05-life-graph-entity-dossier-proposal.md",
     "docs/2026-04-life-graph-data-model.md",
     "docs/2026-04-life-graph-ingest-phase1-impl-spec.md",

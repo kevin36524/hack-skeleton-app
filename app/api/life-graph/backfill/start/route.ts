@@ -1,35 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Timestamp } from 'firebase-admin/firestore';
-import { randomUUID } from 'crypto';
-import { getUserId } from '@/src/lib/life-graph/get-user-id';
-import { getProfile, createIngestJob } from '@/src/lib/life-graph/db';
-import type { IngestJob } from '@/src/lib/life-graph/types';
 
 const COLD_START_BUDGET = parseFloat(process.env.LIFE_GRAPH_COLD_START_BUDGET_USD ?? '10');
 const BACKFILL_WINDOW_MONTHS = parseInt(process.env.LIFE_GRAPH_BACKFILL_WINDOW_MONTHS ?? '12', 10);
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-  if (!token) {
-    console.warn('[backfill/start] missing auth token');
-    return NextResponse.json({ error: 'No auth token provided' }, { status: 401 });
+  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+  if (!token) return NextResponse.json({ error: 'No auth token provided' }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+
+  if (process.env.LIFE_GRAPH_BACKEND === 'yai') {
+    const { yaiLifeGraphPost } = await import('@/src/lib/life-graph/yai-life-graph-client');
+    const res = await yaiLifeGraphPost(token, '/backfill/start', body);
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
   }
 
+  // Local implementation
+  const { randomUUID } = await import('crypto');
+  const { Timestamp } = await import('firebase-admin/firestore');
+  const { getUserId } = await import('@/src/lib/life-graph/get-user-id');
+  const { getProfile, createIngestJob } = await import('@/src/lib/life-graph/db');
+
   try {
-    const body = await req.json().catch(() => ({}));
     const accountId: string = body.accountId;
     if (!accountId) {
-      console.warn('[backfill/start] missing accountId');
       return NextResponse.json({ error: 'Missing accountId in request body' }, { status: 400 });
     }
 
     const uid = await getUserId(token, accountId);
-    console.log(`[backfill/start] uid=${uid}`);
-
     const profile = await getProfile(uid);
     if (!profile) {
-      console.warn(`[backfill/start] no profile found for uid=${uid}`);
       return NextResponse.json(
         { error: 'Profile not initialized. Call /api/life-graph/profile/init first.' },
         { status: 400 }
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       new Date(Date.now() - BACKFILL_WINDOW_MONTHS * 30 * 24 * 60 * 60 * 1000)
     );
 
-    const job: IngestJob = {
+    await createIngestJob(uid, {
       id: jobId,
       kind: 'cold_start',
       phase: 0,
@@ -58,12 +59,9 @@ export async function POST(req: NextRequest) {
       createdAt: now,
       completedAt: null,
       token,
-    };
+    } as never);
 
-    await createIngestJob(uid, job);
     console.log(`[backfill/start] created job jobId=${jobId} budget=$${COLD_START_BUDGET}`);
-
-    // The client is responsible for calling /backfill/run to kick off the pipeline.
     return NextResponse.json({ jobId });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
