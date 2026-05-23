@@ -55,7 +55,7 @@ export async function yaiLifeGraphDelete(
   queryParams?: Record<string, string>
 ): Promise<Response> {
   return fetch(buildUrl(path, queryParams), {
-    method: 'DELETE',
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'X-App-Token': makeAppToken(),
