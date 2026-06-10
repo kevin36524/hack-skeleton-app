@@ -120,6 +120,11 @@ interface BackfillStartResponse {
   bucketCounts: Record<SenderBucket, number>;
 }
 
+interface BackfillRunResponse {
+  jobId: string;
+  accepted: number;
+}
+
 interface FirestoreTs {
   _seconds?: number;
   seconds?: number;
@@ -1392,6 +1397,7 @@ export default function LifeGraphDevPage() {
   const [whoamiLoading, setWhoamiLoading] = useState(false);
 
   const [backfillStartResult, setBackfillStartResult] = useState<ApiResult>({ status: 'idle', data: null });
+  const [backfillRunResult, setBackfillRunResult] = useState<ApiResult>({ status: 'idle', data: null });
   const [currentJobId, setCurrentJobId] = useState('');
   const [profileUid, setProfileUid] = useState<string | null>(null);
   const [jobStatusResult, setJobStatusResult] = useState<ApiResult>({ status: 'idle', data: null });
@@ -1531,6 +1537,7 @@ export default function LifeGraphDevPage() {
 
   async function startBackfill() {
     // Reset all v2 state from any previous run.
+    setBackfillRunResult({ status: 'idle', data: null });
     setCandidates([]);
     setUserType(null);
     setBucketCounts(null);
@@ -1549,6 +1556,30 @@ export default function LifeGraphDevPage() {
     setCandidates(resp.candidates ?? []);
     setUserType(resp.userType ?? null);
     setBucketCounts(resp.bucketCounts ?? null);
+  }
+
+  // Auto-run: single call that runs phase 0 + 1, auto-accepts all top
+  // candidates ("select all"), and kicks off phase 2→3→4 in the background.
+  // No approval UI — read jobId from the 202 and poll status immediately.
+  async function runAutoBackfill() {
+    // Reset all v2 state from any previous run.
+    setBackfillStartResult({ status: 'idle', data: null });
+    setCandidates([]);
+    setUserType(null);
+    setBucketCounts(null);
+    setV2Processed([]);
+    setV2Self(null);
+    setApprovedCount(0);
+
+    const result = await run(setBackfillRunResult, () =>
+      callApi('POST', '/api/life-graph/backfill/run', { accountId })
+    );
+    if (!result || typeof result !== 'object' || !('jobId' in (result as object))) return;
+    const resp = result as BackfillRunResponse;
+
+    setCurrentJobId(resp.jobId);
+    setApprovedCount(resp.accepted ?? 0);
+    startPolling(resp.jobId, accountId);
   }
 
   async function runDeepExtraction(approvedEmails: string[]) {
@@ -1584,13 +1615,15 @@ export default function LifeGraphDevPage() {
   async function deleteGraph() {
     setDeleteLoading(true);
     try {
-      await fetch(`/api/life-graph/delete?accountId=${encodeURIComponent(accountId)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      await fetch('/api/life-graph/delete', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ accountId }),
       });
       setCurrentJobId('');
       setJobStatusResult({ status: 'idle', data: null });
       setBackfillStartResult({ status: 'idle', data: null });
+      setBackfillRunResult({ status: 'idle', data: null });
       setProfileUid(null);
       setCandidates([]);
       setUserType(null);
@@ -1662,7 +1695,33 @@ export default function LifeGraphDevPage() {
 
           <TabsContent value="pipeline" className="space-y-4">
 
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 1 — Start Backfill</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 1 — Auto-run (one call)</p>
+            <ApiCard
+              title="POST /api/life-graph/backfill/run"
+              description="Single-call backfill: runs phase 0 + 1, auto-accepts all top candidates (&quot;select all&quot;), and kicks off phase 2→3→4 in the background. Returns 202 with { jobId, accepted }. No approval UI — polling starts immediately."
+              result={backfillRunResult}
+              onRun={runAutoBackfill}
+              disabled={!accountId}
+            >
+              {!accountId && <p className="text-xs text-muted-foreground">Enter Account ID above first.</p>}
+              {backfillRunResult.status === 'success' && (
+                <p className="text-xs text-muted-foreground">
+                  Auto-accepted{' '}
+                  <span className="text-foreground font-medium">
+                    {(backfillRunResult.data as BackfillRunResponse | null)?.accepted ?? 0}
+                  </span>{' '}
+                  senders into extraction. Monitor progress below.
+                </p>
+              )}
+            </ApiCard>
+
+            <div className="flex items-center gap-3 py-1">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">or pick senders manually</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step 1 — Start Backfill (manual approval)</p>
             <ApiCard
               title="POST /api/life-graph/backfill/start"
               description="Runs phase 0 (Yahoo corpus) + phase 1 (segmentation) synchronously. No LLM calls in this step — returns in seconds. Response includes SenderRecord[] candidates, userType, and bucketCounts."

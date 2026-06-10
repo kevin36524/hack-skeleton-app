@@ -19,12 +19,27 @@ function buildUrl(path: string, queryParams?: Record<string, string>): string {
   return `${YAI_SERVER_URL}${BASE_PATH}${path}?${params}`;
 }
 
+// Logs the outgoing call to yai-node so we can see the exact method + URL the
+// proxy sends (e.g. confirm delete goes out as POST, not DELETE).
+async function loggedFetch(method: string, url: string, init: RequestInit): Promise<Response> {
+  console.log(`[yai-life-graph] → ${method} ${url}`);
+  try {
+    const res = await fetch(url, init);
+    console.log(`[yai-life-graph] ← ${method} ${url} ${res.status}`);
+    return res;
+  } catch (err) {
+    console.error(`[yai-life-graph] ✗ ${method} ${url}`, err);
+    throw err;
+  }
+}
+
 export async function yaiLifeGraphGet(
   token: string,
   path: string,
   queryParams?: Record<string, string>
 ): Promise<Response> {
-  return fetch(buildUrl(path, queryParams), {
+  const url = buildUrl(path, queryParams);
+  return loggedFetch('GET', url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -38,7 +53,8 @@ export async function yaiLifeGraphPost(
   path: string,
   body: unknown
 ): Promise<Response> {
-  return fetch(buildUrl(path), {
+  const url = buildUrl(path);
+  return loggedFetch('POST', url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -54,7 +70,9 @@ export async function yaiLifeGraphDelete(
   path: string,
   queryParams?: Record<string, string>
 ): Promise<Response> {
-  return fetch(buildUrl(path, queryParams), {
+  // Delete goes out as POST (yai-node has no DELETE route — POST /delete only).
+  const url = buildUrl(path, queryParams);
+  return loggedFetch('POST', url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
