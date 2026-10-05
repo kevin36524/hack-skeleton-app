@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { getFirebaseAuth, getGoogleProvider, getFirebaseDb } from "@/lib/firebase/config";
+import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase/config";
 import {
   signInWithPopup,
   signInAnonymously,
@@ -20,10 +20,132 @@ import {
   XCircle,
   PartyPopper,
   Sparkles,
+  MapPin,
+  CalendarPlus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 type Step = "auth" | "form" | "success";
 type Attending = "yes" | "no" | null;
+
+// Event details shared by the calendar links.
+const EVENT_TITLE = "Navratri Celebration";
+const EVENT_LOCATION = "4867 Coco Palm Dr, Fremont, CA 94538";
+const EVENT_DESCRIPTION =
+  "Navratri Celebration hosted by Kevin, Niti & Hriyaan. 5:30 PM onwards.";
+// Floating local time (no Z suffix) so the event lands at 5:30 PM in the
+// viewer's own timezone.
+const EVENT_START = "20261011T173000";
+const EVENT_END = "20261011T230000";
+
+const MAPS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(EVENT_LOCATION)}`;
+const GOOGLE_CAL_URL = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(EVENT_TITLE)}&dates=${EVENT_START}/${EVENT_END}&details=${encodeURIComponent(EVENT_DESCRIPTION)}&location=${encodeURIComponent(EVENT_LOCATION)}`;
+const OUTLOOK_CAL_URL = `https://outlook.live.com/calendar/0/deeplink/compose?rru=addevent&subject=${encodeURIComponent(EVENT_TITLE)}&startdt=2026-10-11T17:30:00&enddt=2026-10-11T23:00:00&body=${encodeURIComponent(EVENT_DESCRIPTION)}&location=${encodeURIComponent(EVENT_LOCATION)}`;
+
+function icsEscape(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+function icsUtc(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+// Apple Calendar (and most mobile calendar apps) take an .ics file.
+function buildICS(): string {
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//RSVP Navratri//EN",
+    "BEGIN:VEVENT",
+    "UID:navratri-2026@rsvp-navaratri",
+    `DTSTAMP:${icsUtc(new Date())}`,
+    `DTSTART:${EVENT_START}`,
+    `DTEND:${EVENT_END}`,
+    `SUMMARY:${icsEscape(EVENT_TITLE)}`,
+    `LOCATION:${icsEscape(EVENT_LOCATION)}`,
+    `DESCRIPTION:${icsEscape(EVENT_DESCRIPTION)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+/** "Add to Calendar" button with a dropdown for Apple (.ics), Google, Outlook. */
+function CalendarButton({ compact = false }: { compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+
+  const downloadICS = () => {
+    const blob = new Blob([buildICS()], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "navratri-celebration.ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Add to Calendar"
+        className={
+          compact
+            ? "flex items-center justify-center p-2 rounded-lg bg-orange-800/50 hover:bg-orange-700/50 text-orange-100 border border-orange-700/30 transition-colors"
+            : "w-full flex items-center justify-center gap-2 bg-orange-800/50 hover:bg-orange-700/50 text-orange-100 font-semibold py-3 px-4 rounded-xl transition-colors border border-orange-700/30"
+        }
+      >
+        <CalendarPlus className="w-5 h-5 text-orange-400" />
+        {!compact && "Add to Calendar"}
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className={`absolute mt-2 z-50 bg-[#2d1b0e] border border-orange-700/40 rounded-xl shadow-xl overflow-hidden ${
+              compact ? "right-0 w-56" : "left-0 right-0"
+            }`}
+          >
+            <button
+              onClick={downloadICS}
+              className="w-full text-left px-4 py-3 text-sm text-orange-100 hover:bg-orange-800/50 transition-colors"
+            >
+              🍎 Apple / iOS Calendar
+            </button>
+            <a
+              href={GOOGLE_CAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="block w-full text-left px-4 py-3 text-sm text-orange-100 hover:bg-orange-800/50 transition-colors"
+            >
+              📅 Google Calendar
+            </a>
+            <a
+              href={OUTLOOK_CAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="block w-full text-left px-4 py-3 text-sm text-orange-100 hover:bg-orange-800/50 transition-colors"
+            >
+              📆 Outlook
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function RSVPPage() {
   const [step, setStep] = useState<Step>("auth");
@@ -31,6 +153,9 @@ export default function RSVPPage() {
   const [authMethod, setAuthMethod] = useState<"google" | "name">("name");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [updatedExisting, setUpdatedExisting] = useState(false);
+  const [showRSVP, setShowRSVP] = useState(false);
+  const rsvpPanelRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -70,6 +195,22 @@ export default function RSVPPage() {
       }
     } catch {
       // Silently fail for stats
+    }
+  };
+
+  const toggleRSVP = () => {
+    const next = !showRSVP;
+    setShowRSVP(next);
+    if (next) {
+      // Scroll the expanded panel into view on small screens.
+      setTimeout(
+        () =>
+          rsvpPanelRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          }),
+        100
+      );
     }
   };
 
@@ -146,6 +287,8 @@ export default function RSVPPage() {
         throw new Error(data.error || "Failed to submit");
       }
 
+      const data = await res.json();
+      setUpdatedExisting(!!data.updated);
       setStep("success");
       fetchStats();
     } catch (err: unknown) {
@@ -158,6 +301,33 @@ export default function RSVPPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#1a0a0a] via-[#2d1b0e] to-[#1a0a0a]">
       {/* Decorative top border */}
       <div className="h-2 bg-gradient-to-r from-yellow-600 via-orange-500 to-yellow-600" />
+
+      {/* Sticky action bar — keeps RSVP reachable even when the tall invite
+          image fills the whole screen (e.g. iPhone SE). */}
+      <div className="sticky top-0 z-40 bg-[#1a0a0a]/95 backdrop-blur-sm border-b border-yellow-600/20">
+        <div className="max-w-md mx-auto px-4 py-2.5 flex items-center gap-2">
+          <span className="flex-1 text-sm font-bold text-yellow-400 truncate">
+            🪔 Navratri Celebration
+          </span>
+          <a
+            href={MAPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Directions"
+            className="flex items-center justify-center p-2 rounded-lg bg-orange-800/50 hover:bg-orange-700/50 text-orange-100 border border-orange-700/30 transition-colors"
+          >
+            <MapPin className="w-4 h-4" />
+          </a>
+          <CalendarButton compact />
+          <button
+            onClick={toggleRSVP}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold px-3.5 py-2 rounded-lg text-sm hover:from-yellow-500 hover:to-orange-500 transition-all shadow"
+          >
+            <PartyPopper className="w-4 h-4" />
+            RSVP
+          </button>
+        </div>
+      </div>
 
       <div className="max-w-md mx-auto px-4 py-6 pb-12">
         {/* Invite Image */}
@@ -194,8 +364,40 @@ export default function RSVPPage() {
           </div>
         </div>
 
-        {/* RSVP Section */}
-        <div className="bg-gradient-to-br from-[#2d1b0e] to-[#1a0a0a] rounded-2xl border border-yellow-600/20 p-6 shadow-xl">
+        {/* Action Buttons */}
+        <div className="space-y-3 mb-6">
+          <button
+            onClick={toggleRSVP}
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold py-4 px-4 rounded-xl hover:from-yellow-500 hover:to-orange-500 transition-all shadow-lg shadow-orange-900/30 text-lg"
+          >
+            <PartyPopper className="w-5 h-5" />
+            {showRSVP ? "Close RSVP" : "RSVP Now"}
+            {showRSVP ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <a
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-orange-800/50 hover:bg-orange-700/50 text-orange-100 font-semibold py-3 px-4 rounded-xl transition-colors border border-orange-700/30"
+            >
+              <MapPin className="w-5 h-5 text-orange-400" />
+              Directions
+            </a>
+            <CalendarButton />
+          </div>
+        </div>
+
+        {/* RSVP Section (expanded via the RSVP Now button) */}
+        {showRSVP && (
+          <div
+            ref={rsvpPanelRef}
+            className="bg-gradient-to-br from-[#2d1b0e] to-[#1a0a0a] rounded-2xl border border-yellow-600/20 p-6 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300"
+          >
           <div className="text-center mb-6">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Sparkles className="w-5 h-5 text-yellow-500" />
@@ -417,7 +619,7 @@ export default function RSVPPage() {
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Any dietary restrictions or special notes..."
+                  placeholder="Any special notes or requests..."
                   rows={3}
                   className="w-full bg-orange-950/50 border border-orange-700/30 rounded-xl py-3 px-4 text-orange-100 placeholder-orange-300/30 focus:outline-none focus:ring-2 focus:ring-yellow-600/50 focus:border-yellow-600/50 resize-none"
                 />
@@ -448,12 +650,14 @@ export default function RSVPPage() {
                 <CheckCircle2 className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-yellow-400 mb-2">
-                Thank You!
+                {updatedExisting ? "RSVP Updated!" : "Thank You!"}
               </h3>
               <p className="text-orange-200/70 mb-6">
-                {attending === "yes"
-                  ? `We can't wait to celebrate with you! ${adults} adult${adults > 1 ? "s" : ""}${kids > 0 ? ` and ${kids} kid${kids > 1 ? "s" : ""}` : ""} confirmed.`
-                  : "We're sorry you can't make it. You'll be missed!"}
+                {updatedExisting
+                  ? "Your existing RSVP has been updated with the new details."
+                  : attending === "yes"
+                    ? `We can't wait to celebrate with you! ${adults} adult${adults > 1 ? "s" : ""}${kids > 0 ? ` and ${kids} kid${kids > 1 ? "s" : ""}` : ""} confirmed.`
+                    : "We're sorry you can't make it. You'll be missed!"}
               </p>
               <button
                 onClick={() => {
@@ -464,6 +668,7 @@ export default function RSVPPage() {
                   setMessage("");
                   setName("");
                   setAuthMethod("name");
+                  setUpdatedExisting(false);
                 }}
                 className="text-orange-400 hover:text-orange-300 text-sm underline"
               >
@@ -471,7 +676,8 @@ export default function RSVPPage() {
               </button>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center mt-8 text-orange-300/30 text-xs">

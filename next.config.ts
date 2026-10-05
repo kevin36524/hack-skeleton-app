@@ -2,15 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  serverExternalPackages: [
-    '@libsql/client',
-    '@mastra/libsql',
-    'pino',
-    'thread-stream',
-    'pino-abstract-transport',
-    'pino-std-serializers',
-    '@mastra/loggers'
-  ],
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+    ],
+  },
 };
 
 export default nextConfig;

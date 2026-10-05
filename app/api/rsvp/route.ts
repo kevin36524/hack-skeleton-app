@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRSVP, getRSVPStats, getAllRSVPs } from "@/lib/firebase/rsvp";
+import { upsertRSVP, getRSVPStats, getAllRSVPs } from "@/lib/firebase/rsvp";
+import { requireAdmin } from "@/lib/firebase/admin";
 import type { RSVPInput } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rsvp = await createRSVP({
+    const { rsvp, updated } = await upsertRSVP({
       name: body.name.trim(),
       email: body.email || null,
       photoURL: body.photoURL || null,
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       message: body.message || "",
     });
 
-    return NextResponse.json({ success: true, rsvp }, { status: 201 });
+    return NextResponse.json({ success: true, rsvp, updated }, { status: updated ? 200 : 201 });
   } catch (error) {
     console.error("RSVP creation error:", error);
     return NextResponse.json(
@@ -41,7 +42,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin.ok) return admin.response;
+
   try {
     const [stats, rsvps] = await Promise.all([getRSVPStats(), getAllRSVPs()]);
     return NextResponse.json({ stats, rsvps });

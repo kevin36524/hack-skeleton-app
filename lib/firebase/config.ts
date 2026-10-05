@@ -40,6 +40,10 @@ export function getFirebaseDb(): Firestore {
 export function getGoogleProvider(): GoogleAuthProvider {
   if (!_googleProvider) {
     _googleProvider = new GoogleAuthProvider();
+    // Always show the Google account chooser — otherwise a browser with an
+    // existing Google session silently signs in as that account, and a guest
+    // could RSVP (or reach /admin) under the wrong identity.
+    _googleProvider.setCustomParameters({ prompt: "select_account" });
   }
   return _googleProvider;
 }
