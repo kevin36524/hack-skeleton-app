@@ -5,7 +5,6 @@ import Image from "next/image";
 import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase/config";
 import {
   signInWithPopup,
-  signInAnonymously,
   onAuthStateChanged,
   User,
 } from "firebase/auth";
@@ -152,6 +151,7 @@ export default function RSVPPage() {
   const [user, setUser] = useState<User | null>(null);
   const [authMethod, setAuthMethod] = useState<"google" | "name">("name");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [updatedExisting, setUpdatedExisting] = useState(false);
   const [showRSVP, setShowRSVP] = useState(false);
@@ -215,7 +215,7 @@ export default function RSVPPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
+    setGoogleLoading(true);
     setError("");
     try {
       const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
@@ -225,6 +225,7 @@ export default function RSVPPage() {
       setStep("form");
     } catch (err: unknown) {
       const firebaseError = err as { code?: string };
+      console.error("[rsvp] google sign-in error:", firebaseError.code ?? "", err);
       if (firebaseError.code === "auth/popup-closed-by-user") {
         setError("Sign-in popup was closed. Please try again.");
       } else if (firebaseError.code === "auth/unauthorized-domain") {
@@ -233,24 +234,17 @@ export default function RSVPPage() {
         setError("Google sign-in failed. Please try again or use your name.");
       }
     }
-    setLoading(false);
+    setGoogleLoading(false);
   };
 
-  const handleNameSignIn = async () => {
+  const handleNameSignIn = () => {
     if (!name.trim()) {
       setError("Please enter your name");
       return;
     }
-    setLoading(true);
     setError("");
-    try {
-      await signInAnonymously(getFirebaseAuth());
-      setAuthMethod("name");
-      setStep("form");
-    } catch {
-      setError("Something went wrong. Please try again.");
-    }
-    setLoading(false);
+    setAuthMethod("name");
+    setStep("form");
   };
 
   const handleSubmit = async () => {
@@ -333,7 +327,7 @@ export default function RSVPPage() {
         {/* Invite Image */}
         <div className="rounded-2xl overflow-hidden shadow-2xl shadow-orange-900/50 border-2 border-yellow-600/30 mb-6">
           <Image
-            src="/navaratri-invite.jpeg"
+            src="https://pub-a9cd5deb9a674cf781fe4e56075c4c4d.r2.dev/navaratri.jpeg"
             alt="Navratri Invitation"
             width={893}
             height={1600}
@@ -423,7 +417,7 @@ export default function RSVPPage() {
               {/* Google Sign In */}
               <button
                 onClick={handleGoogleSignIn}
-                disabled={loading}
+                disabled={googleLoading}
                 className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-3.5 px-4 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -444,7 +438,7 @@ export default function RSVPPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                {loading ? "Signing in..." : "Sign in with Google"}
+                {googleLoading ? "Signing in..." : "Sign in with Google"}
               </button>
 
               <div className="flex items-center gap-3">
@@ -468,7 +462,7 @@ export default function RSVPPage() {
                 </div>
                 <button
                   onClick={handleNameSignIn}
-                  disabled={loading || !name.trim()}
+                  disabled={!name.trim()}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold py-3.5 px-4 rounded-xl hover:from-orange-500 hover:to-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   <LogIn className="w-5 h-5" />
@@ -667,6 +661,7 @@ export default function RSVPPage() {
                   setKids(0);
                   setMessage("");
                   setName("");
+                  setUser(null);
                   setAuthMethod("name");
                   setUpdatedExisting(false);
                 }}

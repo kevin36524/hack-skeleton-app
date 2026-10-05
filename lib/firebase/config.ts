@@ -1,7 +1,11 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
 
+// Client-side Firebase — AUTH ONLY. The client never talks to Firestore
+// directly; all RSVP data goes through the Next.js API routes, which use
+// the Admin SDK server-side. Firestore itself is locked with deny-all
+// security rules (see firestore.rules), so even a leaked API key can't
+// read or write RSVP data.
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "placeholder-api-key",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "placeholder.firebaseapp.com",
@@ -13,7 +17,6 @@ const firebaseConfig = {
 
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
-let _db: Firestore | null = null;
 let _googleProvider: GoogleAuthProvider | null = null;
 
 function getFirebaseApp(): FirebaseApp {
@@ -28,13 +31,6 @@ export function getFirebaseAuth(): Auth {
     _auth = getAuth(getFirebaseApp());
   }
   return _auth;
-}
-
-export function getFirebaseDb(): Firestore {
-  if (!_db) {
-    _db = getFirestore(getFirebaseApp());
-  }
-  return _db;
 }
 
 export function getGoogleProvider(): GoogleAuthProvider {

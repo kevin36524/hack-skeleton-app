@@ -15,7 +15,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "deployCloudRun": "gcloud auth activate-service-account --key-file=twiliotest-admin-key.json && gcloud run deploy rsvp --source . --platform managed --region us-central1 --allow-unauthenticated --service-account calproxy-service-account@twiliotest-8d802.iam.gserviceaccount.com --project twiliotest-8d802",
+    "deployCloudRun": "gcloud auth activate-service-account --key-file=hriyaan-24ae1-hproxy.json && gcloud run deploy rsvp --source . --platform managed --region us-central1 --allow-unauthenticated --service-account hproxy-service-account@hriyaan-24ae1.iam.gserviceaccount.com --set-env-vars GOOGLE_CLOUD_PROJECT=hriyaan-24ae1,RSVP_FIRESTORE_DATABASE=rsvp-navaratri --project hriyaan-24ae1",
     "lint": "eslint"
   },
   "dependencies": {

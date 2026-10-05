@@ -1,0 +1,10 @@
+# Keep rebuildable/heavy files and secrets out of the Docker build context
+# (gcloud run deploy --source uploads this directory to Cloud Build).
+node_modules
+.next
+.git
+.env.local
+twiliotest-admin-key.json
+hriyaan-24ae1-hproxy.json
+*.swp
+tsconfig.tsbuildinfo

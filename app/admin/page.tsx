@@ -83,14 +83,20 @@ export default function AdminPage() {
   // Keep a fresh ID token — onIdTokenChanged fires on sign-in and on refresh.
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(getFirebaseAuth(), async (u) => {
+      console.log("[admin] auth state:", u
+        ? { uid: u.uid, email: u.email, providers: u.providerData.map((p) => p.providerId) }
+        : null);
+      const t = u ? await u.getIdToken() : null;
+      console.log("[admin] id token:", t ? `${t.split(".").length} segments, prefix ${t.slice(0, 12)}...` : null);
       setUser(u);
-      setIdToken(u ? await u.getIdToken() : null);
+      setIdToken(t);
       setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
   const fetchData = useCallback(async (token: string) => {
+    if (!token) return;
     setLoading(true);
     try {
       const res = await fetch("/api/rsvp", {
@@ -120,8 +126,9 @@ export default function AdminPage() {
     try {
       await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
     } catch (err) {
-      console.error("Sign-in failed:", err);
-      setNotice("Sign-in failed. Please try again.");
+      const code = (err as { code?: string })?.code;
+      console.error("[admin] sign-in error:", code ?? "", err);
+      setNotice(code ? `Sign-in failed (${code}). Please try again.` : "Sign-in failed. Please try again.");
     }
     setSigningIn(false);
   };
