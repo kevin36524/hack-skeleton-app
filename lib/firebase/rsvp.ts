@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "./config";
+import { getFirebaseDb } from "./config";
 import type { RSVP, RSVPInput, RSVPStats } from "@/lib/types";
 
 const COLLECTION = "rsvps";
@@ -41,6 +41,7 @@ function docToRSVP(id: string, data: Record<string, unknown>): RSVP {
 }
 
 export async function createRSVP(input: RSVPInput): Promise<RSVP> {
+  const db = getFirebaseDb();
   const now = serverTimestamp();
   const docRef = await addDoc(collection(db, COLLECTION), {
     ...input,
@@ -59,6 +60,7 @@ export async function updateRSVP(
   id: string,
   input: Partial<RSVPInput>
 ): Promise<void> {
+  const db = getFirebaseDb();
   const docRef = doc(db, COLLECTION, id);
   await updateDoc(docRef, {
     ...input,
@@ -67,6 +69,7 @@ export async function updateRSVP(
 }
 
 export async function getRSVPByEmail(email: string): Promise<RSVP | null> {
+  const db = getFirebaseDb();
   const q = query(
     collection(db, COLLECTION),
     where("email", "==", email)
@@ -78,6 +81,7 @@ export async function getRSVPByEmail(email: string): Promise<RSVP | null> {
 }
 
 export async function getAllRSVPs(): Promise<RSVP[]> {
+  const db = getFirebaseDb();
   const q = query(collection(db, COLLECTION), orderBy("createdAt", "desc"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => docToRSVP(doc.id, doc.data()));

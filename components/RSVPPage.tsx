@@ -2,21 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { auth, googleProvider, db } from "@/lib/firebase/config";
+import { getFirebaseAuth, getGoogleProvider, getFirebaseDb } from "@/lib/firebase/config";
 import {
   signInWithPopup,
   signInAnonymously,
   onAuthStateChanged,
   User,
 } from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+
 import {
   LogIn,
   User as UserIcon,
@@ -55,7 +48,7 @@ export default function RSVPPage() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
       setUser(user);
       if (user?.displayName) {
         setName(user.displayName);
@@ -84,7 +77,7 @@ export default function RSVPPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
       setUser(result.user);
       setName(result.user.displayName || "");
       setAuthMethod("google");
@@ -110,7 +103,7 @@ export default function RSVPPage() {
     setLoading(true);
     setError("");
     try {
-      await signInAnonymously(auth);
+      await signInAnonymously(getFirebaseAuth());
       setAuthMethod("name");
       setStep("form");
     } catch {
